@@ -1,0 +1,2 @@
+company_name,trading_name,country,city,address,state,postcode,email,website,hr_contact_name,hr_contact_title,hr_email,signatory_name,signatory_designation,accreditation_no,reg_number_label,reg_number_value
+Example Company Ltd,Example Co,New Zealand,Auckland,123 Example Street,,1010,info@example.com,example.com,HR Manager,Human Resources Manager,hr@example.com,Chief Executive,CEO,ACC-00000,NZBN,0000000000

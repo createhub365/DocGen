@@ -1,0 +1,102 @@
+{
+  "New Zealand": {
+    "Construction & Infrastructure": [
+      {
+        "trade_name": "Carpenter",
+        "anzsco_code": "331211",
+        "duties": [
+          "Interpret and work from architectural drawings and specifications",
+          "Measure, cut, and assemble timber and wood substitute materials",
+          "Erect framework, roof structures, and floor systems",
+          "Install doors, windows, stairs, and mouldings",
+          "Construct formwork for concrete pours",
+          "Fit and fix interior linings, skirting, and architraves",
+          "Operate and maintain carpentry tools and equipment",
+          "Apply workplace health and safety procedures on construction sites",
+          "Coordinate with other trades and site supervisors",
+          "Inspect completed work for quality and compliance with NZ building codes",
+          "Maintain accurate records of materials used and work completed",
+          "Perform remedial and maintenance carpentry work as required"
+        ]
+      },
+      {
+        "trade_name": "Plumber",
+        "anzsco_code": "334111",
+        "duties": [
+          "Install and maintain water supply, drainage, and gas systems",
+          "Read and interpret plumbing plans and specifications",
+          "Cut, thread, and bend pipes to required specifications",
+          "Install fixtures including sinks, toilets, and water heaters",
+          "Test plumbing systems for leaks and compliance",
+          "Diagnose and repair faults in plumbing systems",
+          "Install and maintain roof drainage and guttering systems",
+          "Apply NZ plumbing standards and building codes",
+          "Maintain tools, equipment, and work vehicles",
+          "Liaise with builders, electricians, and other trades on site",
+          "Prepare quotes and material lists for plumbing jobs",
+          "Complete compliance documentation and certification records"
+        ]
+      },
+      {
+        "trade_name": "Electrician",
+        "anzsco_code": "341111",
+        "duties": [
+          "Install, test, and maintain electrical wiring and equipment",
+          "Read and interpret electrical diagrams and specifications",
+          "Install lighting, power outlets, and switchboards",
+          "Test electrical circuits using appropriate testing equipment",
+          "Diagnose and repair electrical faults safely",
+          "Install data, communications, and security cabling systems",
+          "Ensure compliance with AS/NZS electrical standards",
+          "Complete electrical safety certificates and compliance records",
+          "Coordinate with other trades on construction and renovation projects",
+          "Maintain tools, test equipment, and personal protective equipment",
+          "Advise clients on energy efficiency and electrical safety",
+          "Perform scheduled maintenance on commercial and residential installations"
+        ]
+      }
+    ],
+    "Healthcare": [
+      {
+        "trade_name": "Registered Nurse",
+        "anzsco_code": "254418",
+        "duties": [
+          "Assess, plan, implement, and evaluate nursing care for patients",
+          "Administer medications and monitor patient responses",
+          "Maintain accurate clinical documentation and care plans",
+          "Collaborate with multidisciplinary healthcare teams",
+          "Provide patient and family education on health conditions",
+          "Monitor vital signs and report changes in patient condition",
+          "Ensure infection prevention and control procedures are followed",
+          "Assist with clinical procedures under medical direction",
+          "Support discharge planning and continuity of care",
+          "Maintain professional registration and continuing education requirements",
+          "Uphold patient privacy and confidentiality at all times",
+          "Respond to clinical emergencies according to hospital protocols"
+        ]
+      }
+    ]
+  },
+  "Australia": {
+    "Construction & Infrastructure": [
+      {
+        "trade_name": "Carpenter",
+        "anzsco_code": "331211",
+        "duties": [
+          "Construct, erect, install, and repair structures and fixtures made from wood",
+          "Study drawings and specifications to determine materials required",
+          "Cut materials to size and assemble using nails, screws, and adhesives",
+          "Build frameworks, roofs, and floors for residential and commercial projects",
+          "Install doors, windows, and cabinetry",
+          "Erect formwork for concrete structures",
+          "Maintain and operate carpentry tools and machinery",
+          "Follow WHS policies and safe work method statements",
+          "Work collaboratively with site supervisors and other trades",
+          "Inspect work to ensure compliance with Australian building standards",
+          "Record materials usage and job progress",
+          "Perform maintenance and repair carpentry work"
+        ]
+      }
+    ]
+  }
+}

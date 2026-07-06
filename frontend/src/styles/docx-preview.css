@@ -1,0 +1,59 @@
+/* Styles for docx-preview rendered Word documents */
+.docx-wrapper {
+  background: #e8e8e8;
+  padding: 16px;
+}
+
+.docx-wrapper > section.docx,
+.docx-wrapper > section.docx-preview {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 0 auto 16px;
+  max-width: 100%;
+}
+
+.docx-wrapper table {
+  border-collapse: collapse;
+}
+
+.docx-wrapper img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Live preview: full container width, scroll vertically */
+.live-preview-docx {
+  width: 100%;
+}
+
+.live-preview-docx .docx-wrapper {
+  background: #fff;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.live-preview-docx .docx-preview-wrapper {
+  width: 100% !important;
+  transform: none !important;
+}
+
+.live-preview-docx section.docx-preview {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  margin: 0 0 12px;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+}
+
+.live-preview-docx section.docx-preview article {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.live-preview-docx table {
+  max-width: 100%;
+  table-layout: fixed;
+  word-break: break-word;
+}

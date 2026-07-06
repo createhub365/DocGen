@@ -1,0 +1,35 @@
+{
+  "name": "docgen-pro-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "fix:deps": "npx update-browserslist-db@latest"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.5.1",
+    "antd": "^5.22.2",
+    "axios": "^1.7.9",
+    "dayjs": "^1.11.13",
+    "docx-preview": "^0.3.5",
+    "flag-icons": "^7.5.0",
+    "html2canvas": "^1.4.1",
+    "pdfjs-dist": "^6.0.227",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.5.0",
+    "browserslist": "^4.28.2",
+    "caniuse-lite": "^1.0.30001793",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^3.4.19",
+    "vite": "^6.0.3"
+  }
+}

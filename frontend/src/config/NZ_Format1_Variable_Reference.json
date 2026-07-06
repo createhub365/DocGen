@@ -1,0 +1,430 @@
+{
+  "format": "NZ_Construction_OfferLetter_Format1",
+  "total_variables": 53,
+  "variables": [
+    {
+      "variable": "{{company_logo}}",
+      "field_label": "Company Logo",
+      "section": "Header",
+      "example": "logo.png (image file)",
+      "required": "Yes",
+      "notes": "Replaced by actual image at generation time"
+    },
+    {
+      "variable": "{{company_name}}",
+      "field_label": "Company Name",
+      "section": "Header",
+      "example": "BuildRight Construction Ltd",
+      "required": "Yes",
+      "notes": "Used in header, body, signature, attestation"
+    },
+    {
+      "variable": "{{company_address}}",
+      "field_label": "Company Street Address",
+      "section": "Header",
+      "example": "45 Khyber Pass Road",
+      "required": "Yes",
+      "notes": "Street address only"
+    },
+    {
+      "variable": "{{company_city}}",
+      "field_label": "Company City",
+      "section": "Header",
+      "example": "Auckland",
+      "required": "Yes",
+      "notes": "NZ city name"
+    },
+    {
+      "variable": "{{company_email}}",
+      "field_label": "Company Email",
+      "section": "Header",
+      "example": "hr@buildright.co.nz",
+      "required": "Yes",
+      "notes": "Official HR email"
+    },
+    {
+      "variable": "{{ref_number}}",
+      "field_label": "Reference Number",
+      "section": "Document Info",
+      "example": "OL-0047/25",
+      "required": "Yes",
+      "notes": "Auto-generated \u2014 format OL-XXXX/YY"
+    },
+    {
+      "variable": "{{issue_date}}",
+      "field_label": "Issue Date",
+      "section": "Document Info",
+      "example": "15 January 2025",
+      "required": "Yes",
+      "notes": "Date of document issuance \u2014 calendar picker"
+    },
+    {
+      "variable": "{{candidate_full_name}}",
+      "field_label": "Candidate Full Name",
+      "section": "Candidate Details",
+      "example": "Rajinder Singh",
+      "required": "Yes",
+      "notes": "As per passport \u2014 used in tables + signature block"
+    },
+    {
+      "variable": "{{candidate_passport_number}}",
+      "field_label": "Candidate Passport Number",
+      "section": "Candidate Details",
+      "example": "J1234567",
+      "required": "Yes",
+      "notes": "Used in table + signature block"
+    },
+    {
+      "variable": "{{candidate_date_of_birth}}",
+      "field_label": "Candidate Date of Birth",
+      "section": "Candidate Details",
+      "example": "12/05/1990",
+      "required": "Yes",
+      "notes": "DD/MM/YYYY format"
+    },
+    {
+      "variable": "{{candidate_nationality}}",
+      "field_label": "Candidate Nationality",
+      "section": "Candidate Details",
+      "example": "Indian",
+      "required": "Yes",
+      "notes": "As per passport"
+    },
+    {
+      "variable": "{{passport_issue_date}}",
+      "field_label": "Passport Issue Date",
+      "section": "Candidate Details",
+      "example": "01 March 2020",
+      "required": "Yes",
+      "notes": "Calendar picker \u2014 DD MMMM YYYY"
+    },
+    {
+      "variable": "{{passport_expiry_date}}",
+      "field_label": "Passport Expiry Date",
+      "section": "Candidate Details",
+      "example": "01 March 2030",
+      "required": "Yes",
+      "notes": "Warning shown if less than 18 months from today"
+    },
+    {
+      "variable": "{{candidate_address}}",
+      "field_label": "Candidate Current Address",
+      "section": "Candidate Details",
+      "example": "123 Main Street, Ludhiana, Punjab, India",
+      "required": "Yes",
+      "notes": "Full residential address with country"
+    },
+    {
+      "variable": "{{candidate_email}}",
+      "field_label": "Candidate Email Address",
+      "section": "Candidate Details",
+      "example": "candidate@email.com",
+      "required": "Yes",
+      "notes": "Active email address"
+    },
+    {
+      "variable": "{{company_trading_name}}",
+      "field_label": "Company Trading Name",
+      "section": "Employer Details",
+      "example": "BuildRight NZ (if different)",
+      "required": "No",
+      "notes": "Leave blank if same as company name"
+    },
+    {
+      "variable": "{{company_nzbn}}",
+      "field_label": "Company NZBN Number",
+      "section": "Employer Details",
+      "example": "9429041234567",
+      "required": "Yes",
+      "notes": "New Zealand Business Number \u2014 13 digits"
+    },
+    {
+      "variable": "{{company_reg_address}}",
+      "field_label": "Registered Office Address",
+      "section": "Employer Details",
+      "example": "Level 3, 120 Queen Street, Auckland 1010",
+      "required": "Yes",
+      "notes": "Registered address with postcode"
+    },
+    {
+      "variable": "{{hr_contact_name}}",
+      "field_label": "HR Contact Person Name",
+      "section": "Employer Details",
+      "example": "Sarah Johnson",
+      "required": "Yes",
+      "notes": "Person signing the letter"
+    },
+    {
+      "variable": "{{hr_contact_title}}",
+      "field_label": "HR Contact Person Title",
+      "section": "Employer Details",
+      "example": "Human Resources Manager",
+      "required": "Yes",
+      "notes": "Official job title"
+    },
+    {
+      "variable": "{{hr_email}}",
+      "field_label": "HR Email Address",
+      "section": "Employer Details",
+      "example": "sarah.johnson@buildright.co.nz",
+      "required": "Yes",
+      "notes": "Direct HR email"
+    },
+    {
+      "variable": "{{candidate_salutation}}",
+      "field_label": "Candidate Salutation",
+      "section": "Formal Offer",
+      "example": "Mr. Rajinder Singh",
+      "required": "Yes",
+      "notes": "Mr. / Ms. / Mrs. + Full Name"
+    },
+    {
+      "variable": "{{position_title}}",
+      "field_label": "Position Title",
+      "section": "Position Terms",
+      "example": "Carpenter",
+      "required": "Yes",
+      "notes": "Auto-filled from trade bank \u2014 ANZSCO code auto-set"
+    },
+    {
+      "variable": "{{employment_type}}",
+      "field_label": "Employment Type",
+      "section": "Position Terms",
+      "example": "Full-Time Permanent",
+      "required": "Yes",
+      "notes": "Full-Time Permanent / Fixed-Term Contract"
+    },
+    {
+      "variable": "{{work_location}}",
+      "field_label": "Work Location",
+      "section": "Position Terms",
+      "example": "45 Industrial Road, Christchurch, New Zealand",
+      "required": "Yes",
+      "notes": "Site address or project name + city"
+    },
+    {
+      "variable": "{{commencement_date}}",
+      "field_label": "Commencement Date",
+      "section": "Position Terms",
+      "example": "01 March 2025",
+      "required": "Yes",
+      "notes": "Calendar picker \u2014 or 'upon visa grant'"
+    },
+    {
+      "variable": "{{contract_duration}}",
+      "field_label": "Contract Duration",
+      "section": "Position Terms",
+      "example": "Permanent",
+      "required": "Yes",
+      "notes": "Permanent / 2 Years Fixed Term etc."
+    },
+    {
+      "variable": "{{weekly_hours}}",
+      "field_label": "Weekly Working Hours",
+      "section": "Position Terms",
+      "example": "40 Hours / 5 Days per Week",
+      "required": "Yes",
+      "notes": "Standard NZ full time is 40hrs"
+    },
+    {
+      "variable": "{{work_days}}",
+      "field_label": "Working Days",
+      "section": "Position Terms",
+      "example": "Monday to Friday",
+      "required": "Yes",
+      "notes": "Or 'as rostered'"
+    },
+    {
+      "variable": "{{probation_period}}",
+      "field_label": "Probation Period",
+      "section": "Position Terms",
+      "example": "3 Months from commencement",
+      "required": "Yes",
+      "notes": "Typically 3 months in NZ"
+    },
+    {
+      "variable": "{{reporting_to}}",
+      "field_label": "Reporting To",
+      "section": "Position Terms",
+      "example": "John Smith, Site Supervisor",
+      "required": "Yes",
+      "notes": "Supervisor name and title"
+    },
+    {
+      "variable": "{{annual_salary}}",
+      "field_label": "Annual Gross Salary",
+      "section": "Remuneration",
+      "example": "NZD 58,000.00 per annum",
+      "required": "Yes",
+      "notes": "Must meet or exceed NZ median wage threshold"
+    },
+    {
+      "variable": "{{hourly_rate}}",
+      "field_label": "Hourly Rate",
+      "section": "Remuneration",
+      "example": "NZD 27.88 per hour",
+      "required": "Yes",
+      "notes": "Must be above NZ minimum wage"
+    },
+    {
+      "variable": "{{pay_frequency}}",
+      "field_label": "Pay Frequency",
+      "section": "Remuneration",
+      "example": "Fortnightly",
+      "required": "Yes",
+      "notes": "Weekly / Fortnightly"
+    },
+    {
+      "variable": "{{overtime_rate}}",
+      "field_label": "Overtime Rate",
+      "section": "Remuneration",
+      "example": "Paid at 1.5x hourly rate for hours beyond 40/week",
+      "required": "Yes",
+      "notes": "NZ standard overtime rate"
+    },
+    {
+      "variable": "{{accommodation_allowance}}",
+      "field_label": "Accommodation Allowance",
+      "section": "Allowances",
+      "example": "NZD 250 per week",
+      "required": "No",
+      "notes": "Or 'employer-arranged accommodation'"
+    },
+    {
+      "variable": "{{travel_allowance}}",
+      "field_label": "Travel Allowance",
+      "section": "Allowances",
+      "example": "NZD 50 per week",
+      "required": "No",
+      "notes": "Or 'site transport provided by employer'"
+    },
+    {
+      "variable": "{{medical_insurance}}",
+      "field_label": "Medical Insurance",
+      "section": "Allowances",
+      "example": "Employer-subsidised health insurance",
+      "required": "No",
+      "notes": "ACC coverage applies automatically in NZ"
+    },
+    {
+      "variable": "{{relocation_assistance}}",
+      "field_label": "Relocation Assistance",
+      "section": "Allowances",
+      "example": "NZD 2,000 one-time relocation grant",
+      "required": "No",
+      "notes": "One-time payment upon commencement"
+    },
+    {
+      "variable": "{{professional_development}}",
+      "field_label": "Professional Development",
+      "section": "Allowances",
+      "example": "Employer-sponsored trade certifications",
+      "required": "No",
+      "notes": "Training and certification support"
+    },
+    {
+      "variable": "{{candidate_qualification}}",
+      "field_label": "Candidate Qualification",
+      "section": "Qualifications",
+      "example": "ITI Certificate in Carpentry",
+      "required": "Yes",
+      "notes": "Trade certificate / diploma details"
+    },
+    {
+      "variable": "{{candidate_experience}}",
+      "field_label": "Candidate Experience",
+      "section": "Qualifications",
+      "example": "Minimum 5 years demonstrated experience",
+      "required": "Yes",
+      "notes": "Relevant trade experience"
+    },
+    {
+      "variable": "{{candidate_nz_licence}}",
+      "field_label": "Candidate NZ Licence",
+      "section": "Qualifications",
+      "example": "Site Safe Passport \u2014 to be obtained upon arrival",
+      "required": "Yes",
+      "notes": "LBP / Site Safe / trade-specific NZ cert"
+    },
+    {
+      "variable": "{{candidate_language_score}}",
+      "field_label": "Candidate Language Score",
+      "section": "Qualifications",
+      "example": "IELTS 5.5 overall",
+      "required": "Yes",
+      "notes": "English test score or equivalent"
+    },
+    {
+      "variable": "{{employer_accreditation_no}}",
+      "field_label": "Employer Accreditation Number",
+      "section": "Visa & Immigration",
+      "example": "ACC-123456",
+      "required": "Yes",
+      "notes": "Immigration NZ accreditation number"
+    },
+    {
+      "variable": "{{termination_notice}}",
+      "field_label": "Termination Notice Period",
+      "section": "Terms & Conditions",
+      "example": "4 weeks written notice by either party",
+      "required": "Yes",
+      "notes": "Standard NZ is 4 weeks"
+    },
+    {
+      "variable": "{{validity_days}}",
+      "field_label": "Offer Validity Period (Days)",
+      "section": "Offer Validity",
+      "example": "60",
+      "required": "Yes",
+      "notes": "30 / 60 / 90 days \u2014 auto-calculates expiry date"
+    },
+    {
+      "variable": "{{validity_expiry_date}}",
+      "field_label": "Offer Expiry Date",
+      "section": "Offer Validity",
+      "example": "15 March 2025",
+      "required": "Yes",
+      "notes": "Auto-calculated: issue_date + validity_days"
+    },
+    {
+      "variable": "{{signatory_name}}",
+      "field_label": "Authorised Signatory Name",
+      "section": "Signature Block",
+      "example": "Sarah Johnson",
+      "required": "Yes",
+      "notes": "Person signing on behalf of company"
+    },
+    {
+      "variable": "{{signatory_designation}}",
+      "field_label": "Signatory Designation",
+      "section": "Signature Block",
+      "example": "Human Resources Manager",
+      "required": "Yes",
+      "notes": "Official title of signatory"
+    },
+    {
+      "variable": "{{sign_date}}",
+      "field_label": "Employer Sign Date",
+      "section": "Signature Block",
+      "example": "15 January 2025",
+      "required": "Yes",
+      "notes": "Calendar picker \u2014 date employer signs"
+    },
+    {
+      "variable": "{{candidate_sign_date}}",
+      "field_label": "Candidate Sign Date",
+      "section": "Signature Block",
+      "example": "20 January 2025",
+      "required": "Yes",
+      "notes": "Calendar picker \u2014 date candidate signs"
+    },
+    {
+      "variable": "{{candidate_sign_place}}",
+      "field_label": "Candidate Sign Place",
+      "section": "Signature Block",
+      "example": "Ludhiana, India",
+      "required": "Yes",
+      "notes": "City and country where candidate signs"
+    }
+  ]
+}

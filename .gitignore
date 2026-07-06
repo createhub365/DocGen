@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.production
+backend/.env
+
+# Backend
+backend/docgen.db
+backend/output/
+backend/template_store/*.docx
+backend/template_store/google_docs_map.json
+backend/uploads/
+
+# Database
+*.db
+*.sqlite
+
+# Generated files
+output/
+backend/output/
+template_store/
+backend/template_store/
+uploads/
+backend/uploads/
+
+# Node
+node_modules/
+frontend/dist/
+dist/
+.cache/
+
+# IDE / Editor
+.idea/
+.vscode/settings.json
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets
+backend/google-service-account.json
+
+# Employer data files — never commit real data
+*.csv
+!**/employers_template.csv
+data/real_*.json
+employers_real*.csv
+backend/scripts/employers_real*.csv

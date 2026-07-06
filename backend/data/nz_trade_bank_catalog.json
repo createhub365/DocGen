@@ -1,0 +1,1123 @@
+{
+  "meta": {
+    "country": "New Zealand",
+    "framework": "ANZSCO + NZ Construction Industry Council (CIVENZ / CCNZ)",
+    "building_code": "New Zealand Building Code (NZBC)",
+    "safety_act": "Health and Safety at Work Act 2015 (HSWA)",
+    "version": "2.0",
+    "total_categories": 13,
+    "last_updated": "2025"
+  },
+  "categories": [
+    {
+      "category": "Structural & Framing",
+      "trades": [
+        {
+          "trade": "Carpenter",
+          "anzsco_code": "331212",
+          "anzsco_title": "Carpenter",
+          "duties": [
+            "Carry out structural timber framing, formwork, and rough carpentry works on residential and commercial construction sites in accordance with project plans and NZBC requirements.",
+            "Install, fit, and fix wooden structures including wall frames, roof trusses, flooring systems, and subfloor frameworks as per engineering specifications.",
+            "Install interior and exterior joinery including doors, windows, skirting boards, architraves, and built-in cabinetry to specified tolerances.",
+            "Read, interpret, and work from architectural drawings, construction plans, and technical specifications to ensure accurate execution of carpentry tasks.",
+            "Measure, mark, cut, and shape timber and timber-based materials using hand tools and power tools including saws, routers, nail guns, and pneumatic equipment.",
+            "Ensure all carpentry works comply with the New Zealand Building Code (NZBC), relevant New Zealand Standards (NZS), and site-specific safety requirements.",
+            "Erect and dismantle temporary structures, formwork, scaffolding supports, and hoarding as required during construction phases.",
+            "Carry out weatherboard cladding, fascia, soffit, and exterior finishing works to manufacturer specifications and weathertightness standards.",
+            "Inspect completed works for quality assurance, identify defects, and carry out remedial or rectification works as directed.",
+            "Complete all required site documentation including timesheets, work orders, and compliance checklists, and report progress to the Site Supervisor.",
+            "Maintain all hand tools, power tools, and equipment in a clean, safe, and operational condition and report faults promptly.",
+            "Adhere to all company Health and Safety policies, HSWA 2015 obligations, and site safety plans including use of appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Structural Steel Erector",
+          "anzsco_code": "821311",
+          "anzsco_title": "Structural Steel Erector",
+          "duties": [
+            "Erect, assemble, and connect structural steel members including columns, beams, trusses, purlins, and bracing systems for commercial, industrial, and infrastructure projects.",
+            "Read and interpret structural steel drawings, connection details, and erection sequences to plan and execute steelwork in accordance with engineer specifications.",
+            "Operate cranes, hoists, and rigging equipment to lift and position steel members safely, in accordance with NZ crane operator licensing requirements.",
+            "Install and tighten high-strength structural bolts, set bearing plates, and grout column base plates to specified torque values and tolerances.",
+            "Carry out field welding of structural connections using MIG, MMA, or flux-cored arc welding as required by the structural design.",
+            "Ensure all structural steel erection complies with NZS 3404 (Steel Structures Standard) and structural engineer specifications.",
+            "Erect and use temporary bracing, guys, and support systems to maintain stability of the structure during erection.",
+            "Carry out plumbing, levelling, and alignment of steel members using theodolites, levels, and measuring equipment.",
+            "Operate elevated work platforms, man cages, and fall arrest systems safely when working at height.",
+            "Inspect erected steelwork for compliance with drawings and specifications, and report non-conformances to the Structural Engineer.",
+            "Maintain all erection tools, equipment, and rigging gear in a safe and serviceable condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and working at heights regulations at all times."
+          ]
+        },
+        {
+          "trade": "Steel Fixer / Reinforcing Iron Worker",
+          "anzsco_code": "821411",
+          "anzsco_title": "Steel Fixer",
+          "duties": [
+            "Cut, bend, shape, and place reinforcing steel bars (rebar) and mesh in accordance with structural drawings, bar bending schedules, and engineer specifications.",
+            "Assemble and tie rebar cages, mats, and frames for footings, slabs, columns, beams, walls, and bridge decks using approved tie wire and bar chairs.",
+            "Install and fix post-tensioning and pre-tensioning systems including duct placement, anchorage installation, and sheathing as per post-tensioning drawings.",
+            "Operate rebar bending machines, cutting machines, and mechanical splicing equipment safely and in accordance with manufacturer guidelines.",
+            "Position and secure reinforcement to specified cover dimensions using bar chairs, spacers, and supports to ensure correct concrete cover.",
+            "Read and interpret structural drawings, reinforcement layout plans, and bar bending schedules to plan and execute reinforcing works accurately.",
+            "Carry out inspection of placed reinforcement and prepare for engineer hold point inspections prior to concrete placement.",
+            "Ensure all reinforcing works comply with NZS 3101 (Concrete Structures), project quality plans, and structural engineer requirements.",
+            "Erect and dismantle formwork, falsework, and support systems as required in conjunction with reinforcing placement.",
+            "Operate elevated work platforms, cranes, and lifting equipment in a safe and certified manner as required on site.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times.",
+            "Complete all required site documentation, inspection records, and report deficiencies or non-conformances to the Site Supervisor promptly."
+          ]
+        },
+        {
+          "trade": "Formwork Carpenter",
+          "anzsco_code": "331213",
+          "anzsco_title": "Formwork Carpenter",
+          "duties": [
+            "Design, fabricate, erect, and strip all types of concrete formwork systems including engineered panel systems, traditional timber formwork, and proprietary shutter systems.",
+            "Erect falsework, propping, and shoring systems for elevated slabs, suspended floors, bridges, and transfer structures to engineer-approved designs.",
+            "Read and interpret formwork design drawings, shoring plans, and structural engineer specifications to plan and execute formwork works safely.",
+            "Install waterstops, cast-in items, starter bars, sleeves, and penetrations within formwork prior to concrete placement.",
+            "Strip and clean formwork and falsework components after concrete has achieved specified stripping strength.",
+            "Carry out formwork inspections prior to concrete placement and participate in engineer hold point checks.",
+            "Ensure all formwork and falsework complies with AS/NZS 3610 (Formwork for Concrete) and the structural engineer design.",
+            "Operate cranes, forklifts, and elevated work platforms to handle and position formwork components safely.",
+            "Maintain formwork panels, props, and components in a clean and serviceable condition and report damaged components.",
+            "Carry out layout, survey, and control of formwork positions and levels using levels and theodolites.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and confined space procedures.",
+            "Complete all required formwork inspection records and documentation as required by the project quality plan."
+          ]
+        },
+        {
+          "trade": "Concreter",
+          "anzsco_code": "821211",
+          "anzsco_title": "Concreter",
+          "duties": [
+            "Erect, align, and strip formwork for concrete slabs, footings, foundations, columns, beams, retaining walls, and other structural elements.",
+            "Place, compact, level, and finish concrete using hand screeds, power screeds, floats, trowels, and vibrators to achieve specified surface finishes.",
+            "Install reinforcing steel (rebar) and mesh, including cutting, bending, tying, and placing rebar cages per structural engineer specifications.",
+            "Carry out concrete cutting, coring, breaking, and demolition works using diamond saws, core drills, and jackhammers.",
+            "Apply surface treatments and finishes to concrete including broomed, exposed aggregate, polished, and spray-on textured finishes.",
+            "Install expansion joints, saw-cut joints, crack inducers, and waterstops in concrete slabs and structures.",
+            "Operate concrete pumps, agitator trucks, kibbles, and placing booms to accurately place concrete in formwork.",
+            "Read and interpret structural drawings, formwork drawings, and concrete specifications accurately.",
+            "Ensure all concrete works comply with NZS 3109 (Concrete Construction), NZS 3101, and project quality requirements.",
+            "Carry out concrete curing procedures including wet curing, curing compounds, and insulation blankets.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times.",
+            "Complete all required site documentation and quality records for concrete placement works."
+          ]
+        },
+        {
+          "trade": "Bricklayer / Mason",
+          "anzsco_code": "331111",
+          "anzsco_title": "Bricklayer",
+          "duties": [
+            "Lay, bond, and finish brick, block, stone, and masonry units to construct walls, piers, columns, and arches for structural and non-structural applications.",
+            "Mix, apply, and finish mortar and grout using appropriate mix designs for substrate type, environment, and structural requirements.",
+            "Install and align reinforcing steel, ties, anchors, and connectors within masonry systems per structural engineer specifications.",
+            "Construct cavity wall systems, veneer cladding, and fire-rated masonry walls including wall ties, DPC, and weep holes.",
+            "Carry out restoration and remediation works on heritage masonry buildings including tuckpointing, repointing, and unit replacement.",
+            "Install lintels, sills, copings, corbels, and other masonry elements within brickwork and blockwork construction.",
+            "Lay paving, paths, driveways, and hardscaping using brick, clay pavers, concrete pavers, and natural stone.",
+            "Read and interpret architectural drawings, masonry layout plans, and specifications accurately.",
+            "Ensure all masonry works comply with NZS 4210 (Masonry Construction), NZBC, and structural engineer specifications.",
+            "Erect and use scaffolding, trestles, and working platforms safely per HSWA 2015 working at heights requirements.",
+            "Maintain all masonry tools, mixers, and equipment in a clean, safe, and operational condition.",
+            "Comply with all site Health and Safety requirements and participate in quality inspections at structural masonry hold points."
+          ]
+        },
+        {
+          "trade": "Stonemason",
+          "anzsco_code": "331112",
+          "anzsco_title": "Stonemason",
+          "duties": [
+            "Cut, dress, shape, and install natural stone including granite, marble, limestone, sandstone, and bluestone for architectural, heritage, and decorative applications.",
+            "Fabricate stone cladding panels, copings, sills, lintels, columns, and decorative features using hand tools and stone cutting machinery.",
+            "Install stone cladding systems on building facades including dry-fix and mortar-fix systems with appropriate anchoring details.",
+            "Carry out restoration and conservation of heritage stonework including cleaning, repointing, and replacement of damaged stone.",
+            "Lay natural stone flooring, paving, and landscaping using appropriate bedding, jointing, and sealing systems.",
+            "Carve decorative stonework, inscriptions, memorials, and artistic features using hand and pneumatic tools.",
+            "Read and interpret architectural drawings, stone fabrication drawings, and heritage conservation specifications accurately.",
+            "Ensure all stonework complies with relevant New Zealand Standards and heritage conservation requirements.",
+            "Select appropriate stone materials, adhesives, mortars, and fixing systems for the application and environment.",
+            "Operate lifting equipment and vacuum lifters to handle and position large stone panels safely.",
+            "Maintain all stone cutting tools, polishing equipment, and machinery in safe and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE including dust extraction."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Civil & Earthworks",
+      "trades": [
+        {
+          "trade": "Earthworks / Plant Operator",
+          "anzsco_code": "721111",
+          "anzsco_title": "Plant Operator (Earthmoving)",
+          "duties": [
+            "Operate heavy earthmoving plant including excavators, bulldozers, graders, scrapers, and compactors for bulk earthworks and site formation.",
+            "Carry out excavation for foundations, trenches, basements, retaining walls, roads, and underground services to specified dimensions.",
+            "Operate wheeled loaders, skid steer loaders, and telehandlers for material handling, stockpiling, and loading operations.",
+            "Carry out compaction of fill materials using smooth drum rollers, padfoot rollers, and plate compactors to specified density.",
+            "Operate tip trucks and water carts for material transport, watering, and dust suppression operations.",
+            "Carry out subgrade preparation, road base laying, and pavement construction for roads and hardstand areas.",
+            "Read and interpret civil engineering drawings, earthworks plans, and survey setout pegs to execute earthworks accurately.",
+            "Operate plant safely near underground services including identification, hand exposure, and appropriate safe working distances.",
+            "Carry out plant pre-start checks, daily maintenance, and defect reporting per manufacturer requirements.",
+            "Comply with Traffic Management Plans (TMP), site traffic rules, and Health and Safety at Work Act 2015.",
+            "Hold current operator certificates for all plant operated, including relevant WorkSafe NZ high-risk work licences.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and environmental controls at all times."
+          ]
+        },
+        {
+          "trade": "Drainlayer",
+          "anzsco_code": "334211",
+          "anzsco_title": "Drainlayer",
+          "duties": [
+            "Install, maintain, and repair below-ground drainage systems including stormwater, wastewater, and subsoil drainage pipework.",
+            "Carry out excavation, trench preparation, pipe laying, bedding, backfilling, and compaction to specified grades and depths.",
+            "Install drainage pipes, fittings, and appurtenances including uPVC, HDPE, concrete, and ductile iron pipework.",
+            "Install manholes, inspection chambers, sumps, soakage systems, and stormwater detention tanks per specifications.",
+            "Connect new drainage systems to existing council reticulation networks in accordance with local authority requirements.",
+            "Carry out CCTV drainage inspections, drain tracing, and blockage clearing using jetting equipment and drain rods.",
+            "Perform pressure testing, air testing, and water testing of installed drainage systems prior to backfilling.",
+            "Ensure all drainlaying works are carried out under a current Licensed Drainlayer registration issued by the PGDB New Zealand.",
+            "Read and interpret civil engineering drawings, drainage layout plans, and council standard drawings accurately.",
+            "Liaise with local councils, building inspectors, and project engineers for drainage inspections and CCC.",
+            "Operate excavators, compactors, and laser levels safely per site traffic management and Health and Safety plans.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and confined space entry procedures."
+          ]
+        },
+        {
+          "trade": "Paving & Asphalt Layer",
+          "anzsco_code": "821212",
+          "anzsco_title": "Paving and Surfacing Worker",
+          "duties": [
+            "Lay, compact, and finish asphalt and bituminous surfacing for roads, carparks, driveways, footpaths, and airfields to specified thickness and tolerances.",
+            "Operate paving machines, asphalt rakers, and compaction rollers to achieve smooth and uniform pavement surfaces.",
+            "Prepare subgrade and basecourse materials including trimming, compaction, and proof rolling prior to asphalt paving.",
+            "Apply prime coat, tack coat, and bituminous emulsions to prepared surfaces prior to asphalt placement.",
+            "Cut, trim, and repair existing asphalt surfaces including patching, overlay, and mill-and-fill operations.",
+            "Install kerb and channel, drainage channels, and road furniture in conjunction with pavement construction.",
+            "Carry out line marking, thermoplastic road markings, and pavement delineation as required.",
+            "Read and interpret civil engineering drawings, pavement design drawings, and road construction specifications accurately.",
+            "Ensure all pavement works comply with NZTA specifications, local authority requirements, and project quality plans.",
+            "Manage traffic control and site establishment in accordance with approved Traffic Management Plans (TMP).",
+            "Operate asphalt plant, paving equipment, and roller compactors safely per HSWA 2015 requirements.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE including heat-resistant footwear."
+          ]
+        },
+        {
+          "trade": "Piledriver / Foundation Specialist",
+          "anzsco_code": "821213",
+          "anzsco_title": "Piledriver",
+          "duties": [
+            "Drive, bore, and install piles including precast concrete, steel H-piles, CHS piles, bored cast-in-situ piles, and screw piles for foundations.",
+            "Operate pile driving rigs, drop hammers, hydraulic hammers, vibratory hammers, and diesel hammers to drive piles to specified set or refusal.",
+            "Carry out CFA, rotary bored, and driven cast-in-place pile installation using specialist drilling rigs.",
+            "Install ground anchors, soil nails, micropiles, and jet grout columns for retaining walls and slope stabilisation.",
+            "Carry out dynamic pile load testing and static pile load testing per engineer specifications.",
+            "Install sheet piles, king post walls, secant pile walls, and contiguous pile walls for excavation support.",
+            "Read and interpret geotechnical reports, pile design drawings, and installation specifications accurately.",
+            "Monitor pile installation records including set, driving logs, concrete volumes, and grout injection pressures.",
+            "Ensure all piling works comply with AS 2159 (Piling) and geotechnical engineer specifications.",
+            "Operate cranes, piling rigs, and supporting plant safely per NZ crane operator licensing requirements.",
+            "Carry out site preparation, temporary works, and dewatering associated with piling works.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and noise and vibration management plans."
+          ]
+        },
+        {
+          "trade": "Bridge & Infrastructure Builder",
+          "anzsco_code": "821214",
+          "anzsco_title": "Civil Construction Worker",
+          "duties": [
+            "Carry out civil construction works for bridges, culverts, retaining walls, seawalls, wharves, and other infrastructure structures.",
+            "Erect, align, and strip formwork for bridge decks, piers, abutments, and wing walls per structural engineer drawings.",
+            "Install precast bridge beams, deck units, and superstructure elements using cranes and specialist lifting equipment.",
+            "Install bridge bearings, expansion joints, drainage systems, and parapets to design specifications.",
+            "Carry out underwater works including cofferdam construction, pile installation, and substructure concrete in marine environments.",
+            "Install geosynthetic reinforcement, drainage layers, and select fill for reinforced earth retaining wall systems.",
+            "Carry out concrete placement, compaction, and finishing for structural bridge elements to specified tolerances.",
+            "Monitor structural movements, settlements, and displacements using survey instruments and monitoring equipment.",
+            "Carry out maintenance and rehabilitation works on existing bridges including bearing replacement and concrete repair.",
+            "Read and interpret structural drawings, erection sequences, and construction methodology plans accurately.",
+            "Ensure all works comply with NZTA Bridge Manual, relevant NZ Standards, and structural engineer specifications.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and maritime safety requirements."
+          ]
+        },
+        {
+          "trade": "Tunnelling / Underground Worker",
+          "anzsco_code": "712211",
+          "anzsco_title": "Underground Construction Worker",
+          "duties": [
+            "Carry out underground excavation works including drill and blast, roadheader, and TBM-assisted tunnelling for road, rail, and utility tunnels.",
+            "Operate underground drilling rigs, jumbo drills, and explosives charging equipment for rock excavation per approved drill and blast designs.",
+            "Install ground support systems including rock bolts, mesh, shotcrete, and steel ribs to engineer-designed ground support patterns.",
+            "Apply shotcrete (sprayed concrete) to tunnel walls and crowns using wet or dry process spray equipment.",
+            "Carry out excavation mucking using underground loaders, haul trucks, and conveyor systems.",
+            "Install precast concrete segmental lining, grouting, and waterproofing systems for bored tunnels.",
+            "Operate shaft sinking equipment, stage winches, and kibble systems for vertical shaft construction.",
+            "Monitor tunnel deformation, convergence, and ground movement using survey instruments and automated monitoring systems.",
+            "Handle, store, and use explosives and detonators per the HSNO Act and site-specific blasting procedures.",
+            "Carry out gas monitoring, ventilation management, and emergency procedures in underground environments.",
+            "Ensure all underground works comply with WorkSafe NZ underground mining regulations and project safety management plans.",
+            "Comply with all underground Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE including self-rescuers."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Mechanical Services",
+      "trades": [
+        {
+          "trade": "Plumber",
+          "anzsco_code": "334111",
+          "anzsco_title": "Plumber",
+          "duties": [
+            "Install, maintain, repair, and commission cold water, hot water, and sanitary drainage systems per NZS 3604 and NZBC requirements.",
+            "Lay, join, test, and commission water supply and drainage pipes using copper, CPVC, PEX, uPVC, and stainless steel materials.",
+            "Install and connect sanitary fixtures and fittings including toilets, basins, baths, showers, sinks, and urinals.",
+            "Install and commission hot water systems including electric, gas, solar, and heat pump water heaters.",
+            "Carry out pressure testing, leak detection, flow testing, and commissioning of all installed pipework and systems.",
+            "Install stormwater, roof drainage, and subsoil drainage systems including gutters, downpipes, and soakage systems.",
+            "Read and interpret architectural drawings, hydraulic services drawings, and plumbing specifications accurately.",
+            "Ensure all plumbing works comply with the Building Act 2004, NZBC G12 (Water Supplies), G13 (Foul Water), and NZ Standards.",
+            "Liaise with building inspectors, council officers, and certifying authorities for inspections and code compliance certificates.",
+            "Maintain a clean and safe work environment and adhere to all site Health and Safety requirements under HSWA 2015.",
+            "Complete all required compliance documentation, as-built drawings, producer statements, and maintenance manuals.",
+            "Perform routine maintenance, fault diagnosis, and emergency repairs on existing plumbing and drainage systems."
+          ]
+        },
+        {
+          "trade": "Gasfitter",
+          "anzsco_code": "334112",
+          "anzsco_title": "Gasfitter",
+          "duties": [
+            "Install, commission, maintain, and repair natural gas and LPG reticulation systems and appliances per NZS 5261 and NZBC.",
+            "Install gas supply pipework including copper, stainless steel CSST, and PE pipework using approved jointing methods.",
+            "Install and commission gas appliances including cooktops, ovens, heaters, boilers, and hot water systems.",
+            "Carry out gas pressure testing, tightness testing, and commissioning of all installed gas systems prior to handover.",
+            "Identify and rectify gas leaks, appliance faults, and system deficiencies using appropriate gas detection equipment.",
+            "Install gas meter sets, regulators, emergency control valves, and automatic gas shutoff systems.",
+            "Ensure all gasfitting works are carried out under a current Licensed Gasfitter registration issued by the PGDB New Zealand.",
+            "Issue Certificates of Compliance (CoC) for all completed gasfitting works per the Gas Act 1992 and PGDB requirements.",
+            "Read and interpret gas installation drawings, appliance installation manuals, and project specifications accurately.",
+            "Liaise with gas network operators for connections, metering, and purging of new gas installations.",
+            "Maintain all gasfitting tools, test equipment, and personal protective equipment in safe and calibrated condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and gas safety emergency procedures at all times."
+          ]
+        },
+        {
+          "trade": "HVAC Technician",
+          "anzsco_code": "342111",
+          "anzsco_title": "Refrigeration and Air Conditioning Mechanic",
+          "duties": [
+            "Install, commission, maintain, and repair HVAC systems including split systems, ducted systems, VRF/VRV, and chilled water systems.",
+            "Install refrigerant pipework, insulation, drainage pipework, and electrical connections per manufacturer specifications and AS/NZS 1677.",
+            "Commission and test HVAC systems including leak testing, evacuation, refrigerant charging, and airflow balancing.",
+            "Install ductwork systems including sheet metal ducts, flexible ducts, diffusers, grilles, dampers, and fire/smoke dampers.",
+            "Carry out fault diagnosis and repair of HVAC equipment including compressors, condensers, evaporators, fans, and pumps.",
+            "Install BMS sensors, controllers, and actuators and integrate HVAC equipment with building management systems.",
+            "Handle, recover, and recharge refrigerants per the Ozone Layer Protection Act 1996 using an approved refrigerant handling licence.",
+            "Carry out preventive maintenance on HVAC equipment including filter changes, coil cleaning, and calibration.",
+            "Read and interpret mechanical services drawings, refrigeration schematics, and HVAC specifications accurately.",
+            "Ensure all HVAC works comply with NZBC G4 (Ventilation), relevant NZ and Australian Standards, and project specifications.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and electrical safety requirements.",
+            "Complete all required commissioning records, maintenance logs, and compliance documentation upon completion."
+          ]
+        },
+        {
+          "trade": "Fire Protection Technician",
+          "anzsco_code": "342112",
+          "anzsco_title": "Fire Protection Technician",
+          "duties": [
+            "Install, commission, test, and maintain fire sprinkler systems, fire hydrant systems, hose reel systems, and deluge systems per NZS 4541 and NZS 4510.",
+            "Install fire detection and alarm systems including smoke detectors, heat detectors, manual call points, and control panels per NZS 4512.",
+            "Install gaseous suppression systems including CO2, FM-200, and Novec 1230 for data centres and special hazard applications.",
+            "Carry out pressure testing, flow testing, and full functional testing of fire suppression and detection systems.",
+            "Install fire doors, fire dampers, fire stopping, and passive fire protection systems per NZBC C3 (Spread of Fire).",
+            "Carry out routine inspection, testing, and maintenance of fire protection systems per NZS 4541 maintenance requirements.",
+            "Install kitchen suppression systems, paint spray booth suppression, and industrial fire protection systems.",
+            "Read and interpret fire engineering drawings, hydraulic calculations, and system specifications accurately.",
+            "Liaise with building consent authorities, fire engineers, and NZ Fire and Emergency for system approvals and commissioning.",
+            "Issue certificates of compliance and system maintenance records for all installed and maintained fire protection systems.",
+            "Maintain all installation tools, test equipment, and gauges in a calibrated and serviceable condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Industrial Pipefitter",
+          "anzsco_code": "334113",
+          "anzsco_title": "Pipefitter",
+          "duties": [
+            "Fabricate, install, modify, and maintain process pipework systems for industrial, petrochemical, food processing, and power generation facilities.",
+            "Read and interpret piping and instrumentation diagrams (P&IDs), isometric drawings, and piping specifications accurately.",
+            "Cut, bevel, fit, and join process pipes using welding, flanging, threading, and mechanical coupling methods per pressure rating.",
+            "Install pipe supports, hangers, expansion loops, and restraints per pipe stress analysis and support spacing requirements.",
+            "Carry out hydrostatic pressure testing, pneumatic testing, and leak testing of completed pipework to specified test pressures.",
+            "Install valves, instrumentation, flow meters, safety relief valves, and process equipment within piping systems.",
+            "Apply thermal insulation, cladding, and heat tracing to process pipework for temperature control and personnel protection.",
+            "Carry out modifications, tie-ins, and hot tapping of existing live process systems using safe isolation and hot work procedures.",
+            "Ensure all process pipework complies with ASME B31.3 (Process Piping) or applicable NZ standards and P&ID requirements.",
+            "Participate in pre-commissioning, commissioning, and start-up activities for new process facilities.",
+            "Maintain all pipefitting tools, measuring equipment, and personal protective equipment in a safe and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, permit to work systems, and process safety requirements."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Electrical & Low Voltage",
+      "trades": [
+        {
+          "trade": "Electrician",
+          "anzsco_code": "341111",
+          "anzsco_title": "Electrician",
+          "duties": [
+            "Install, test, commission, and maintain electrical wiring systems, switchboards, distribution boards, and associated equipment per AS/NZS 3000 and NZBC.",
+            "Install and connect electrical cables, conduits, trunking, cable trays, and containment systems for all installation types.",
+            "Install, wire, and commission lighting systems, power outlets, switches, circuit breakers, RCDs, and metering equipment.",
+            "Carry out installation and commissioning of three-phase and single-phase motor circuits, control panels, and industrial equipment.",
+            "Perform fault finding, diagnosis, and rectification on existing electrical installations using appropriate test instruments.",
+            "Install data cabling, communications wiring, fire alarm systems, security systems, and other low-voltage systems.",
+            "Carry out all electrical work under a current Electrical Worker Registration (EWR) issued by the EWRB New Zealand.",
+            "Ensure all electrical installations are inspected and certified by a Registered Electrical Inspector (REI) with Certificates of Compliance issued.",
+            "Read and interpret electrical drawings, single-line diagrams, schematics, and specifications accurately.",
+            "Liaise with the lines company, metering provider, and relevant authorities for connections and energisation.",
+            "Maintain all test equipment, tools, and personal protective equipment in safe and calibrated condition.",
+            "Complete all required compliance documentation including Certificates of Compliance, as-built records, and test results."
+          ]
+        },
+        {
+          "trade": "High Voltage Electrician",
+          "anzsco_code": "341112",
+          "anzsco_title": "High Voltage Electrician",
+          "duties": [
+            "Install, test, commission, and maintain high voltage (HV) electrical systems including 11kV, 33kV, and 110kV switchgear, transformers, and substations.",
+            "Carry out HV cable jointing, terminating, and testing for underground and overhead HV distribution and transmission systems.",
+            "Install, test, and commission HV switchgear including ring main units (RMU), circuit breakers, disconnectors, and protection relays.",
+            "Carry out HV transformer installation, oil sampling, Buchholz relay testing, and tap changer maintenance.",
+            "Operate isolating and earthing equipment under live line working procedures and approved safety rules for HV systems.",
+            "Install and commission substation protection, control, and SCADA systems for HV network infrastructure.",
+            "Carry out HV cable fault location using time domain reflectometry (TDR) and fault burning equipment.",
+            "Carry out insulation resistance testing, partial discharge testing, and high voltage withstand testing of HV equipment.",
+            "Prepare and implement switching programs, safety isolations, and earthing schemes per utility safety rules.",
+            "Read and interpret HV engineering drawings, protection relay settings, and substation layout drawings accurately.",
+            "Ensure all HV works comply with Electricity (Safety) Regulations 2010, line owner safety rules, and AS/NZS 3000.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and electricity safety regulations for live line working."
+          ]
+        },
+        {
+          "trade": "Instrumentation Technician",
+          "anzsco_code": "341113",
+          "anzsco_title": "Instrumentation Technician",
+          "duties": [
+            "Install, calibrate, test, commission, and maintain process instrumentation including pressure transmitters, flow meters, temperature sensors, and analysers.",
+            "Install field instruments and associated wiring, pneumatic tubing, impulse lines, and instrument supports in process plant environments.",
+            "Carry out loop checking, calibration verification, and functional testing of instrumentation and control systems.",
+            "Configure and program smart field instruments, PLCs, DCS systems, and SCADA systems using approved configuration tools.",
+            "Install and terminate instrument cables in marshalling cabinets, JBs, and control room panels per wiring schedules.",
+            "Carry out fault diagnosis and repair of failed instrumentation using calibration equipment, multimeters, and HART communicators.",
+            "Install and commission safety instrumented systems (SIS) and safety integrity level (SIL) rated instrumentation.",
+            "Carry out functional safety testing of SIS loops per IEC 61511 and the SIL verification documentation.",
+            "Read and interpret P&IDs, loop diagrams, wiring schedules, and instrument data sheets accurately.",
+            "Complete instrument index updates, calibration records, and as-built documentation for all installed instruments.",
+            "Ensure all instrumentation works comply with applicable hazardous area classification (ATEX/IECEx) requirements.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, permit to work systems, and process safety requirements."
+          ]
+        },
+        {
+          "trade": "Solar / Renewable Energy Installer",
+          "anzsco_code": "341114",
+          "anzsco_title": "Solar Panel Installer",
+          "duties": [
+            "Install, test, and commission grid-connected and off-grid solar photovoltaic (PV) systems on residential, commercial, and industrial buildings.",
+            "Install solar PV panels, mounting systems, racking, and roof penetrations per manufacturer specifications and AS/NZS 5033.",
+            "Install inverters, battery energy storage systems (BESS), switchboards, and metering equipment for solar PV installations.",
+            "Install and terminate DC and AC wiring for solar PV systems per AS/NZS 3000 and AS/NZS 5033.",
+            "Carry out installation of EV charging stations and associated switchboard modifications.",
+            "Carry out solar resource assessment, shading analysis, and system sizing for proposed solar PV installations.",
+            "Commission and test solar PV systems including insulation resistance testing, IV curve tracing, and performance verification.",
+            "Liaise with lines companies for G59 protection relay settings, export limiting, and grid connection approvals.",
+            "Register solar PV installations with the Electricity Authority and lines company per NZ connection requirements.",
+            "Complete all required Certificates of Compliance (CoC) and system commissioning documentation.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and working at heights regulations.",
+            "Maintain all installation tools, test equipment, and personal protective equipment in a safe and calibrated condition."
+          ]
+        },
+        {
+          "trade": "Data / Communications Cabling Technician",
+          "anzsco_code": "342211",
+          "anzsco_title": "Communications Cabling Installer",
+          "duties": [
+            "Install, terminate, test, and commission structured cabling systems including Cat 5e, Cat 6, Cat 6A, and fibre optic cabling.",
+            "Install telecommunications racks, cabinets, patch panels, outlets, and containment systems per TIA-568 and AS/NZS 3080.",
+            "Terminate and test copper data cabling using keystone jacks, patch panels, and cable testers.",
+            "Splice, terminate, and test fibre optic cables using fusion splicers, mechanical connectors, and OTDR test equipment.",
+            "Install and commission IP CCTV systems, access control systems, intercom systems, and audio-visual systems.",
+            "Install antenna systems, satellite dishes, and associated cabling for broadcast and communications applications.",
+            "Install and commission nurse call systems, PA/emergency warning systems, and building automation cabling.",
+            "Carry out cable management, labelling, and documentation of all installed cabling systems per project specifications.",
+            "Read and interpret building services drawings, cable schedules, and telecommunications specifications accurately.",
+            "Ensure all cabling installations comply with AS/NZS 3080 (Telecommunications Installations) and AS/NZS 3000.",
+            "Maintain all test equipment, fusion splicers, and cable installation tools in a calibrated and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Roofing & Cladding",
+      "trades": [
+        {
+          "trade": "Roofing Tradesperson",
+          "anzsco_code": "333211",
+          "anzsco_title": "Roof Tiler / Roof Plumber",
+          "duties": [
+            "Install, repair, and maintain metal roofing systems including corrugated iron, standing seam, concealed fix, and long-run roofing profiles to NZBC E2 requirements.",
+            "Install concrete and clay roof tiles, ridge cappings, hip cappings, and valley gutters per manufacturer installation guidelines.",
+            "Install roof flashings, aprons, soakers, step flashings, and penetration flashings to ensure weathertight junctions.",
+            "Fix and commission roof drainage systems including gutters, downpipes, sumps, overflows, and valley gutters per NZBC E1.",
+            "Carry out installation of roof windows, skylights, solar panel penetrations, and ventilation systems with weathertight detailing.",
+            "Perform roof inspections, defect identification, and remedial works including repointing, resealing, and tile replacement.",
+            "Install roof underlays, sarking, and insulation systems per NZBC H1 (Energy Efficiency) and manufacturer requirements.",
+            "Read and interpret architectural drawings, roofing specifications, and product data sheets accurately.",
+            "Erect and use edge protection, safety nets, roof anchors, and fall arrest systems per HSWA 2015 and WorkSafe NZ guidelines.",
+            "Ensure all roofing works comply with NZBC, relevant NZ Standards, and manufacturer CodeMark or Appraisal conditions.",
+            "Operate and maintain all roofing tools, bending machines, and power tools in a safe and operational condition.",
+            "Complete all required compliance documentation and participate in weathertightness inspections at key hold points."
+          ]
+        },
+        {
+          "trade": "Cladding Installer",
+          "anzsco_code": "333212",
+          "anzsco_title": "Cladding Installer",
+          "duties": [
+            "Install exterior wall cladding systems including fibre cement, weatherboard, aluminium composite panels (ACP), and curtain wall systems.",
+            "Install cavity batten systems, rigid air barriers, and building wraps per NZBC E2 and manufacturer requirements.",
+            "Install Rockcote, Sto, and similar proprietary exterior insulation and finish systems (EIFS) per CodeMark conditions.",
+            "Cut, fix, and finish fibre cement sheet, Linea weatherboard, and similar products to specified profiles and fixing patterns.",
+            "Install aluminium composite panel (ACP) systems including subframe, cassette panels, and wet-sealed joint systems.",
+            "Install rainscreen cladding systems including terracotta, fibre cement, and metal rainscreen panels on commercial facades.",
+            "Flash and seal all cladding junctions, penetrations, windows, doors, and abutments to achieve weathertight performance.",
+            "Read and interpret architectural drawings, facade specifications, and cladding system installation manuals accurately.",
+            "Ensure all cladding works comply with NZBC E2 (External Moisture) and relevant CodeMark or Technical Appraisal conditions.",
+            "Carry out weathertightness testing including water testing, hose testing, and chamber testing of installed cladding systems.",
+            "Operate scaffolding, mast climbers, and elevated work platforms safely when working at height on facades.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Glazier",
+          "anzsco_code": "332411",
+          "anzsco_title": "Glazier",
+          "duties": [
+            "Cut, shape, handle, and install glass panels, double-glazed units (IGUs), laminated glass, toughened glass, and specialty glass products.",
+            "Install aluminium window and door frames, curtain wall systems, shopfronts, structural glazing, and frameless glass systems.",
+            "Install and seal glazing units using appropriate setting blocks, glazing tapes, structural silicone, and weatherseal systems.",
+            "Carry out glass replacement, resealing, and remediation works on existing windows, doors, and glazed facades.",
+            "Install glass balustrades, frameless shower screens, glass splashbacks, and decorative glass features.",
+            "Carry out site measurement, template making, and survey for custom glazing fabrication orders.",
+            "Handle and transport large glass panels using suction lifters, A-frames, and mechanical handling equipment safely.",
+            "Ensure all glazing works comply with NZBC E2, NZBC H1, NZS 4223 (Glazing in Buildings), and Safety Glazing requirements.",
+            "Read and interpret architectural drawings, glazing schedules, and curtain wall drawings accurately.",
+            "Install framing, mullions, transoms, and support systems for glazing as required by the curtain wall or window system design.",
+            "Maintain all glazing tools, cutting equipment, and handling equipment in a safe and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Membrane Roofer / Waterproofer",
+          "anzsco_code": "333999",
+          "anzsco_title": "Waterproofer",
+          "duties": [
+            "Apply waterproofing and tanking systems to wet areas, basements, podium decks, balconies, roofs, and below-ground structures per NZBC E2, E3, and manufacturer specifications.",
+            "Install liquid-applied waterproofing membranes including polyurethane, acrylic, bituminous, and cementitious systems.",
+            "Install sheet membrane waterproofing systems including torch-on bituminous membranes, TPO, EPDM, and PVC membrane systems.",
+            "Prepare substrates for waterproofing application including grinding, patching, priming, and applying crack bridging treatments.",
+            "Install wet area waterproofing systems in bathrooms, showers, laundries, and commercial kitchens per AS 3740 and NZBC.",
+            "Install drainage cells, protection boards, and filter fabric over waterproofing membranes in below-ground applications.",
+            "Carry out flood testing, water ponding tests, and adhesion testing on completed waterproofing systems.",
+            "Apply joint sealants, expansion joint covers, and penetration seals as part of the complete waterproofing system.",
+            "Read and interpret architectural drawings, waterproofing specifications, and manufacturer data sheets accurately.",
+            "Ensure all waterproofing works comply with NZBC, relevant NZ Standards, and manufacturer CodeMark or Appraisal conditions.",
+            "Maintain all spray equipment, application tools, and safety equipment in a clean, safe, and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE including respiratory protection."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Finishing Trades",
+      "trades": [
+        {
+          "trade": "Painter and Decorator",
+          "anzsco_code": "332211",
+          "anzsco_title": "Painter and Decorator",
+          "duties": [
+            "Prepare interior and exterior surfaces for painting including filling, sanding, washing, priming, and applying barrier coatings.",
+            "Apply paint, stain, varnish, lacquer, and other protective and decorative coatings using brushes, rollers, and spray equipment.",
+            "Carry out wallpapering, texture coating, and decorative finishes including Venetian plaster and feature wall techniques.",
+            "Erect and safely use scaffolding, trestles, extension ladders, and elevated work platforms to access elevated areas.",
+            "Identify and remediate defects including efflorescence, rust, mould, and moisture damage prior to coating application.",
+            "Select appropriate coating systems, primers, and topcoats for substrate type, environment, and performance requirements.",
+            "Apply protective coatings to structural steel, pipes, tanks, and industrial equipment per corrosion protection specifications.",
+            "Carry out minor plastering, stopping, and patching works to achieve smooth and consistent surfaces prior to painting.",
+            "Read and interpret project specifications, colour schedules, and architectural drawings accurately.",
+            "Ensure all painting and decorating works comply with manufacturer specifications, project colour schedules, and NZ Standards.",
+            "Maintain all spray equipment, brushes, rollers, and tools in clean and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE including respirators."
+          ]
+        },
+        {
+          "trade": "Plasterer",
+          "anzsco_code": "333111",
+          "anzsco_title": "Plasterer",
+          "duties": [
+            "Apply solid plaster, wet plaster, and texture coatings to interior and exterior wall and ceiling surfaces per NZBC and project specifications.",
+            "Install, fix, and finish plasterboard (GIB) systems including stopping, taping, sanding, and finishing to Level 4 or Level 5 standards.",
+            "Apply exterior plaster cladding systems including Rockcote and similar proprietary systems per manufacturer requirements.",
+            "Carry out fibrous plaster installation including cornices, columns, ceiling roses, and decorative mouldings.",
+            "Prepare and apply render systems to masonry, concrete, and fibre cement substrates including scratch, brown, and finish coats.",
+            "Install expansion joints, control joints, and beads in plaster systems to manage movement and prevent cracking.",
+            "Read and interpret architectural drawings, cladding specifications, and manufacturer installation guides accurately.",
+            "Identify and remediate substrate defects, moisture damage, and cracking prior to plaster application.",
+            "Ensure all plastering works comply with NZBC, NZS 4251 (Solid Plastering), and site-specific weathertightness requirements.",
+            "Operate and maintain all plastering tools, spray equipment, and mixing equipment in a safe and clean condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE.",
+            "Complete all required inspection records and participate in quality hold point inspections at key stages."
+          ]
+        },
+        {
+          "trade": "Flooring Tradesperson",
+          "anzsco_code": "332311",
+          "anzsco_title": "Floor Finisher",
+          "duties": [
+            "Install, lay, and finish resilient floor coverings including vinyl sheet, LVT, LVP, rubber, and linoleum flooring to manufacturer specifications.",
+            "Install, sand, and finish timber and engineered timber flooring systems using secret nailing, glue-down, and floating installation methods.",
+            "Lay ceramic, porcelain, and natural stone tiles on floors, walls, and wet area surfaces.",
+            "Prepare substrates for flooring installation including grinding, levelling, patching, and applying self-levelling compounds.",
+            "Install carpet and carpet tiles including stretching, seaming, cutting, and fixing using power stretchers and adhesives.",
+            "Install transition strips, Scotia beading, stair nosings, and other accessory items to complete flooring installations.",
+            "Read and interpret flooring layout drawings, specifications, and material schedules accurately.",
+            "Carry out moisture testing and assessment of substrates prior to installation.",
+            "Ensure all flooring works comply with manufacturer installation requirements and NZ standards.",
+            "Select appropriate adhesives, fasteners, and installation methods for substrate type and flooring material.",
+            "Maintain all tools, equipment, and materials in a clean, safe, and organised condition on site.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Wall & Floor Tiler",
+          "anzsco_code": "332312",
+          "anzsco_title": "Wall and Floor Tiler",
+          "duties": [
+            "Install ceramic, porcelain, natural stone, glass, and mosaic tiles on floors, walls, and wet areas in residential and commercial projects.",
+            "Prepare substrates for tiling including grinding, screeding, waterproofing, and priming to achieve flat and level surfaces.",
+            "Set out tile layouts, establish datum lines, and plan tile patterns to minimise cuts and optimise appearance.",
+            "Mix and apply adhesive mortars, epoxy adhesives, and tile adhesives appropriate to substrate type and tile size.",
+            "Cut tiles using wet saws, angle grinders, and tile cutters for accurate fits around penetrations and obstacles.",
+            "Apply grout, silicone sealants, and movement joint filler to all tiled surfaces to specified joint widths.",
+            "Install wet area waterproofing membranes under tile systems in bathrooms, showers, and laundries per AS 3740.",
+            "Install heated floor systems and membranes under tile systems in conjunction with tiling works.",
+            "Read and interpret architectural drawings, tile layout drawings, and specifications accurately.",
+            "Ensure all tiling works comply with AS 3958 (Ceramic Tiles), wet area waterproofing requirements, and project specifications.",
+            "Maintain all tiling tools, mixers, and equipment in a clean, safe, and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Renderer",
+          "anzsco_code": "333112",
+          "anzsco_title": "Renderer",
+          "duties": [
+            "Apply cement render, lime render, and proprietary render systems to masonry, concrete, and fibre cement substrates.",
+            "Prepare surfaces for rendering including cleaning, hacking, applying bonding agents, and fixing reinforcing mesh.",
+            "Apply scratch coat, brown coat, and finish coat layers to achieve specified thickness and surface profile.",
+            "Apply decorative and textured render finishes including sand finish, tyrolean, rough cast, and smooth finish.",
+            "Apply external insulation and render systems (ETICS/EIFS) including fixing insulation boards and applying render coats.",
+            "Install beads, reveals, expansion joints, and control joints to achieve clean arises and manage movement.",
+            "Carry out repair and remediation of cracked or failed render systems including raking out, repointing, and re-rendering.",
+            "Apply waterproof render and tanking systems to basement walls, retaining walls, and below-ground structures.",
+            "Read and interpret architectural drawings, render specifications, and product data sheets accurately.",
+            "Ensure all rendering works comply with NZBC, NZS 4251 (Solid Plastering), and manufacturer specifications.",
+            "Operate rendering machines, spray pumps, and mixing equipment safely per manufacturer instructions.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Ceiling Fixer",
+          "anzsco_code": "333113",
+          "anzsco_title": "Ceiling Fixer",
+          "duties": [
+            "Install suspended ceiling systems including metal grid systems, acoustic tile ceilings, plasterboard ceilings, and specialty ceiling systems.",
+            "Install perimeter angles, main runners, cross tees, and ceiling tile components per manufacturer installation guidelines.",
+            "Install acoustic ceiling tiles, plasterboard, and specialty ceiling panels to achieve specified fire ratings and acoustic performance.",
+            "Fix plasterboard to timber and steel stud framing for ceilings, bulkheads, and soffits.",
+            "Install shadow line, cove, and feature ceiling systems for architectural and decorative applications.",
+            "Carry out stopping, taping, and finishing of plasterboard ceiling joints to Level 4 or Level 5 finish standards.",
+            "Install ceiling access panels, recessed lighting frames, HVAC diffuser frames, and other integrated ceiling elements.",
+            "Co-ordinate ceiling installation with mechanical, electrical, fire protection, and AV services above the ceiling void.",
+            "Read and interpret reflected ceiling plans, services coordination drawings, and specifications accurately.",
+            "Ensure all ceiling works comply with fire resistance rating requirements under NZBC C3 and acoustic performance specifications.",
+            "Maintain all ceiling fixing tools, power tools, and equipment in a safe and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Fabrication & Welding",
+      "trades": [
+        {
+          "trade": "Welder",
+          "anzsco_code": "322311",
+          "anzsco_title": "Welder (First Class)",
+          "duties": [
+            "Perform structural and general welding operations including MIG, TIG, MMA (stick), and flux-cored arc welding on mild steel, stainless steel, and aluminium.",
+            "Fabricate, assemble, and weld structural steel members, frames, beams, columns, brackets, and connection plates per engineering drawings and approved welding procedures.",
+            "Set up and operate welding equipment, selecting appropriate welding parameters, polarity, and filler materials for base metal compatibility.",
+            "Carry out pre-weld preparation including cutting, grinding, bevelling, and fit-up of components to required joint configurations.",
+            "Perform visual inspection and basic non-destructive testing (NDT) of completed welds including visual and dye penetrant inspection.",
+            "Ensure all welding works comply with NZS 1554 (Structural Steel Welding), AS/NZS 1665 (Aluminium Welding), and project quality plans.",
+            "Read and interpret structural steel drawings, isometric drawings, welding symbols, and fabrication details accurately.",
+            "Carry out on-site welding, cutting, and grinding works including oxy-fuel cutting and plasma cutting operations safely.",
+            "Monitor and control weld quality including preheat, interpass temperature, heat input, and post-weld treatment.",
+            "Maintain welding equipment, gas cylinders, personal protective equipment, and tools in safe and operational condition.",
+            "Comply with all site Health and Safety requirements including hot work permit procedures and fire watch obligations.",
+            "Complete all required welding inspection records, weld maps, and quality documentation per the project quality plan."
+          ]
+        },
+        {
+          "trade": "Sheet Metal Worker",
+          "anzsco_code": "322312",
+          "anzsco_title": "Sheet Metal Worker",
+          "duties": [
+            "Fabricate, form, and install sheet metal products including ductwork, flashings, gutters, downpipes, hoods, enclosures, and architectural metalwork.",
+            "Operate sheet metal fabrication machinery including guillotines, press brakes, rollers, plasma cutters, and laser cutting machines.",
+            "Lay out, mark, and cut sheet metal components from flat sheet material using templates, drawings, and CAD data.",
+            "Form and bend sheet metal components using folder brakes, english wheels, and hand forming tools to specified profiles.",
+            "Join sheet metal components using MIG welding, TIG welding, spot welding, riveting, and mechanical fastening methods.",
+            "Fabricate and install HVAC ductwork systems including rectangular and circular ductwork, fittings, and acoustic lined ductwork.",
+            "Install roof flashings, cappings, fascias, valleys, and custom sheet metal roofing details to weathertight standards.",
+            "Fabricate custom architectural metalwork including stainless steel features, aluminium panels, and decorative metalwork.",
+            "Read and interpret engineering drawings, development drawings, and sheet metal fabrication details accurately.",
+            "Ensure all sheet metal fabrication and installation complies with relevant NZ Standards and project specifications.",
+            "Maintain all sheet metal fabrication machinery, tools, and equipment in a safe and calibrated condition.",
+            "Comply with all workshop and site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE."
+          ]
+        },
+        {
+          "trade": "Boilermaker",
+          "anzsco_code": "322111",
+          "anzsco_title": "Boilermaker",
+          "duties": [
+            "Fabricate, assemble, repair, and maintain pressure vessels, boilers, tanks, heat exchangers, and process vessels to ASME and NZ pressure vessel standards.",
+            "Read and interpret engineering drawings, vessel data sheets, and fabrication specifications to plan and execute boilermaking works.",
+            "Lay out, cut, form, and fit steel plate and sections for pressure vessel fabrication using thermal cutting, press brakes, and rolling machines.",
+            "Carry out pressure vessel welding using approved welding procedures (WPS) and qualified welders per AS/NZS 3992 or ASME IX.",
+            "Conduct NDT including radiography, ultrasonic testing, magnetic particle inspection, and dye penetrant testing on pressure vessel welds.",
+            "Carry out hydrostatic pressure testing of pressure vessels, piping, and heat exchangers to specified test pressures.",
+            "Install pressure vessel fittings, nozzles, manholes, flanges, and process connections per vessel design.",
+            "Carry out structural steel fabrication and installation of vessel support structures, saddles, skirts, and legs.",
+            "Repair and recondition pressure vessels, tanks, and boilers including plate replacement, weld repair, and lining installation.",
+            "Ensure all pressure vessel fabrication and repair complies with NZ Pressure Equipment, Cranes and Passenger Ropeways Regulations 1999.",
+            "Maintain all fabrication tools, welding equipment, and NDT equipment in a safe and calibrated condition.",
+            "Comply with all site and workshop Health and Safety requirements, HSWA 2015 obligations, and confined space entry procedures."
+          ]
+        },
+        {
+          "trade": "Rigger",
+          "anzsco_code": "821513",
+          "anzsco_title": "Rigger",
+          "duties": [
+            "Plan, rig, and execute lifts of heavy plant, equipment, structural steel, and prefabricated modules using cranes, hoists, and rigging equipment.",
+            "Select appropriate lifting equipment including slings, shackles, hooks, spreader beams, and lifting frames for each specific lift.",
+            "Calculate load weights, lift angles, and rigging configurations to ensure safe lift execution within equipment SWL ratings.",
+            "Prepare and submit lift plans, method statements, and risk assessments for complex and critical lifts.",
+            "Direct crane operators, signal lift movements, and coordinate personnel during lifting operations.",
+            "Install, dismantle, and maintain rigging equipment, chain blocks, lever hoists, and tirfors for skidding and jacking operations.",
+            "Carry out skidding, jacking, rolling, and shifting of heavy equipment using hydraulic jacks, skid tracks, and roller systems.",
+            "Carry out inspection of all lifting gear, slings, shackles, and accessories and quarantine defective equipment.",
+            "Ensure all lifting operations comply with the Health and Safety at Work (Cranes) Regulations and WorkSafe NZ guidelines.",
+            "Hold current Rigging Certificate of Competence issued by a recognised NZ authority for the classes of rigging undertaken.",
+            "Liaise with crane contractors, structural engineers, and site supervisors to plan and execute lifting operations safely.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Access, Safety & Specialist",
+      "trades": [
+        {
+          "trade": "Scaffolder",
+          "anzsco_code": "821511",
+          "anzsco_title": "Scaffolder",
+          "duties": [
+            "Erect, alter, and dismantle tube and coupler, modular system, and frame scaffold structures per AS/NZS 1576 and scaffold design plans.",
+            "Install edge protection systems including handrails, mid-rails, toe boards, and safety netting per HSWA 2015 and WorkSafe NZ requirements.",
+            "Erect cantilevered scaffolds, suspended scaffolds, rolling tower scaffolds, and birdcage scaffolds to approved design drawings.",
+            "Install protective fans, catch fans, and debris netting on scaffold structures adjacent to public areas and roads.",
+            "Carry out scaffold inspections at required frequencies and complete scaffold inspection tags and registers.",
+            "Erect and dismantle temporary propping and shoring systems for structural support during construction and demolition.",
+            "Read and interpret scaffold design drawings, erection sequences, and structural load calculations accurately.",
+            "Ensure all scaffold works comply with AS/NZS 1576, HSWA 2015, and WorkSafe NZ guidelines for scaffolding.",
+            "Operate materials hoists, gin wheels, and lifting equipment to handle scaffold components at height safely.",
+            "Carry out all scaffold works under a current Scaffolding Certificate of Competence issued by a recognised NZ authority.",
+            "Maintain all scaffold equipment, components, and tools in safe and serviceable condition and tag defective components.",
+            "Report any scaffold defects, unauthorised modifications, or unsafe conditions to the Site Supervisor promptly."
+          ]
+        },
+        {
+          "trade": "Demolition Worker",
+          "anzsco_code": "821112",
+          "anzsco_title": "Demolition Worker",
+          "duties": [
+            "Carry out manual and mechanical demolition of buildings, structures, and infrastructure per demolition plans and WorkSafe NZ requirements.",
+            "Operate demolition equipment including excavators with demolition attachments, skid steer loaders, and high-reach demolition machines.",
+            "Carry out selective demolition and deconstruction works maintaining structural stability of retained elements.",
+            "Identify, manage, and safely remove hazardous materials including asbestos-containing materials (ACM), lead paint, and PCBs per the Health and Safety at Work (Asbestos) Regulations 2016.",
+            "Sort, segregate, and manage demolition waste and recyclable materials per waste management plans.",
+            "Erect hoarding, fencing, and exclusion zones around demolition sites to protect the public and adjacent properties.",
+            "Carry out ground remediation, site clearance, and preparation works including rubble removal and backfilling.",
+            "Read and interpret demolition drawings, hazardous materials registers, and site-specific safety plans accurately.",
+            "Ensure all demolition works comply with the Building Act 2004, HSWA 2015, and relevant WorkSafe NZ guidelines.",
+            "Operate and maintain all demolition plant, hand tools, and PPE in a safe and operational condition.",
+            "Comply with all site noise, vibration, dust, and environmental controls required by resource consents and council requirements.",
+            "Complete all required site documentation, hazardous materials records, and waste transfer documentation."
+          ]
+        },
+        {
+          "trade": "Rope Access Technician",
+          "anzsco_code": "821512",
+          "anzsco_title": "Rope Access Technician",
+          "duties": [
+            "Carry out inspection, maintenance, cleaning, repair, and construction works at height using industrial rope access techniques per IRATA or SPRAT certification.",
+            "Rig and de-rig rope access systems including anchor systems, descenders, ascenders, and traverse lines per the rope access work plan.",
+            "Conduct visual and non-destructive inspection of building facades, bridges, towers, wind turbines, and infrastructure at height.",
+            "Carry out concrete repair, crack injection, caulking, painting, and surface treatment works using rope access techniques.",
+            "Install, maintain, and test fall arrest systems, anchor points, and permanent access systems on structures.",
+            "Carry out window cleaning, facade cleaning, and building maintenance works using rope access and abseil techniques.",
+            "Rescue incapacitated workers from rope access positions using approved rope rescue techniques.",
+            "Inspect and maintain all rope access equipment including ropes, harnesses, descenders, and connectors per manufacturer requirements.",
+            "Prepare rope access method statements, risk assessments, and rescue plans for all rope access works.",
+            "Ensure all rope access works comply with WorkSafe NZ working at heights guidelines and IRATA/SPRAT Code of Practice.",
+            "Carry out rope access works under the direct supervision of a Level 3 Rope Access Supervisor as required by certification.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use all specified PPE and rescue equipment."
+          ]
+        },
+        {
+          "trade": "Traffic Management Coordinator",
+          "anzsco_code": "149912",
+          "anzsco_title": "Traffic Management Coordinator",
+          "duties": [
+            "Prepare, submit, and implement Traffic Management Plans (TMP) for construction works per NZTA Code of Practice for Temporary Traffic Management (CoPTTM).",
+            "Set out and maintain temporary traffic control devices including signs, cones, barriers, and variable message signs per approved TMP.",
+            "Direct and control traffic flows through and around construction work zones to ensure safety of road workers and the public.",
+            "Carry out traffic management site audits and inspections to verify compliance with the approved TMP.",
+            "Brief and supervise traffic controllers (TC) and ensure they hold current Site Traffic Management Supervisor (STMS) or TC qualifications.",
+            "Liaise with road controlling authorities, police, emergency services, and network utilities regarding traffic management requirements.",
+            "Respond to incidents, emergencies, and unplanned events within traffic management zones safely and effectively.",
+            "Monitor traffic conditions, queue lengths, and public complaints and adjust traffic management arrangements as required.",
+            "Maintain all traffic management equipment in a reflective, clean, and serviceable condition.",
+            "Complete all required CoPTTM records, TMP registers, audit records, and incident reports.",
+            "Hold a current Site Traffic Management Supervisor (STMS) qualification issued by a recognised NZ training provider.",
+            "Comply with all Health and Safety at Work Act 2015 obligations, CoPTTM requirements, and road controlling authority conditions."
+          ]
+        },
+        {
+          "trade": "Asbestos Removal Worker",
+          "anzsco_code": "821113",
+          "anzsco_title": "Asbestos Removal Worker",
+          "duties": [
+            "Identify, survey, and assess asbestos-containing materials (ACM) in buildings and structures per the Health and Safety at Work (Asbestos) Regulations 2016.",
+            "Carry out Class A and Class B licensed asbestos removal works per the approved asbestos removal control plan.",
+            "Establish and maintain asbestos removal enclosures, airlocks, decontamination units, and negative pressure units for friable asbestos removal.",
+            "Remove and bag asbestos-containing materials using approved wet methods, tools, and disposal procedures.",
+            "Carry out clearance inspection and air monitoring after asbestos removal to verify re-occupation safety.",
+            "Dispose of asbestos waste materials at approved disposal facilities per waste transfer documentation requirements.",
+            "Wear, fit-test, don, and doff appropriate respiratory protective equipment (RPE) including P2 and P3 respirators.",
+            "Decontaminate tools, equipment, and PPE following asbestos removal works using approved procedures.",
+            "Maintain all asbestos removal equipment including negative pressure units and decontamination showers in operational condition.",
+            "Complete all required asbestos removal documentation including removal control plans, air monitoring records, and waste transfer documents.",
+            "Hold a current asbestos removal worker certificate issued by a WorkSafe NZ approved training provider.",
+            "Comply with all HSWA 2015 requirements, Health and Safety at Work (Asbestos) Regulations 2016, and WorkSafe NZ Approved Codes of Practice."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Supervision & Management",
+      "trades": [
+        {
+          "trade": "Site Foreman / Supervisor",
+          "anzsco_code": "312114",
+          "anzsco_title": "Construction Site Supervisor",
+          "duties": [
+            "Supervise, coordinate, and direct all on-site construction activities including labour, subcontractors, and trades to ensure works are completed on time, within budget, and to required quality.",
+            "Plan and sequence daily work activities, allocate tasks to tradespeople and labourers, and monitor productivity against the construction programme.",
+            "Conduct daily site safety briefings (toolbox talks), enforce site safety rules, and ensure all personnel comply with HSWA 2015 and the site Safety Plan.",
+            "Carry out site inductions for all new workers, visitors, and subcontractors and maintain accurate induction and site access records.",
+            "Review and interpret construction drawings, specifications, and engineer instructions to ensure works are executed per design intent and NZBC.",
+            "Liaise with the Project Manager, engineers, architects, councils, and building inspectors to coordinate inspections and progress consent hold points.",
+            "Monitor and control material deliveries, storage, and usage on site to minimise waste and ensure availability of materials for programmed works.",
+            "Identify, document, and manage site risks including non-conformances, defects, variations, and delays and escalate to the Project Manager.",
+            "Maintain accurate site records including daily site diaries, weather records, labour records, plant logs, and visitor registers.",
+            "Ensure all subcontractors hold current licences, insurance, and Health and Safety documentation prior to commencing works.",
+            "Monitor quality of all works against project specifications and hold point inspection requirements, and direct remedial works where required.",
+            "Assist in the preparation of practical completion inspections, defect lists, and close-out documentation at project end."
+          ]
+        },
+        {
+          "trade": "Construction Project Manager",
+          "anzsco_code": "133111",
+          "anzsco_title": "Construction Project Manager",
+          "duties": [
+            "Lead and manage all aspects of construction project delivery including scope, programme, cost, quality, safety, and stakeholder management.",
+            "Develop, maintain, and report on the construction programme using Gantt charts, CPM schedules, and project management software.",
+            "Prepare and manage the project budget, track costs against budget, and prepare regular cost reports for client and management.",
+            "Manage design consultants, engineers, surveyors, and specialist subconsultants to deliver design information on programme.",
+            "Prepare and issue subcontract packages, assess tender returns, and award subcontracts per company procurement procedures.",
+            "Manage subcontractor performance including programme compliance, quality of works, safety performance, and commercial management.",
+            "Lead project meetings including design progress meetings, site meetings, health and safety meetings, and client update meetings.",
+            "Identify, assess, and manage project risks, opportunities, and issues throughout the project lifecycle.",
+            "Manage the building consent process including consent applications, inspections, and code compliance certificates (CCC).",
+            "Ensure all construction works comply with the Building Act 2004, NZBC, HSWA 2015, and all relevant legislation and specifications.",
+            "Prepare and negotiate project variations, extensions of time claims, and final accounts with clients and subcontractors.",
+            "Manage project close-out including practical completion, defect rectification, as-built documentation, and final certification."
+          ]
+        },
+        {
+          "trade": "Health & Safety Officer",
+          "anzsco_code": "251312",
+          "anzsco_title": "Occupational Health and Safety Adviser",
+          "duties": [
+            "Develop, implement, and maintain the Site-Specific Safety Plan (SSSP) and associated health and safety management documentation per HSWA 2015.",
+            "Conduct daily site safety inspections and audits to identify hazards, unsafe acts, and non-compliances, and issue corrective action reports.",
+            "Facilitate toolbox talks, safety inductions, pre-task briefings, and health and safety training programmes for site personnel.",
+            "Investigate workplace incidents, near misses, and accidents and prepare incident investigation reports with corrective actions.",
+            "Manage the hazard identification and risk assessment process including completing HIRAC documentation for all high-risk work.",
+            "Monitor compliance with critical risk controls for Top 5 WorkSafe NZ construction risks including working at heights and excavation.",
+            "Liaise with WorkSafe NZ inspectors, client safety representatives, and principal contractors on health and safety matters.",
+            "Manage the health monitoring programme including audiometric testing, dust monitoring, and plant operator health surveillance.",
+            "Maintain all site safety registers including hazardous substances register, plant register, incident register, and training records.",
+            "Carry out safe work method statement (SWMS) reviews and approvals for high-risk construction work (HRCW).",
+            "Monitor and enforce PPE compliance, site access controls, and emergency response readiness on site.",
+            "Prepare monthly health and safety performance reports including leading and lagging indicators for project management."
+          ]
+        },
+        {
+          "trade": "Quantity Surveyor",
+          "anzsco_code": "233213",
+          "anzsco_title": "Quantity Surveyor",
+          "duties": [
+            "Prepare detailed bills of quantities, cost plans, and cost estimates for construction projects at all stages from concept to construction.",
+            "Carry out tender document preparation including bills of quantities, schedules of rates, and procurement documentation.",
+            "Evaluate and assess contractor tenders, prepare tender analysis reports, and provide recommendations on contract award.",
+            "Administer construction contracts including NZS 3910, NZS 3916, or NEC contracts throughout the construction phase.",
+            "Assess and certify contractor progress payment claims and prepare payment recommendations for client certification.",
+            "Prepare and negotiate variation orders, assess contractor variation claims, and agree final account settlement.",
+            "Prepare project cost reports, cash flow forecasts, and cost-to-complete reports for client and management.",
+            "Carry out value engineering studies to identify cost savings without compromising function or quality.",
+            "Measure and value works in progress and prepare interim cost and financial reports for project stakeholders.",
+            "Assess and advise on contractor extension of time claims, delay costs, and disruption claims.",
+            "Prepare life cycle cost analyses and whole-of-life cost assessments for assets and design options.",
+            "Provide procurement strategy advice, contract selection, and risk allocation recommendations for construction projects."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Landscaping & External Works",
+      "trades": [
+        {
+          "trade": "Landscape / Hardscape Worker",
+          "anzsco_code": "821711",
+          "anzsco_title": "Landscape Construction Worker",
+          "duties": [
+            "Construct and install hard landscaping elements including retaining walls, paving, pathways, driveways, steps, edging, and outdoor structures.",
+            "Lay paving systems including concrete pavers, clay pavers, natural stone, and asphalt on prepared sub-bases to specified patterns and falls.",
+            "Construct retaining wall systems including timber, concrete block, natural stone, and segmental walls with appropriate drainage.",
+            "Carry out earthworks, grading, and topsoil preparation for soft landscaping areas including lawns, garden beds, and planted areas.",
+            "Install irrigation systems including drip irrigation, pop-up sprinklers, solenoid valves, and irrigation controllers.",
+            "Plant trees, shrubs, groundcovers, and lawn areas per the landscape architect planting plan.",
+            "Install fencing systems including timber post and rail, aluminium, steel, and treated pine boundary and garden fencing.",
+            "Construct outdoor structures including decks, pergolas, gazebos, and timber feature elements.",
+            "Install outdoor lighting systems, water features, and drainage systems as part of the landscape construction package.",
+            "Read and interpret landscape construction drawings, planting plans, and specifications accurately.",
+            "Operate compact excavators, bobcats, and landscaping equipment safely per HSWA 2015.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Irrigation Technician",
+          "anzsco_code": "821712",
+          "anzsco_title": "Irrigation Technician",
+          "duties": [
+            "Design, install, commission, and maintain irrigation systems for residential gardens, sports fields, commercial landscapes, and agricultural applications.",
+            "Install drip irrigation, micro-spray, and pop-up sprinkler systems with appropriate spacing, heads, and coverage patterns.",
+            "Install and commission solenoid valves, master valves, flow sensors, and weather-based irrigation controllers.",
+            "Install underground irrigation mainlines, lateral lines, and fittings using HDPE, PVC, and poly pipe.",
+            "Commission and programme irrigation controllers, smart controllers, and remote monitoring systems.",
+            "Carry out hydraulic calculations for irrigation system design including pipe sizing, pressure loss, and sprinkler selection.",
+            "Carry out installation of potable water backflow prevention devices per NZ drinking water standards.",
+            "Diagnose and repair irrigation system faults including broken heads, valve failures, controller faults, and pipe leaks.",
+            "Carry out system auditing and water use efficiency assessments on existing irrigation systems.",
+            "Carry out seasonal winterisation and start-up of irrigation systems including blow-out and pressure testing.",
+            "Read and interpret landscape drawings, irrigation design drawings, and site plans accurately.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Insulation & Fire Protection",
+      "trades": [
+        {
+          "trade": "Insulation Installer",
+          "anzsco_code": "821611",
+          "anzsco_title": "Insulation Installer",
+          "duties": [
+            "Install thermal and acoustic insulation systems in walls, floors, ceilings, and roof spaces per NZBC H1 and project specifications.",
+            "Install bulk insulation products including glass wool batts, polyester batts, and rigid foam boards in timber and steel framed construction.",
+            "Install blown loose-fill insulation in ceiling spaces using specialist blowing equipment to specified depths and R-values.",
+            "Install reflective foil insulation and vapour control layers in walls, roofs, and subfloor spaces.",
+            "Install acoustic insulation batts in internal wall, floor, and ceiling systems to achieve specified sound transmission ratings.",
+            "Install underfloor insulation systems including polystyrene boards, glass wool batts, and reflective foil.",
+            "Carry out retrofit insulation installations in existing buildings including access through ceiling manholes and subfloor spaces.",
+            "Ensure all insulation works comply with NZBC H1 Schedule 1, NZS 4218 (Thermal Insulation), and project energy modelling specifications.",
+            "Read and interpret architectural drawings, energy reports, and specifications to determine correct insulation products and R-values.",
+            "Install pipe and duct insulation on HVAC, plumbing, and mechanical services pipework.",
+            "Maintain all insulation installation equipment, blowing machines, and tools in a clean, safe, and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE including respiratory protection."
+          ]
+        },
+        {
+          "trade": "Passive Fire Protection Installer",
+          "anzsco_code": "333114",
+          "anzsco_title": "Passive Fire Protection Installer",
+          "duties": [
+            "Install passive fire protection systems including fire stopping, intumescent seals, fire collars, fire pillows, and mineral wool infill around service penetrations through fire-rated elements.",
+            "Apply intumescent coatings and fire-resistant mastics to structural steel members to achieve specified fire resistance ratings (FRR) per NZBC C3.",
+            "Install fire-rated board systems and encasement systems around structural steel, columns, and beams.",
+            "Install fire-rated access panels, fire doors, fire dampers, and associated seals and hardware in fire-rated construction.",
+            "Carry out linear joint sealing in movement joints and perimeter gaps between fire-rated elements.",
+            "Apply fire-rated spray compounds and ablative coatings to structural steel and concrete elements.",
+            "Carry out fire-rated penetration sealing for all services including pipes, cables, cable trays, ductwork, and conduits.",
+            "Inspect installed passive fire protection works and complete inspection documentation for building consent authority verification.",
+            "Read and interpret fire engineering reports, passive fire protection schedules, and construction drawings accurately.",
+            "Ensure all passive fire protection works comply with NZBC C clauses, fire engineer specifications, and manufacturer system certification.",
+            "Maintain all application tools, equipment, and materials in a safe and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Survey & Engineering Support",
+      "trades": [
+        {
+          "trade": "Construction Surveyor",
+          "anzsco_code": "312116",
+          "anzsco_title": "Construction Surveyor",
+          "duties": [
+            "Carry out construction surveying and setting out for buildings, civil infrastructure, roads, and utilities using total stations, GPS/GNSS, and digital levels.",
+            "Set out building gridlines, pile positions, column bases, and structural elements to dimensions and tolerances specified in engineering drawings.",
+            "Establish and maintain survey control networks including horizontal and vertical control benchmarks throughout the project.",
+            "Carry out as-built surveys of completed construction works and prepare as-built drawings and data for record purposes.",
+            "Monitor structural movements, settlements, and deformations using survey instruments and automated monitoring systems.",
+            "Carry out earthworks volume calculations using DTM software for cut and fill balance and earthwork reconciliation.",
+            "Process and manage survey data using CAD software, survey data collectors, and project management systems.",
+            "Co-ordinate with design engineers, architects, and construction teams to ensure survey control meets project requirements.",
+            "Carry out machine control GPS setup and calibration for earthmoving and paving plant.",
+            "Read and interpret civil and structural engineering drawings, survey plans, and legal descriptions accurately.",
+            "Ensure all survey works comply with NZ Survey Standards, LINZ requirements, and project tolerances.",
+            "Maintain all survey instruments, data collectors, and equipment in a calibrated and operational condition."
+          ]
+        },
+        {
+          "trade": "Geotechnical Driller",
+          "anzsco_code": "712114",
+          "anzsco_title": "Driller",
+          "duties": [
+            "Operate rotary drilling rigs, percussion drilling rigs, and sonic drilling rigs for geotechnical investigation boreholes, water wells, and monitoring wells.",
+            "Carry out soil sampling using SPT, thin wall tube sampling, and bulk sampling methods per geotechnical investigation specifications.",
+            "Carry out rock coring using diamond core barrels and retrieve and log rock cores for geotechnical and geological assessment.",
+            "Install standpipe piezometers, vibrating wire piezometers, and groundwater monitoring wells in completed boreholes.",
+            "Carry out in-situ testing including SPT, pressuremeter tests, vane shear tests, and Lugeon permeability tests in boreholes.",
+            "Carry out CPT (Cone Penetration Testing) push tests using truck-mounted or track-mounted CPT rigs.",
+            "Backfill and grout exploration boreholes and decommission piezometers per environmental protection requirements.",
+            "Maintain drill rods, coring equipment, sampling tools, and drilling rig in a clean, lubricated, and operational condition.",
+            "Read and interpret borehole logs, geotechnical investigation plans, and soil and rock descriptions accurately.",
+            "Complete accurate borehole and drill hole records, sample logs, and field testing data per project specifications.",
+            "Operate drill rigs safely per HSWA 2015 requirements, site traffic management plans, and utility clearance procedures.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Prefabrication & Specialist Installation",
+      "trades": [
+        {
+          "trade": "Precast Concrete Installer",
+          "anzsco_code": "821215",
+          "anzsco_title": "Precast Concrete Installer",
+          "duties": [
+            "Carry out installation of precast concrete elements including wall panels, columns, beams, stairs, landings, and hollow-core floor units.",
+            "Rig and lift precast concrete elements using cranes, lifting inserts, and specialist spreader beams per precast erection drawings.",
+            "Align, plumb, and level precast elements using grout pads, temporary props, and alignment tools to specified tolerances.",
+            "Install and tension temporary propping and bracing systems to support precast walls and columns prior to structural connections.",
+            "Grout column base plates, connection pockets, and joints between precast elements per structural engineer specifications.",
+            "Carry out structural connections between precast elements including welding of embedded plates, bolting, and grouted connections.",
+            "Install seismic connections, ductile connections, and movement joints in precast structures per the seismic design.",
+            "Carry out tilt-up concrete panel casting, lifting, and erection on commercial projects.",
+            "Operate cranes, elevated work platforms, and man cages safely when working at height on precast erection.",
+            "Read and interpret precast erection drawings, connection details, and lift sequences accurately.",
+            "Ensure all precast installation works comply with structural engineer specifications, NZS 3101, and seismic design requirements.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Kitchen & Joinery Installer",
+          "anzsco_code": "394111",
+          "anzsco_title": "Joinery Installer",
+          "duties": [
+            "Install kitchen cabinetry, bathroom vanities, laundry units, and custom joinery in residential, commercial, and hospitality fit-out projects.",
+            "Install wardrobe systems, built-in shelving, study furniture, and custom storage solutions to builder drawings and client specifications.",
+            "Install benchtops including laminate, solid surface, stone, and timber benchtops with accurate scribe fits and cutouts.",
+            "Carry out installation of appliances including ovens, cooktops, dishwashers, and range hoods in cabinetry.",
+            "Install glass splashbacks, mirrored panels, and decorative glass in kitchen and bathroom fit-outs.",
+            "Adjust cabinet doors, drawer runners, hinges, and hardware to achieve smooth operation and flush alignment.",
+            "Carry out on-site modifications to cabinetry including scribing to walls, cutting out for plumbing, and fitting cornices.",
+            "Install shop joinery, reception counters, display units, and commercial fit-out joinery in retail and hospitality projects.",
+            "Read and interpret joinery shop drawings, kitchen plans, and elevation drawings accurately.",
+            "Ensure all joinery installation is square, plumb, and level, and complies with relevant NZ Standards.",
+            "Maintain all installation tools, power tools, and equipment in a clean, safe, and operational condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and use appropriate PPE at all times."
+          ]
+        },
+        {
+          "trade": "Lift / Elevator Mechanic",
+          "anzsco_code": "341211",
+          "anzsco_title": "Lift Mechanic",
+          "duties": [
+            "Install, commission, test, and maintain passenger lifts, goods lifts, escalators, moving walkways, and vertical platform lifts.",
+            "Install lift guide rails, car slings, counterweights, traction machines, hydraulic cylinders, and associated equipment in lift shafts.",
+            "Install lift control panels, door operators, car operating panels, hall call buttons, and safety circuits.",
+            "Commission and test lift installations including safety device testing, load testing, and performance verification.",
+            "Carry out routine maintenance, safety inspections, and statutory testing of lifts and escalators per AS 1735 requirements.",
+            "Diagnose and repair lift and escalator faults including motor, controller, safety device, and door system failures.",
+            "Carry out modernisation works on existing lifts including controller upgrades, door system replacement, and machine upgrades.",
+            "Ensure all lift works comply with AS 1735 (Lifts, Escalators and Moving Walks), NZBC, and Worksafe NZ requirements.",
+            "Liaise with building owners, facility managers, and building consent authorities for lift inspections and annual safety certificates.",
+            "Read and interpret lift installation drawings, wiring diagrams, and maintenance manuals accurately.",
+            "Maintain all lift installation tools, test equipment, and PPE in a safe and calibrated condition.",
+            "Comply with all site Health and Safety requirements, HSWA 2015 obligations, and confined space procedures for working in lift pits."
+          ]
+        }
+      ]
+    }
+  ]
+}

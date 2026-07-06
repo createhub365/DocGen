@@ -1,0 +1,4 @@
+export const PANEL_INNER_WIDTH = 320
+export const PREVIEW_PAGE_WIDTH = PANEL_INNER_WIDTH
+export const PREVIEW_PAGE_HEIGHT = Math.round(PANEL_INNER_WIDTH * (297 / 210))
+export const PLACEHOLDER_PAGE_COUNT = 6
