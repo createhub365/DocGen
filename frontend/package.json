@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:deploy": "vite build --mode deploy",
     "preview": "vite preview",
-    "deploy": "npm run build:deploy && wrangler deploy",
+    "deploy": "npm run build:deploy && npx wrangler deploy",
     "fix:deps": "npx update-browserslist-db@latest"
   },
   "dependencies": {
