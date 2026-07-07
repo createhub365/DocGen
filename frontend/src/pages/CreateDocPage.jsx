@@ -7,6 +7,7 @@ import StepTemplateSelect from '../components/wizard/StepTemplateSelect'
 import StepEmployerTrade from '../components/wizard/StepEmployerTrade'
 import StepSmartFillForm from '../components/wizard/StepSmartFillForm'
 import FullPageSpinner from '../components/ui/FullPageSpinner'
+import useBreakpoint from '../hooks/useBreakpoint'
 
 const STEP_LABELS = WIZARD_STEP_LABELS
 
@@ -28,6 +29,7 @@ function navEquals(a, b) {
 }
 
 export default function CreateDocPage() {
+  const { isMobile } = useBreakpoint()
   const [hydrated, setHydrated] = useState(() => useDocStore.persist.hasHydrated())
   const [nav, setNav] = useState(HIDDEN_NAV)
   const [animKey, setAnimKey] = useState(0)
@@ -162,21 +164,24 @@ export default function CreateDocPage() {
     <div className="wizard-shell">
       {!onFillStep && (
         <div className="wizard-shell-header">
-          <h1
-            style={{
-              margin: '0 0 16px',
-              fontSize: 18,
-              fontWeight: 700,
-              color: 'var(--primary)',
-            }}
-          >
-            Generate Document
-          </h1>
+          {!isMobile && (
+            <h1
+              style={{
+                margin: '0 0 16px',
+                fontSize: 18,
+                fontWeight: 700,
+                color: 'var(--primary)',
+              }}
+            >
+              Generate Document
+            </h1>
+          )}
           <StepIndicator
             current={currentStep}
             labels={STEP_LABELS}
             onSelect={goToStep}
             maxReachable={currentStep}
+            variant={isMobile ? 'compact' : 'default'}
           />
         </div>
       )}

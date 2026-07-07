@@ -48,6 +48,7 @@ import {
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { layout } from '../design/tokens'
+import useBreakpoint from '../hooks/useBreakpoint'
 import { useAuth } from '../context/AuthContext'
 import COUNTRIES, { PRIORITY_COUNTRIES, getCountryByCode, getCountryByName } from '../data/countries'
 import {
@@ -268,6 +269,7 @@ function renderAdminPanel(activeTab, props) {
 
 export default function AdminPanel() {
   const navigate = useNavigate()
+  const { isMobile, isTablet } = useBreakpoint()
   const [activeTab, setActiveTab] = useState('templates')
   const [tradeBank, setTradeBank] = useState(null)
   const [templateFilter, setTemplateFilter] = useState('')
@@ -287,11 +289,13 @@ export default function AdminPanel() {
   const activeSection = ADMIN_NAV.find((item) => item.key === activeTab)
   const ActiveIcon = activeSection?.icon
   const sidebarWidth = sidebarCollapsed ? layout.sidebarCollapsed : layout.sidebarExpanded
+  const showSidebar = !isMobile && !isTablet
 
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--surface-2)' }}>
+    <div className="flex min-h-0 flex-1" style={{ background: 'var(--surface-2)' }}>
+      {showSidebar && (
       <aside
-        className="docflow-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen z-[100]"
+        className="docflow-sidebar admin-desktop-sidebar flex flex-col flex-shrink-0 sticky top-0 h-full z-[100]"
         style={{ width: sidebarWidth }}
       >
         <AdminSidebar
@@ -303,9 +307,11 @@ export default function AdminPanel() {
           onToggle={() => setSidebarCollapsed((c) => !c)}
         />
       </aside>
+      )}
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         <header
+          className="admin-panel-header"
           style={{
             background: '#fff',
             padding: '0 24px',
@@ -330,7 +336,7 @@ export default function AdminPanel() {
               {activeSection?.label ?? 'Admin'}
             </Title>
           </div>
-          {activeTab === 'templates' && (
+          {activeTab === 'templates' && !isMobile && (
             <Space size={12} style={{ flexShrink: 0 }}>
               <Input
                 placeholder="Search by country, trade, type…"
@@ -357,7 +363,7 @@ export default function AdminPanel() {
         </header>
 
         <main
-          className="flex-1 page-enter"
+          className="flex-1 page-enter admin-panel-main"
           style={{
             padding: 24,
             overflow: 'auto',
@@ -366,6 +372,47 @@ export default function AdminPanel() {
             width: '100%',
           }}
         >
+          {(isMobile || isTablet) && (
+            <div className="admin-mobile-tabs">
+              {ADMIN_NAV.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`admin-mobile-tab ${activeTab === item.key ? 'active' : ''}`}
+                  onClick={() => setActiveTab(item.key)}
+                >
+                  {item.emoji ? `${item.emoji} ` : ''}{item.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'templates' && isMobile && (
+            <div className="admin-mobile-header-tools">
+              <Input
+                placeholder="Search templates…"
+                value={templateFilter}
+                onChange={(e) => setTemplateFilter(e.target.value)}
+                allowClear
+                style={{ borderRadius: 8 }}
+              />
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setTemplateUploadOpen(true)}
+                block
+                style={{
+                  background: 'linear-gradient(135deg,#8B1A1A,#A52A2A)',
+                  border: 'none',
+                  fontWeight: 700,
+                  minHeight: 44,
+                }}
+              >
+                Upload Template
+              </Button>
+            </div>
+          )}
+
           {renderAdminPanel(activeTab, {
             tradeBank,
             loadTradeBank,
@@ -537,6 +584,7 @@ const overlayBtn = (bg, color = 'white') => ({
 
 /* ── Upload Drawer ──────────────────────────────────────────── */
 function UploadDrawer({ open, onClose, countries, docTypes, tradeBank, onCountriesRefresh, onSuccess }) {
+  const { isMobile } = useBreakpoint()
   const [uploadFile, setUploadFile] = useState(null)
   const [detectedPlaceholders, setDetectedPlaceholders] = useState([])
   const [labelOverrides, setLabelOverrides] = useState({})
@@ -638,7 +686,7 @@ function UploadDrawer({ open, onClose, countries, docTypes, tradeBank, onCountri
   }
 
   return (
-    <Drawer title="Upload New Template" open={open} onClose={onClose} width={520} destroyOnHidden>
+    <Drawer title="Upload New Template" open={open} onClose={onClose} width={isMobile ? '100%' : 520} destroyOnHidden>
       <Space direction="vertical" style={{ width: '100%' }} size="large">
         <div>
           <Text strong style={{ display: 'block', marginBottom: 8 }}>Step 1 — Select .docx file</Text>
@@ -697,6 +745,7 @@ function UploadDrawer({ open, onClose, countries, docTypes, tradeBank, onCountri
 
 /* ── Edit Settings Drawer ───────────────────────────────────── */
 function EditDrawer({ open, template, countries, docTypes, tradeBank, onCountriesRefresh, onClose, onSaved }) {
+  const { isMobile } = useBreakpoint()
   const [editCountryCode, setEditCountryCode] = useState(null)
   const [editCountryId, setEditCountryId] = useState(null)
   const [editIndustry, setEditIndustry] = useState(null)
@@ -826,7 +875,7 @@ function EditDrawer({ open, template, countries, docTypes, tradeBank, onCountrie
   }
 
   return (
-    <Drawer title={`Edit — ${template?.doc_type_name || 'Template'}`} open={open} onClose={onClose} width={520}
+    <Drawer title={`Edit — ${template?.doc_type_name || 'Template'}`} open={open} onClose={onClose} width={isMobile ? '100%' : 520}
       footer={<div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <Button onClick={onClose}>Cancel</Button>
         <Button type="primary" loading={editSaving} onClick={handleSave}

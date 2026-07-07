@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { Dropdown } from 'antd'
 import {
   DashboardOutlined,
   FileAddOutlined,
@@ -12,15 +13,23 @@ import {
   RightOutlined,
 } from '@ant-design/icons'
 import { layout, breakpoints } from '../design/tokens'
-
+import useBreakpoint from '../hooks/useBreakpoint'
 import { useAuth } from '../context/AuthContext'
 
 const NAV_ITEMS = [
-  { key: '/dashboard', icon: DashboardOutlined, label: 'Dashboard' },
-  { key: '/create',    icon: FileAddOutlined,   label: 'Generate Document' },
-  { key: '/documents', icon: FileTextOutlined,  label: 'Documents' },
-  { key: '/employers', icon: TeamOutlined,       label: 'Employers' },
+  { key: '/dashboard', icon: DashboardOutlined, label: 'Dashboard', mobileLabel: 'Home' },
+  { key: '/create', icon: FileAddOutlined, label: 'Generate Document', mobileLabel: 'Generate' },
+  { key: '/documents', icon: FileTextOutlined, label: 'Documents', mobileLabel: 'Docs' },
+  { key: '/employers', icon: TeamOutlined, label: 'Employers', mobileLabel: 'Employers' },
 ]
+
+const PAGE_META = {
+  '/dashboard': { title: 'Dashboard', subtitle: 'Overview' },
+  '/create': { title: 'Generate', subtitle: 'New document' },
+  '/documents': { title: 'Documents', subtitle: 'History' },
+  '/employers': { title: 'Employers', subtitle: 'Master data' },
+  '/admin': { title: 'Admin', subtitle: 'Settings' },
+}
 
 function getInitials(name) {
   if (!name) return '?'
@@ -35,7 +44,6 @@ function getInitials(name) {
 function SidebarContent({ collapsed, selectedKey, onNavigate, role, displayName, username, onLogout, onToggle }) {
   return (
     <>
-      {/* Logo / brand */}
       <div
         style={{
           height: 64,
@@ -75,7 +83,6 @@ function SidebarContent({ collapsed, selectedKey, onNavigate, role, displayName,
         )}
       </div>
 
-      {/* Nav section label */}
       {!collapsed && (
         <div style={{ padding: '16px 18px 6px', flexShrink: 0 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
@@ -84,7 +91,6 @@ function SidebarContent({ collapsed, selectedKey, onNavigate, role, displayName,
         </div>
       )}
 
-      {/* Nav items */}
       <nav
         style={{
           flex: 1,
@@ -133,7 +139,6 @@ function SidebarContent({ collapsed, selectedKey, onNavigate, role, displayName,
         )}
       </nav>
 
-      {/* Bottom section */}
       <div
         style={{
           padding: collapsed ? '8px 8px 12px' : '8px 10px 12px',
@@ -144,7 +149,6 @@ function SidebarContent({ collapsed, selectedKey, onNavigate, role, displayName,
           gap: 4,
         }}
       >
-        {/* Collapse toggle */}
         <button
           type="button"
           onClick={onToggle}
@@ -162,7 +166,6 @@ function SidebarContent({ collapsed, selectedKey, onNavigate, role, displayName,
           )}
         </button>
 
-        {/* User avatar + name */}
         <div
           style={{
             display: 'flex',
@@ -206,7 +209,6 @@ function SidebarContent({ collapsed, selectedKey, onNavigate, role, displayName,
           )}
         </div>
 
-        {/* Logout */}
         {!collapsed && (
           <button
             type="button"
@@ -227,6 +229,7 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
+  const { isMobile, isTablet } = useBreakpoint()
   const role = user?.role
   const username = user?.username
   const displayName = user?.name || user?.username
@@ -237,32 +240,36 @@ export default function AppLayout() {
     return w >= breakpoints.tablet && w < breakpoints.laptop
   })
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-  const [isTablet, setIsTablet] = useState(false)
 
   const isCreatePage = location.pathname.startsWith('/create')
+  const isAdminPage = location.pathname.startsWith('/admin')
 
-  const selectedKey = location.pathname.startsWith('/create')
+  const selectedKey = isCreatePage
     ? '/create'
     : location.pathname.startsWith('/documents')
       ? '/documents'
       : location.pathname.startsWith('/employers')
         ? '/employers'
-        : location.pathname.startsWith('/admin')
+        : isAdminPage
           ? '/admin'
           : '/dashboard'
+
+  const pageMeta = PAGE_META[selectedKey] || PAGE_META['/dashboard']
+
   useEffect(() => {
-    const check = () => {
+    document.body.classList.toggle('mobile-app', isMobile)
+    return () => document.body.classList.remove('mobile-app')
+  }, [isMobile])
+
+  useEffect(() => {
+    const onResize = () => {
       const w = window.innerWidth
-      setIsMobile(w < breakpoints.mobile)
-      setIsTablet(w >= breakpoints.mobile && w < breakpoints.tablet)
       if (w >= breakpoints.tablet && w < breakpoints.laptop) {
         setCollapsed(true)
       }
     }
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   const handleLogout = async () => {
@@ -275,10 +282,33 @@ export default function AppLayout() {
   }
 
   const sidebarWidth = collapsed ? layout.sidebarCollapsed : layout.sidebarExpanded
+  const showMobileBottomNav = isMobile && !isCreatePage
+
+  const userMenuItems = {
+    items: [
+      {
+        key: 'profile',
+        label: (
+          <div style={{ padding: '4px 0' }}>
+            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{displayName}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{username}</div>
+          </div>
+        ),
+        disabled: true,
+      },
+      { type: 'divider' },
+      {
+        key: 'logout',
+        label: 'Sign Out',
+        icon: <LogoutOutlined />,
+        danger: true,
+        onClick: handleLogout,
+      },
+    ],
+  }
 
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--surface-2)' }}>
-      {/* Desktop / Laptop sidebar */}
       {!isMobile && !isTablet && (
         <aside
           className="docflow-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen z-[100]"
@@ -297,7 +327,6 @@ export default function AppLayout() {
         </aside>
       )}
 
-      {/* Tablet drawer overlay */}
       {isTablet && mobileOpen && (
         <>
           <div
@@ -324,7 +353,23 @@ export default function AppLayout() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Top bar for tablet */}
+        {isMobile && (
+          <header className="mobile-top-bar">
+            <div className="mobile-top-bar__brand min-w-0">
+              <FileTextOutlined style={{ color: '#D4A017', fontSize: 18, flexShrink: 0 }} />
+              <div className="min-w-0">
+                <h1 className="mobile-top-bar__title">{pageMeta.title}</h1>
+                <p className="mobile-top-bar__subtitle">{pageMeta.subtitle}</p>
+              </div>
+            </div>
+            <Dropdown menu={userMenuItems} trigger={['click']} placement="bottomRight">
+              <button type="button" className="mobile-top-bar__avatar" aria-label="Account menu">
+                {getInitials(displayName)}
+              </button>
+            </Dropdown>
+          </header>
+        )}
+
         {isTablet && (
           <header
             className="flex items-center gap-3 px-4 flex-shrink-0"
@@ -344,7 +389,9 @@ export default function AppLayout() {
                 cursor: 'pointer',
                 fontSize: 20,
                 color: 'var(--primary)',
-                padding: 4,
+                padding: 8,
+                minWidth: 44,
+                minHeight: 44,
               }}
             >
               <MenuOutlined />
@@ -359,35 +406,34 @@ export default function AppLayout() {
         <main
           className="flex-1 min-h-0"
           style={{
-            padding: isMobile ? 16 : 28,
-            paddingBottom: isMobile ? 80 : 28,
-            overflow: isCreatePage ? 'hidden' : 'auto',
-            display: isCreatePage ? 'flex' : 'block',
+            padding: isMobile ? (isAdminPage ? 0 : 16) : 28,
+            paddingBottom: showMobileBottomNav ? 88 : isMobile ? 16 : 28,
+            overflow: isCreatePage || isAdminPage ? 'hidden' : 'auto',
+            display: isCreatePage || isAdminPage ? 'flex' : 'block',
             flexDirection: 'column',
           }}
         >
           <div
             key={location.pathname}
-            className={isCreatePage ? 'route-enter-flex' : 'route-enter'}
-            style={isCreatePage ? undefined : { minHeight: '100%' }}
+            className={isCreatePage || isAdminPage ? 'route-enter-flex' : 'route-enter'}
+            style={isCreatePage || isAdminPage ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : { minHeight: '100%' }}
           >
             <Outlet />
           </div>
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      {isMobile && (
-        <nav className="mobile-bottom-nav">
-          {NAV_ITEMS.map(({ key, icon: Icon, label }) => (
+      {showMobileBottomNav && (
+        <nav className="mobile-bottom-nav" aria-label="Main navigation">
+          {NAV_ITEMS.map(({ key, icon: Icon, mobileLabel }) => (
             <button
               key={key}
               type="button"
               className={`mobile-bottom-nav-item ${selectedKey === key ? 'active' : ''}`}
               onClick={() => handleNavigate(key)}
             >
-              <Icon style={{ fontSize: 20 }} />
-              <span>{label.split(' ')[0]}</span>
+              <Icon style={{ fontSize: 22 }} />
+              <span>{mobileLabel}</span>
             </button>
           ))}
           {role === 'admin' && (
@@ -396,7 +442,7 @@ export default function AppLayout() {
               className={`mobile-bottom-nav-item ${selectedKey === '/admin' ? 'active' : ''}`}
               onClick={() => handleNavigate('/admin')}
             >
-              <SettingOutlined style={{ fontSize: 20 }} />
+              <SettingOutlined style={{ fontSize: 22 }} />
               <span>Admin</span>
             </button>
           )}

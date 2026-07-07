@@ -13,6 +13,8 @@ import {
 import dayjs from 'dayjs'
 import StatCard from '../components/ui/StatCard'
 import { StatCardSkeleton, TableRowSkeleton } from '../components/ui/Skeleton'
+import MobileDocumentCard from '../components/ui/MobileDocumentCard'
+import useBreakpoint from '../hooks/useBreakpoint'
 import { getDocuments, downloadDoc, getEmployers, getDashboardSummary } from '../api/client'
 import { useAppMessage } from '../hooks/useAppMessage'
 
@@ -40,6 +42,7 @@ const TradePill = memo(function TradePill({ label, count }) {
 export default function DashboardPage() {
   const navigate = useNavigate()
   const message = useAppMessage()
+  const { isMobile } = useBreakpoint()
   const [documents, setDocuments] = useState([])
   const [summary, setSummary] = useState(null)
   const [employerCount, setEmployerCount] = useState(0)
@@ -98,17 +101,19 @@ export default function DashboardPage() {
     <div className="max-w-7xl mx-auto">
 
       {/* ── Page header ──────────────────────────── */}
-      <div className="page-header animate-fade-in-down">
-        <div className="page-header-accent" />
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
-            Dashboard
-          </h1>
-          <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Welcome back — document automation overview
-          </p>
+      {!isMobile && (
+        <div className="page-header animate-fade-in-down">
+          <div className="page-header-accent" />
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+              Dashboard
+            </h1>
+            <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+              Welcome back — document automation overview
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Stat cards ───────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8 stagger-children">
@@ -303,8 +308,9 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: 680 }}>
+          <>
+            <div className="desktop-only-table" style={{ overflowX: 'auto' }}>
+              <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: 680 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-2)' }}>
                   {['Ref', 'Type', 'Company', 'Trade', 'Country', 'Date', 'Download'].map((col) => (
@@ -407,7 +413,18 @@ export default function DashboardPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+            <div className="mobile-only-list">
+              {documents.slice(0, 10).map((doc) => (
+                <MobileDocumentCard
+                  key={doc.id}
+                  doc={doc}
+                  onDownloadPdf={(id) => handleDownload(id, 'pdf')}
+                  onDownloadDocx={(id) => handleDownload(id, 'docx')}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 

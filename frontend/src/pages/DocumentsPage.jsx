@@ -6,6 +6,8 @@ import dayjs from 'dayjs'
 import { getDocuments, downloadDoc } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useAppMessage } from '../hooks/useAppMessage'
+import useBreakpoint from '../hooks/useBreakpoint'
+import MobileDocumentCard from '../components/ui/MobileDocumentCard'
 
 const { RangePicker } = DatePicker
 
@@ -14,6 +16,7 @@ export default function DocumentsPage() {
   const [searchParams] = useSearchParams()
   const message = useAppMessage()
   const { user } = useAuth()
+  const { isMobile } = useBreakpoint()
   const isAdmin = user?.role === 'admin'
 
   const [loading, setLoading] = useState(true)
@@ -128,17 +131,19 @@ export default function DocumentsPage() {
 
   return (
     <div className="max-w-7xl mx-auto page-enter">
-      <div className="page-header animate-fade-in-down" style={{ marginBottom: 24 }}>
-        <div className="page-header-accent" />
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>
-            Document History
-          </h1>
-          <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            {employerId ? 'Filtered by employer' : 'All generated documents'}
-          </p>
+      {!isMobile && (
+        <div className="page-header animate-fade-in-down" style={{ marginBottom: 24 }}>
+          <div className="page-header-accent" />
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>
+              Document History
+            </h1>
+            <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+              {employerId ? 'Filtered by employer' : 'All generated documents'}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div
         className="flex flex-col md:flex-row gap-3 mb-4 flex-wrap"
@@ -154,7 +159,7 @@ export default function DocumentsPage() {
             setPage(1)
           }}
           allowClear
-          style={{ maxWidth: 320, borderRadius: 'var(--radius-md)' }}
+          style={{ maxWidth: isMobile ? '100%' : 320, width: '100%', borderRadius: 'var(--radius-md)' }}
         />
         <RangePicker
           value={dateRange}
@@ -162,6 +167,7 @@ export default function DocumentsPage() {
             setDateRange(vals)
             setPage(1)
           }}
+          style={isMobile ? { width: '100%' } : undefined}
         />
         {isAdmin && (
           <div className="flex items-center gap-2">
@@ -175,6 +181,7 @@ export default function DocumentsPage() {
             setSearch(searchInput)
             setPage(1)
           }}
+          block={isMobile}
         >
           Search
         </Button>
@@ -187,6 +194,39 @@ export default function DocumentsPage() {
         className="content-panel content-panel--shadow animate-fade-in-up"
         style={{ animationDelay: '80ms' }}
       >
+        {isMobile ? (
+          <div className="mobile-doc-list">
+            {loading ? (
+              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+            ) : data.length === 0 ? (
+              <Empty
+                description="No documents found"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                style={{ padding: 24 }}
+              >
+                <Button type="primary" onClick={() => navigate('/create')}>
+                  Generate document
+                </Button>
+              </Empty>
+            ) : (
+              data.map((doc) => (
+                <MobileDocumentCard
+                  key={doc.id}
+                  doc={doc}
+                  onDownloadPdf={(id) => handleDownload(id, 'pdf')}
+                  onDownloadDocx={(id) => handleDownload(id, 'docx')}
+                />
+              ))
+            )}
+            {total > limit && (
+              <div style={{ padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Page {page}</span>
+                <Button disabled={page * limit >= total} onClick={() => setPage((p) => p + 1)}>Next</Button>
+              </div>
+            )}
+          </div>
+        ) : (
         <Table
           rowKey="id"
           columns={columns}
@@ -214,6 +254,7 @@ export default function DocumentsPage() {
           }}
           scroll={{ x: 800 }}
         />
+        )}
       </div>
     </div>
   )

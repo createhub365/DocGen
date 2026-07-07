@@ -54,15 +54,15 @@ function AppRoutes() {
         <Route path="/create" element={<CreateDocPage />} />
         <Route path="/employers" element={<EmployersPage />} />
         <Route path="/documents" element={<DocumentsPage />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPanel />
+            </AdminRoute>
+          }
+        />
       </Route>
-      <Route
-        path="/admin"
-        element={
-          <AdminRoute>
-            <AdminPanel />
-          </AdminRoute>
-        }
-      />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
