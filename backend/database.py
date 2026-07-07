@@ -6,8 +6,42 @@ import os
 import sqlite3
 
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./docgen.db")
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
+
+def _normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif url.startswith("postgresql://") and "+psycopg2" not in url:
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+    if url.startswith("postgresql") and "sslmode=" not in url:
+        separator = "&" if "?" in url else "?"
+        url = f"{url}{separator}sslmode=require"
+
+    return url
+
+
+DATABASE_URL = _normalize_database_url(
+    os.getenv("DATABASE_URL", "sqlite:///./docgen.db")
+)
+
+_engine_kwargs: dict = {}
+_connect_args: dict = {}
+
+if DATABASE_URL.startswith("sqlite"):
+    _connect_args = {"check_same_thread": False}
+else:
+    _engine_kwargs = {
+        "pool_pre_ping": True,
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
+        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
+    }
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args=_connect_args,
+    **_engine_kwargs,
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

@@ -9,14 +9,17 @@ from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from database import Base, engine
+from database import Base, engine, DATABASE_URL
 import models
 from routers import auth, filters, templates, documents, admin, public, form_helpers, employers, trade_bank
 from limiter import limiter
 
 load_dotenv()
 
-if os.getenv("ENVIRONMENT", "development").lower() == "development":
+if (
+    os.getenv("ENVIRONMENT", "development").lower() == "development"
+    and DATABASE_URL.startswith("sqlite")
+):
     Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="DocGen Pro API")
