@@ -14,6 +14,13 @@ export function AuthProvider({ children }) {
     setLoading(true)
     return getMe()
       .then((res) => {
+        if (!res) {
+          localStorage.removeItem('role')
+          localStorage.removeItem('username')
+          localStorage.removeItem('name')
+          setUser(null)
+          return
+        }
         localStorage.setItem('role', res.role)
         localStorage.setItem('username', res.username)
         localStorage.setItem('name', res.name || res.username)

@@ -1,14 +1,17 @@
 import os
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from jose import JWTError, jwt
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 import models
 from auth import (
+    ALGORITHM,
     COOKIE_MAX_AGE,
+    SECRET_KEY,
     create_access_token,
-    get_current_user,
     verify_password,
 )
 from database import get_db
@@ -71,12 +74,37 @@ def logout(response: Response):
     return {"message": "Logged out"}
 
 
-@router.get("/me", response_model=UserResponse)
-def get_me(current_user: models.User = Depends(get_current_user)):
+@router.get("/me", response_model=Optional[UserResponse])
+def get_me(
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db),
+):
+    """Return current user, or null when not logged in (no 401 for session checks)."""
+    if not access_token:
+        return None
+
+    try:
+        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if not username:
+            return None
+    except JWTError:
+        return None
+
+    try:
+        user = db.query(models.User).filter(models.User.username == username).first()
+    except SQLAlchemyError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable. Check DATABASE_URL on the server.",
+        )
+    if not user or not getattr(user, "is_active", True):
+        return None
+
     return UserResponse(
-        id=current_user.id,
-        username=current_user.username,
-        name=_display_name(current_user),
-        role=current_user.role,
-        is_active=bool(getattr(current_user, "is_active", True)),
+        id=user.id,
+        username=user.username,
+        name=_display_name(user),
+        role=user.role,
+        is_active=bool(getattr(user, "is_active", True)),
     )
