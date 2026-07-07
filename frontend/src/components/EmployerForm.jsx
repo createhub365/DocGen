@@ -17,6 +17,7 @@ import { getTradeBankIndustries } from '../api/client'
 import LogoPreview from './LogoPreview'
 import CountryFlag from './ui/CountryFlag'
 import { COUNTRY_NAME_OPTIONS_GROUPED, getCountryByName, getRegField } from '../data/countries'
+import { resolveMediaUrl } from '../utils/mediaUrl'
 
 const { Dragger } = Upload
 
@@ -27,7 +28,7 @@ export default function EmployerForm({ form, initialValues, logoPreviewUrl }) {
   const [selectedCountry, setSelectedCountry] = useState(initialValues?.country || '')
   const [industries, setIndustries] = useState([])
   const [industriesLoading, setIndustriesLoading] = useState(true)
-  const [logoPreview, setLogoPreview] = useState(logoPreviewUrl || null)
+  const [logoPreview, setLogoPreview] = useState(resolveMediaUrl(logoPreviewUrl) || null)
   const message = useAppMessage()
 
   const countryConfig = getConfig(selectedCountry)
@@ -62,7 +63,7 @@ export default function EmployerForm({ form, initialValues, logoPreviewUrl }) {
   }, [initialValues, form, getConfig])
 
   useEffect(() => {
-    setLogoPreview(logoPreviewUrl || null)
+    setLogoPreview(resolveMediaUrl(logoPreviewUrl) || null)
   }, [logoPreviewUrl])
 
   const handleCountryChange = (value) => {

@@ -20,6 +20,8 @@ import {
 import { useAppMessage } from '../hooks/useAppMessage'
 import useBreakpoint from '../hooks/useBreakpoint'
 import CountryFlag from '../components/ui/CountryFlag'
+import AppDrawer from '../components/ui/AppDrawer'
+import LogoPreview from '../components/LogoPreview'
 
 function getInitials(name) {
   if (!name) return '?'
@@ -42,6 +44,8 @@ function EmptyEmployersIllustration() {
 }
 
 const EmployerCard = memo(function EmployerCard({ emp, onEdit, onDelete, onViewDocuments, onSelect }) {
+  const [logoFailed, setLogoFailed] = useState(false)
+  const showLogo = emp.logo_url && !logoFailed
   const stop = (e) => e.stopPropagation()
 
   return (
@@ -64,7 +68,7 @@ const EmployerCard = memo(function EmployerCard({ emp, onEdit, onDelete, onViewD
               borderRadius: '50%',
               border: '2px solid var(--border)',
               boxShadow: 'var(--shadow-sm)',
-              background: emp.logo_url ? 'white' : 'linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%)',
+              background: showLogo ? 'white' : 'linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -75,8 +79,22 @@ const EmployerCard = memo(function EmployerCard({ emp, onEdit, onDelete, onViewD
               flexShrink: 0,
             }}
           >
-            {emp.logo_url ? (
-              <img src={emp.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {showLogo ? (
+              <LogoPreview
+                src={emp.logo_url}
+                alt=""
+                maxWidth={52}
+                maxHeight={52}
+                onError={() => setLogoFailed(true)}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
             ) : (
               getInitials(emp.company_name)
             )}
@@ -340,60 +358,27 @@ const actionBtnStyle = {
 }
 
 function EmployerDrawer({ open, editing, form, formKey, onClose, onSave }) {
-  if (!open) return null
-
   return (
-    <>
-      <div className="docflow-drawer-overlay" onClick={onClose} role="presentation" />
-      <div className="docflow-drawer-panel">
-        <div
-          className="docflow-drawer-header flex items-center justify-between flex-shrink-0 px-6 py-4"
-          style={{ borderBottom: '1px solid var(--border)' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 3, height: 20, background: 'var(--primary)', borderRadius: 2 }} />
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-              {editing ? 'Edit Employer' : 'Add Employer'}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: 20,
-              cursor: 'pointer',
-              color: 'var(--text-muted)',
-              lineHeight: 1,
-            }}
-          >
-            ×
-          </button>
+    <AppDrawer
+      open={open}
+      onClose={onClose}
+      onSave={onSave}
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 3, height: 20, background: 'var(--primary)', borderRadius: 2 }} />
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+            {editing ? 'Edit Employer' : 'Add Employer'}
+          </h2>
         </div>
-
-        <div className="docflow-drawer-body flex-1 overflow-y-auto px-6 py-4 docflow-input">
-          <EmployerForm
-            key={formKey}
-            form={form}
-            initialValues={editing}
-            logoPreviewUrl={editing?.logo_url}
-          />
-        </div>
-
-        <div
-          className="docflow-drawer-footer flex gap-3 justify-end flex-shrink-0 px-6 py-4"
-          style={{ borderTop: '1px solid var(--border)' }}
-        >
-          <button type="button" className="docflow-drawer-btn docflow-drawer-btn--ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="button" className="docflow-drawer-btn docflow-drawer-btn--primary" onClick={onSave}>
-            Save
-          </button>
-        </div>
-      </div>
-    </>
+      }
+    >
+      <EmployerForm
+        key={formKey}
+        form={form}
+        initialValues={editing}
+        logoPreviewUrl={editing?.logo_url}
+      />
+    </AppDrawer>
   )
 }
 

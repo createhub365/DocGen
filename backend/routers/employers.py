@@ -269,7 +269,6 @@ def delete_employer(
 def get_employer_logo(
     employer_id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
 ):
     employer = db.query(models.Employer).filter(models.Employer.id == employer_id).first()
     if not employer or not employer.company_logo_path:

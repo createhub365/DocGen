@@ -18,6 +18,7 @@ import {
   getPrimaryOccupationCode,
 } from '../../data/occupationCodes'
 import { getCountryByName } from '../../data/countries'
+import AppDrawer from '../ui/AppDrawer'
 
 function employerMatchesCountry(employerCountry, selectedCountry) {
   if (!selectedCountry || !employerCountry) return true
@@ -98,24 +99,19 @@ const EmployerCard = memo(function EmployerCard({ emp, selected, onSelect }) {
 })
 
 function EmployerDrawer({ open, form, formKey, onClose, onSave }) {
-  if (!open) return null
   return (
-    <>
-      <div className="docflow-drawer-overlay" onClick={onClose} role="presentation" />
-      <div className="docflow-drawer-panel">
-        <div className="docflow-drawer-header flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <h2 className="text-lg font-bold m-0" style={{ color: 'var(--primary)' }}>Add New Employer</h2>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>×</button>
-        </div>
-        <div className="docflow-drawer-body flex-1 overflow-y-auto px-6 py-4 docflow-input">
-          <EmployerForm key={formKey} form={form} />
-        </div>
-        <div className="docflow-drawer-footer flex gap-3 justify-end px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <button type="button" className="docflow-drawer-btn docflow-drawer-btn--ghost" onClick={onClose}>Cancel</button>
-          <button type="button" className="docflow-drawer-btn docflow-drawer-btn--primary" onClick={onSave}>Save</button>
-        </div>
-      </div>
-    </>
+    <AppDrawer
+      open={open}
+      onClose={onClose}
+      onSave={onSave}
+      title={
+        <h2 className="text-lg font-bold m-0" style={{ color: 'var(--primary)' }}>
+          Add New Employer
+        </h2>
+      }
+    >
+      <EmployerForm key={formKey} form={form} />
+    </AppDrawer>
   )
 }
 

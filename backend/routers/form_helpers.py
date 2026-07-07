@@ -74,10 +74,7 @@ def increment_ref_counter(
 
 
 @router.get("/uploads/logos/{filename}")
-def get_logo(
-    filename: str,
-    _: models.User = Depends(get_current_user),
-):
+def get_logo(filename: str):
     safe_name = safe_filename(filename)
     logo_path = safe_join(LOGO_DIR, safe_name)
     if not os.path.exists(logo_path):
