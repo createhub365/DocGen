@@ -31,10 +31,6 @@ export default defineConfig({
             return 'vendor-router'
           }
 
-          if (id.includes('@ant-design/icons')) {
-            return 'vendor-antd-icons'
-          }
-
           if (
             id.includes('node_modules/antd') ||
             id.includes('node_modules/@ant-design') ||
