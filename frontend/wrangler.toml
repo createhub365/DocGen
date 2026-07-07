@@ -1,6 +1,9 @@
 name = "docgen"
 compatibility_date = "2026-07-07"
 
+[build]
+command = "npm install && npm run build:deploy"
+
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"
