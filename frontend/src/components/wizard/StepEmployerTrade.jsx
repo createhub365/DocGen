@@ -247,7 +247,7 @@ export default function StepEmployerTrade({ onContinue, onBack, onRegisterNav })
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6" style={{ minHeight: 400 }}>
+    <div className="employer-trade-layout flex flex-col lg:flex-row gap-6" style={{ minHeight: 400 }}>
       {/* Left: Employers 55% */}
       <div style={{ flex: '1 1 55%', minWidth: 0 }}>
         <Text strong style={{ display: 'block', marginBottom: 12, color: 'var(--primary)' }}>
@@ -306,13 +306,13 @@ export default function StepEmployerTrade({ onContinue, onBack, onRegisterNav })
 
       {/* Right: Trade 45% */}
       <div
+        className="employer-trade-panel docflow-input"
         style={{
           flex: '1 1 45%',
           minWidth: 0,
           borderLeft: '1px solid var(--border)',
           paddingLeft: 24,
         }}
-        className="docflow-input"
       >
         <Text strong style={{ display: 'block', marginBottom: 12, color: 'var(--primary)' }}>
           Select Trade

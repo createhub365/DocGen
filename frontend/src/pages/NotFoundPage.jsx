@@ -5,7 +5,7 @@ export default function NotFoundPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen flex items-center justify-center animate-fade-in-up" style={{ background: 'var(--surface-2)', padding: 24 }}>
+    <div className="min-h-screen flex items-center justify-center animate-fade-in-up login-page" style={{ background: 'var(--surface-2)' }}>
       <Result
         status="404"
         title="Page not found"

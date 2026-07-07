@@ -161,11 +161,11 @@ export default function DashboardPage() {
 
       {/* ── Quick Actions ─────────────────────────── */}
       <div style={{ marginBottom: 8 }}>
-        <h2 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <h2 className="page-section-title" style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Quick Actions
         </h2>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 dashboard-quick-grid">
         <button
           type="button"
           className="action-card-maroon animate-fade-in-up"

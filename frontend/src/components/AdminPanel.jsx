@@ -1461,6 +1461,7 @@ function TemplatesTab({
 
       {!loading && (countryOptions.length > 0 || industryOptions.length > 0 || docTypeOptions.length > 0) && (
         <div
+          className="admin-filter-panel"
           style={{
             marginBottom: 20,
             padding: '14px 16px',
@@ -1506,7 +1507,7 @@ function TemplatesTab({
 
       {/* Gallery grid */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 20 }} className="admin-template-grid">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} style={{ borderRadius: 12, overflow: 'hidden', border: '2px solid var(--border)' }}>
               <div className="animate-shimmer" style={{ aspectRatio: '210/290', animationDelay: `${i * 60}ms` }} />
@@ -1525,7 +1526,7 @@ function TemplatesTab({
             : 'No templates yet — upload your first one'}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 20 }} className="admin-template-grid">
           {filtered.map((tpl) => (
             <TemplateCard
               key={tpl.id}
@@ -1687,6 +1688,7 @@ function EmployersImportTab() {
 
 function UsersTab() {
   const { user: currentUser } = useAuth()
+  const { isMobile } = useBreakpoint()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [form] = Form.useForm()
@@ -1857,21 +1859,64 @@ function UsersTab() {
 
   return (
     <div>
-      <Table columns={columns} dataSource={users} rowKey="id" loading={loading} />
-      <Card title="Add User" style={{ marginTop: 24 }}>
-        <Form form={form} layout="inline" onFinish={handleCreate} wrap>
+      {isMobile ? (
+        <div className="mobile-only-block mobile-user-list">
+          {loading ? (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Loading users...</div>
+          ) : (
+            users.map((record) => (
+              <article key={record.id} className="mobile-user-card">
+                <div className="mobile-user-card__head">
+                  <div>
+                    <h3 className="mobile-user-card__name">{record.name || record.username}</h3>
+                    <div className="mobile-user-card__meta">@{record.username}</div>
+                  </div>
+                  <Tag color={record.role === 'admin' ? 'blue' : 'default'}>{record.role}</Tag>
+                </div>
+                <div className="mobile-user-card__meta">
+                  {record.is_active === false ? 'Inactive' : 'Active'}
+                  {record.created_at ? ` · ${dayjs(record.created_at).format('MMM D, YYYY')}` : ''}
+                </div>
+                <div className="mobile-user-card__actions">
+                  <Button size="small" icon={<EditOutlined />} onClick={() => openEditUser(record)}>
+                    Edit
+                  </Button>
+                  <Button size="small" icon={<LockOutlined />} onClick={() => openPasswordModal(record)}>
+                    Password
+                  </Button>
+                  <Popconfirm
+                    title="Remove this user?"
+                    okText="Remove"
+                    okButtonProps={{ danger: true }}
+                    disabled={isSelf(record)}
+                    onConfirm={() => handleDeleteUser(record.id)}
+                  >
+                    <Button size="small" danger icon={<DeleteOutlined />} disabled={isSelf(record)}>
+                      Remove
+                    </Button>
+                  </Popconfirm>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      ) : (
+      <Table columns={columns} dataSource={users} rowKey="id" loading={loading} scroll={{ x: 720 }} />
+      )}
+      <Card title="Add User" style={{ marginTop: 24 }} className={isMobile ? 'mobile-add-user-card' : undefined}>
+        <Form form={form} layout={isMobile ? 'vertical' : 'inline'} onFinish={handleCreate} wrap>
           <Form.Item name="name" rules={[{ required: true, message: 'Name required' }]}>
-            <Input placeholder="Full name" style={{ width: 160 }} />
+            <Input placeholder="Full name" style={isMobile ? undefined : { width: 160 }} />
           </Form.Item>
           <Form.Item name="username" rules={[{ required: true, message: 'User ID required' }]}>
-            <Input placeholder="User ID" style={{ width: 140 }} />
+            <Input placeholder="User ID" style={isMobile ? undefined : { width: 140 }} />
           </Form.Item>
           <Form.Item name="password" rules={[{ required: true, min: 6 }]}>
-            <Input.Password placeholder="Password" style={{ width: 140 }} />
+            <Input.Password placeholder="Password" style={isMobile ? undefined : { width: 140 }} />
           </Form.Item>
           <Form.Item name="role" initialValue="staff" rules={[{ required: true }]}>
             <Select
-              style={{ width: 120 }}
+              style={isMobile ? undefined : { width: 120 }}
               options={[
                 { value: 'staff', label: 'Staff' },
                 { value: 'admin', label: 'Admin' },
@@ -1879,7 +1924,7 @@ function UsersTab() {
             />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block={isMobile}>
               Add User
             </Button>
           </Form.Item>

@@ -18,6 +18,7 @@ import {
   deleteEmployer,
 } from '../api/client'
 import { useAppMessage } from '../hooks/useAppMessage'
+import useBreakpoint from '../hooks/useBreakpoint'
 import CountryFlag from '../components/ui/CountryFlag'
 
 function getInitials(name) {
@@ -190,7 +191,7 @@ const EmployerCard = memo(function EmployerCard({ emp, onEdit, onDelete, onViewD
         )}
 
         <div
-          className="flex items-center gap-1 pt-3"
+          className="flex items-center gap-1 pt-3 employer-card-actions"
           style={{ borderTop: '1px solid var(--border)' }}
         >
           <button
@@ -236,7 +237,8 @@ function EmployerTemplatesModal({ employer, open, onClose }) {
       onCancel={onClose}
       footer={null}
       title={employer.company_name}
-      width={600}
+      width="100%"
+      style={{ maxWidth: 600, top: 20 }}
       destroyOnHidden
     >
       <div style={{ marginBottom: 16 }}>
@@ -380,7 +382,7 @@ function EmployerDrawer({ open, editing, form, formKey, onClose, onSave }) {
         </div>
 
         <div
-          className="flex gap-3 justify-end flex-shrink-0 px-6 py-4"
+          className="flex gap-3 justify-end flex-shrink-0 px-6 py-4 docflow-drawer-footer"
           style={{ borderTop: '1px solid var(--border)' }}
         >
           <button
@@ -422,6 +424,7 @@ function EmployerDrawer({ open, editing, form, formKey, onClose, onSave }) {
 
 export default function EmployersPage() {
   const navigate = useNavigate()
+  const { isMobile } = useBreakpoint()
   const [employers, setEmployers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -513,28 +516,62 @@ export default function EmployersPage() {
 
   return (
     <div className="max-w-6xl mx-auto page-enter">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 animate-fade-in-down">
-        <div className="page-header" style={{ margin: 0 }}>
-          <div className="page-header-accent" />
-          <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
-              Employer Master
-            </h1>
-            <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-              {countryCount > 0
-                ? `${employers.length} employers across ${countryCount} ${countryCount === 1 ? 'country' : 'countries'}`
-                : 'Manage company profiles for all countries'}
-            </p>
+      {!isMobile ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 animate-fade-in-down">
+          <div className="page-header" style={{ margin: 0 }}>
+            <div className="page-header-accent" />
+            <div>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+                Employer Master
+              </h1>
+              <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+                {countryCount > 0
+                  ? `${employers.length} employers across ${countryCount} ${countryCount === 1 ? 'country' : 'countries'}`
+                  : 'Manage company profiles for all countries'}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 flex-wrap justify-end">
+            <Select
+              allowClear
+              placeholder="All countries"
+              value={countryFilter || undefined}
+              onChange={(val) => setCountryFilter(val || '')}
+              options={countryOptions}
+              style={{ width: 180, borderRadius: 'var(--radius-md)' }}
+              showSearch
+              optionFilterProp="label"
+            />
+            <Input
+              prefix={<SearchOutlined style={{ color: 'var(--text-muted)' }} />}
+              placeholder="Search company or country"
+              allowClear
+              onChange={(e) => {
+                if (!e.target.value) {
+                  setSearch('')
+                  load('')
+                }
+              }}
+              onPressEnter={(e) => {
+                setSearch(e.target.value)
+                load(e.target.value)
+              }}
+              style={{ width: 260, borderRadius: 'var(--radius-md)' }}
+            />
+            <button type="button" onClick={openCreate} className="mobile-primary-btn" style={{ width: 'auto', height: 40 }}>
+              <PlusOutlined />
+              Add Employer
+            </button>
           </div>
         </div>
-        <div className="flex gap-3 flex-wrap justify-end">
+      ) : (
+        <div className="mobile-page-toolbar">
           <Select
             allowClear
             placeholder="All countries"
             value={countryFilter || undefined}
             onChange={(val) => setCountryFilter(val || '')}
             options={countryOptions}
-            style={{ width: 180, borderRadius: 'var(--radius-md)' }}
             showSearch
             optionFilterProp="label"
           />
@@ -552,32 +589,13 @@ export default function EmployersPage() {
               setSearch(e.target.value)
               load(e.target.value)
             }}
-            style={{ width: 260, borderRadius: 'var(--radius-md)' }}
           />
-          <button
-            type="button"
-            onClick={openCreate}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '0 20px',
-              height: 40,
-              background: 'linear-gradient(135deg, #8B1A1A 0%, #A52A2A 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: 'var(--radius-md)',
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <button type="button" onClick={openCreate} className="mobile-primary-btn">
             <PlusOutlined />
             Add Employer
           </button>
         </div>
-      </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -615,7 +633,7 @@ export default function EmployersPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 stagger-fade">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 stagger-fade">
           {filteredEmployers.map((emp) => (
             <EmployerCard
               key={emp.id}

@@ -403,7 +403,7 @@ export default function StepSmartFillForm({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
+    <div className="smart-fill-shell" style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
       <div
         style={{
           flex: 1,
@@ -414,7 +414,7 @@ export default function StepSmartFillForm({
           overflow: 'hidden',
         }}
       >
-        <div style={{ ...columnBarStyle, borderBottom: '1px solid var(--border)' }}>
+        <div className="smart-fill-header" style={{ ...columnBarStyle, borderBottom: '1px solid var(--border)' }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <Title level={5} style={{ margin: 0, lineHeight: 1.2, color: 'var(--primary)' }}>
               {isPreview ? 'Review & Generate' : currentSection?.title || 'Fill & Generate'}
@@ -428,7 +428,7 @@ export default function StepSmartFillForm({
           </div>
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: '16px 20px' }}>
+        <div className="smart-fill-body" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: '16px 20px' }}>
         <div className="form-progress-bar" style={{ marginBottom: 12 }}>
           <div
             className="form-progress-fill"

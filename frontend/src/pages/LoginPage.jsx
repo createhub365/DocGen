@@ -36,7 +36,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center"
+      className="login-page min-h-screen flex items-center justify-center"
       style={{
         background: 'linear-gradient(135deg, #6B0F0F 0%, #3D0505 45%, #1A0A0A 100%)',
         padding: 24,
@@ -85,6 +85,7 @@ export default function LoginPage() {
         </div>
 
         <div
+          className="login-card"
           style={{
             background: 'var(--surface)',
             borderRadius: 'var(--radius-xl)',
