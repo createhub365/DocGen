@@ -15,24 +15,21 @@ export default function WizardBottomBar({
 
   if (isMobile) {
     return (
-      <div className="wizard-bottom-bar">
-        <div style={{ display: 'flex', width: '100%', gap: 8, alignItems: 'center' }}>
+      <div className="wizard-bottom-bar wizard-bottom-bar--mobile">
+        {center ? <div className="wizard-bottom-bar__center">{center}</div> : null}
+        <div className="wizard-bottom-bar__actions">
           {!backHidden && (
-            <button type="button" className="wizard-btn-back" onClick={onBack} style={{ flex: '0 0 auto' }}>
+            <button type="button" className="wizard-btn-back" onClick={onBack}>
               {backLabel}
             </button>
           )}
-          {center && (
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
-              {center}
-            </div>
-          )}
           <Button
             type="primary"
+            className="wizard-btn-next"
             onClick={onNext}
             disabled={nextDisabled}
             loading={nextLoading}
-            style={{ flex: backHidden ? 1 : '1 1 auto', minHeight: 44 }}
+            block={backHidden}
           >
             {nextLabel}
           </Button>
