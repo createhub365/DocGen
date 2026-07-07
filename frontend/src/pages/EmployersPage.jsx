@@ -347,7 +347,7 @@ function EmployerDrawer({ open, editing, form, formKey, onClose, onSave }) {
       <div className="docflow-drawer-overlay" onClick={onClose} role="presentation" />
       <div className="docflow-drawer-panel">
         <div
-          className="flex items-center justify-between flex-shrink-0 px-6 py-4"
+          className="docflow-drawer-header flex items-center justify-between flex-shrink-0 px-6 py-4"
           style={{ borderBottom: '1px solid var(--border)' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -372,7 +372,7 @@ function EmployerDrawer({ open, editing, form, formKey, onClose, onSave }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4 docflow-input">
+        <div className="docflow-drawer-body flex-1 overflow-y-auto px-6 py-4 docflow-input">
           <EmployerForm
             key={formKey}
             form={form}
@@ -382,38 +382,13 @@ function EmployerDrawer({ open, editing, form, formKey, onClose, onSave }) {
         </div>
 
         <div
-          className="flex gap-3 justify-end flex-shrink-0 px-6 py-4 docflow-drawer-footer"
+          className="docflow-drawer-footer flex gap-3 justify-end flex-shrink-0 px-6 py-4"
           style={{ borderTop: '1px solid var(--border)' }}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: '10px 20px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)',
-              background: 'var(--surface)',
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 500,
-            }}
-          >
+          <button type="button" className="docflow-drawer-btn docflow-drawer-btn--ghost" onClick={onClose}>
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={onSave}
-            style={{
-              padding: '10px 24px',
-              borderRadius: 'var(--radius-md)',
-              border: 'none',
-              background: 'linear-gradient(135deg, #8B1A1A 0%, #A52A2A 100%)',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
+          <button type="button" className="docflow-drawer-btn docflow-drawer-btn--primary" onClick={onSave}>
             Save
           </button>
         </div>

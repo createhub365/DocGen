@@ -103,16 +103,16 @@ function EmployerDrawer({ open, form, formKey, onClose, onSave }) {
     <>
       <div className="docflow-drawer-overlay" onClick={onClose} role="presentation" />
       <div className="docflow-drawer-panel">
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="docflow-drawer-header flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-lg font-bold m-0" style={{ color: 'var(--primary)' }}>Add New Employer</h2>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>×</button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-4 docflow-input">
+        <div className="docflow-drawer-body flex-1 overflow-y-auto px-6 py-4 docflow-input">
           <EmployerForm key={formKey} form={form} />
         </div>
-        <div className="flex gap-3 justify-end px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <button type="button" onClick={onClose} style={{ padding: '10px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'white', cursor: 'pointer' }}>Cancel</button>
-          <button type="button" onClick={onSave} style={{ padding: '10px 24px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer', fontWeight: 600 }}>Save</button>
+        <div className="docflow-drawer-footer flex gap-3 justify-end px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <button type="button" className="docflow-drawer-btn docflow-drawer-btn--ghost" onClick={onClose}>Cancel</button>
+          <button type="button" className="docflow-drawer-btn docflow-drawer-btn--primary" onClick={onSave}>Save</button>
         </div>
       </div>
     </>
