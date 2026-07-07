@@ -31,6 +31,7 @@ _connect_args: dict = {}
 if DATABASE_URL.startswith("sqlite"):
     _connect_args = {"check_same_thread": False}
 else:
+    _connect_args = {"connect_timeout": 10}
     _engine_kwargs = {
         "pool_pre_ping": True,
         "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),

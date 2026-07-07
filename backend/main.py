@@ -1,13 +1,15 @@
 import os
+import traceback
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy import text
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
 
 from database import Base, engine, DATABASE_URL
 import models
@@ -27,7 +29,8 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174").split(",")
+_cors_default = "http://localhost:5173,http://localhost:5174,https://docgen.createhub365.workers.dev"
+_cors_origins = os.getenv("CORS_ORIGINS", _cors_default).split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in _cors_origins if o.strip()],
@@ -52,6 +55,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(SecurityHeadersMiddleware)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    print(f"[ERROR] {request.method} {request.url.path}: {exc}", flush=True)
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(filters.router, prefix="/api")
@@ -94,6 +108,17 @@ async def validate_environment():
             warnings.append(
                 "WARNING: Weak or default SEED_ADMIN_PASSWORD detected"
             )
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("[STARTUP] Database connection OK", flush=True)
+    except Exception as exc:
+        msg = f"CRITICAL: Database connection failed: {exc}"
+        print(f"[STARTUP] {msg}", flush=True)
+        if env == "production":
+            raise RuntimeError(msg) from exc
+        warnings.append(msg)
 
     for w in warnings:
         print(f"[SECURITY] {w}", flush=True)
