@@ -115,6 +115,11 @@ async def validate_environment():
         print("[STARTUP] Database connection OK", flush=True)
     except Exception as exc:
         msg = f"CRITICAL: Database connection failed: {exc}"
+        if "@" in str(getattr(exc, "orig", exc)) and "pooler.supabase.com" in os.getenv("DATABASE_URL", ""):
+            msg += (
+                " — If your password contains @, #, or %, set DATABASE_PASSWORD "
+                "separately and remove the password from DATABASE_URL."
+            )
         print(f"[STARTUP] {msg}", flush=True)
         if env == "production":
             raise RuntimeError(msg) from exc
