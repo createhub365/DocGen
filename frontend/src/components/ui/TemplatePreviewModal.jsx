@@ -1,49 +1,84 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal, Button, Spin, Typography } from 'antd'
 import { FileWordOutlined, LoadingOutlined } from '@ant-design/icons'
+import { fetchTemplateDocxBlob } from '../../api/client'
+import { renderDocxToContainer } from '../../utils/docxPageRenderer'
+import { probeImage, templateThumbnailUrl } from '../../utils/mediaUrl'
 
 const { Text } = Typography
 
-function templateThumbnailUrl(templateId) {
-  return `/api/templates/${templateId}/thumbnail`
-}
-
 export default function TemplatePreviewModal({ templateId, title, open, onClose }) {
   const [loading, setLoading] = useState(false)
-  const [hasThumbnail, setHasThumbnail] = useState(false)
+  const [mode, setMode] = useState('idle')
   const [cacheKey, setCacheKey] = useState(0)
+  const docxHostRef = useRef(null)
 
   useEffect(() => {
     if (!open || !templateId) {
-      setHasThumbnail(false)
+      setMode('idle')
       setLoading(false)
       return undefined
     }
 
-    setCacheKey(Date.now())
     let cancelled = false
+    setCacheKey(Date.now())
     setLoading(true)
-    setHasThumbnail(false)
+    setMode('idle')
 
-    const img = new Image()
-    img.src = `${templateThumbnailUrl(templateId)}?v=${Date.now()}`
-    img.onload = () => {
-      if (!cancelled) {
-        setHasThumbnail(true)
+    async function loadPreview() {
+      const thumbUrl = `${templateThumbnailUrl(templateId)}?v=${Date.now()}`
+      const hasThumb = await probeImage(thumbUrl)
+      if (cancelled) return
+
+      if (hasThumb) {
+        setMode('thumbnail')
         setLoading(false)
+        return
       }
+
+      setMode('docx')
     }
-    img.onerror = () => {
-      if (!cancelled) {
-        setHasThumbnail(false)
-        setLoading(false)
-      }
-    }
+
+    loadPreview()
 
     return () => {
       cancelled = true
     }
   }, [open, templateId])
+
+  useEffect(() => {
+    if (!open || !templateId || mode !== 'docx') return undefined
+
+    let cancelled = false
+
+    async function renderDocxPreview() {
+      try {
+        const blob = await fetchTemplateDocxBlob(templateId)
+        if (cancelled) return
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        if (!docxHostRef.current) return
+        docxHostRef.current.innerHTML = ''
+        await renderDocxToContainer(docxHostRef.current, blob, {
+          pageWidth: 794,
+        })
+        if (!cancelled) setLoading(false)
+      } catch {
+        if (!cancelled) {
+          setMode('error')
+          setLoading(false)
+        }
+      }
+    }
+
+    renderDocxPreview()
+
+    return () => {
+      cancelled = true
+      if (docxHostRef.current) {
+        docxHostRef.current.innerHTML = ''
+      }
+    }
+  }, [open, templateId, mode])
 
   return (
     <Modal
@@ -72,15 +107,15 @@ export default function TemplatePreviewModal({ templateId, title, open, onClose 
           <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />} />
         </div>
       )}
-      {!loading && !hasThumbnail && (
+      {!loading && mode === 'error' && (
         <div style={{ textAlign: 'center', padding: '32px 0' }}>
           <FileWordOutlined style={{ fontSize: 48, color: '#ccc', marginBottom: 16 }} />
           <Text type="secondary" style={{ display: 'block' }}>
-            Preview not ready yet. Use Regenerate Thumbnails in the Admin Panel.
+            Preview could not be loaded. Try Regenerate Thumbnails in Admin Panel.
           </Text>
         </div>
       )}
-      {!loading && hasThumbnail && (
+      {!loading && mode === 'thumbnail' && (
         <div
           style={{
             maxWidth: 794,
@@ -99,6 +134,20 @@ export default function TemplatePreviewModal({ templateId, title, open, onClose 
               imageRendering: 'auto',
             }}
           />
+        </div>
+      )}
+      {mode === 'docx' && (
+        <div
+          style={{
+            display: loading ? 'none' : 'block',
+            maxWidth: 794,
+            margin: '0 auto',
+            background: '#fff',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+            padding: 16,
+          }}
+        >
+          <div ref={docxHostRef} className="live-preview-docx" />
         </div>
       )}
     </Modal>

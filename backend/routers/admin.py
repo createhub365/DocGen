@@ -34,6 +34,7 @@ from services.trade_bank_admin import (
 )
 from services.placeholder_extractor import extract_placeholders
 from services.thumbnail_gen import generate_docx_thumbnail, regenerate_all_thumbnails
+from services.thumbnail_service import persist_generated_thumbnail, serve_template_thumbnail
 from services.employer_import import (
     MAX_EMPLOYER_CSV_SIZE,
     import_employer_rows,
@@ -170,10 +171,7 @@ def _apply_template_thumbnail(template, db, docx_path: str | None = None) -> Non
             thumbnail_dir=thumbnail_dir,
             template_id=template.id,
         )
-        if thumb_rel:
-            template.thumbnail_path = thumb_rel
-            db.commit()
-            db.refresh(template)
+        persist_generated_thumbnail(template, db, thumb_rel, TEMPLATE_DIR)
     except Exception as exc:
         logger.warning("Thumbnail skipped for template %s: %s", template.id, exc)
 
@@ -387,21 +385,10 @@ def download_template_docx(
 def get_template_thumbnail(
     template_id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_admin_user),
 ):
     """Serve template page-1 thumbnail PNG."""
     template = _get_template_or_404(template_id, db)
-
-    if template.thumbnail_path:
-        thumb_path = safe_join_relative(TEMPLATE_DIR, template.thumbnail_path)
-        if os.path.exists(thumb_path):
-            return FileResponse(
-                thumb_path,
-                media_type="image/png",
-                headers={"Cache-Control": "max-age=3600"},
-            )
-
-    raise HTTPException(status_code=404, detail="No thumbnail available")
+    return serve_template_thumbnail(template, TEMPLATE_DIR)
 
 
 @router.post("/templates/regenerate-thumbnails")
@@ -424,9 +411,7 @@ def regenerate_thumbnails(
             continue
         row = db.query(models.Template).filter(models.Template.id == tid).first()
         if row:
-            row.thumbnail_path = rel
-
-    db.commit()
+            persist_generated_thumbnail(row, db, rel, TEMPLATE_DIR)
 
     return {
         "message": f"Regenerated {len(results['success'])} thumbnails",

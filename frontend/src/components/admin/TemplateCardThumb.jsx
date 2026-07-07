@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { FileWordOutlined, LoadingOutlined } from '@ant-design/icons'
+import { templateThumbnailUrl } from '../../utils/mediaUrl'
 
 export default function TemplateCardThumb({ templateId }) {
   const [state, setState] = useState('loading')
@@ -11,7 +12,7 @@ export default function TemplateCardThumb({ templateId }) {
     }
 
     const img = new Image()
-    img.src = `/api/templates/${templateId}/thumbnail`
+    img.src = `${templateThumbnailUrl(templateId)}?v=${templateId}`
     img.onload = () => setState('image')
     img.onerror = () => setState('icon')
 
@@ -37,7 +38,7 @@ export default function TemplateCardThumb({ templateId }) {
   if (state === 'image') {
     return (
       <img
-        src={`/api/templates/${templateId}/thumbnail`}
+        src={`${templateThumbnailUrl(templateId)}?v=${templateId}`}
         alt="Template preview"
         style={{
           width: '100%',
@@ -63,7 +64,7 @@ export default function TemplateCardThumb({ templateId }) {
       }}
     >
       <FileWordOutlined style={{ fontSize: 40, color: '#ccc' }} />
-      <span style={{ fontSize: 10, color: '#bbb' }}>Generating preview...</span>
+      <span style={{ fontSize: 10, color: '#bbb' }}>Word template</span>
     </div>
   )
 }

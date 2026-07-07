@@ -3,7 +3,6 @@ import os
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 import models
@@ -18,7 +17,7 @@ from services.template_catalog import (
     industries_match,
     resolve_template_industry,
 )
-from utils.file_utils import safe_join_relative
+from services.thumbnail_service import serve_template_thumbnail
 
 load_dotenv()
 TEMPLATE_DIR = os.getenv("TEMPLATE_DIR", "./template_store")
@@ -129,21 +128,15 @@ def list_templates(
 def get_template_thumbnail(
     template_id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
 ):
     template = (
         db.query(models.Template)
         .filter(models.Template.id == template_id, models.Template.is_active == True)
         .first()
     )
-    if not template or not template.thumbnail_path:
-        raise HTTPException(status_code=404, detail="No thumbnail available")
-
-    thumb_path = safe_join_relative(TEMPLATE_DIR, template.thumbnail_path)
-    if not os.path.exists(thumb_path):
-        raise HTTPException(status_code=404, detail="Thumbnail file not found")
-
-    return FileResponse(thumb_path, media_type="image/png")
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return serve_template_thumbnail(template, TEMPLATE_DIR)
 
 
 @router.get("/template/{template_id}", response_model=TemplateFieldsResponse)

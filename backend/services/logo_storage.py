@@ -6,6 +6,7 @@ import urllib.request
 from utils.file_utils import safe_join
 
 BUCKET = "employer-logos"
+THUMBNAIL_BUCKET = "template-thumbnails"
 SB_PREFIX = "sb://"
 _LOGO_MEDIA_TYPES = {
     ".png": "image/png",
@@ -30,8 +31,16 @@ def is_remote_path(stored_path: str | None) -> bool:
     return bool(stored_path and stored_path.startswith(SB_PREFIX))
 
 
+def _parse_stored_path(stored_path: str) -> tuple[str, str]:
+    rest = stored_path[len(SB_PREFIX) :]
+    if "/" in rest:
+        bucket, filename = rest.split("/", 1)
+        return bucket, filename
+    return BUCKET, rest
+
+
 def _remote_filename(stored_path: str) -> str:
-    return stored_path[len(SB_PREFIX) :]
+    return _parse_stored_path(stored_path)[1]
 
 
 def _request(method: str, path: str, data: bytes | None = None, headers: dict | None = None) -> bytes:
@@ -52,14 +61,14 @@ def _request(method: str, path: str, data: bytes | None = None, headers: dict | 
         return response.read()
 
 
-def ensure_bucket() -> None:
+def ensure_bucket(bucket: str = BUCKET) -> None:
     if not storage_enabled():
         return
     try:
         _request(
             "POST",
             "/storage/v1/bucket",
-            data=json.dumps({"id": BUCKET, "name": BUCKET, "public": True}).encode("utf-8"),
+            data=json.dumps({"id": bucket, "name": bucket, "public": True}).encode("utf-8"),
             headers={"Content-Type": "application/json"},
         )
     except urllib.error.HTTPError as exc:
@@ -67,10 +76,16 @@ def ensure_bucket() -> None:
             raise
 
 
-def save_logo(content: bytes, filename: str, content_type: str, logo_dir: str) -> str:
+def _save_object(
+    bucket: str,
+    content: bytes,
+    filename: str,
+    content_type: str,
+    local_dir: str,
+) -> str:
     if storage_enabled():
-        ensure_bucket()
-        object_path = f"{BUCKET}/{filename}"
+        ensure_bucket(bucket)
+        object_path = f"{bucket}/{filename}"
         _request(
             "POST",
             f"/storage/v1/object/{object_path}",
@@ -80,13 +95,20 @@ def save_logo(content: bytes, filename: str, content_type: str, logo_dir: str) -
                 "x-upsert": "true",
             },
         )
-        return f"{SB_PREFIX}{filename}"
+        return f"{SB_PREFIX}{bucket}/{filename}"
 
-    os.makedirs(logo_dir, exist_ok=True)
-    path = safe_join(logo_dir, filename)
+    os.makedirs(local_dir, exist_ok=True)
+    path = safe_join(local_dir, filename)
     with open(path, "wb") as handle:
         handle.write(content)
     return filename
+
+
+def save_logo(content: bytes, filename: str, content_type: str, logo_dir: str) -> str:
+    stored = _save_object(BUCKET, content, filename, content_type, logo_dir)
+    if is_remote_path(stored):
+        return stored
+    return stored
 
 
 def delete_logo(stored_path: str | None, logo_dir: str) -> None:
@@ -96,7 +118,8 @@ def delete_logo(stored_path: str | None, logo_dir: str) -> None:
     if is_remote_path(stored_path):
         if not storage_enabled():
             return
-        object_path = f"{BUCKET}/{_remote_filename(stored_path)}"
+        bucket, filename = _parse_stored_path(stored_path)
+        object_path = f"{bucket}/{filename}"
         try:
             _request("DELETE", f"/storage/v1/object/{object_path}")
         except urllib.error.HTTPError:
@@ -113,9 +136,16 @@ def public_url_for_stored_path(stored_path: str) -> str | None:
         return None
     if is_remote_path(stored_path):
         url, _ = _supabase_config()
-        filename = _remote_filename(stored_path)
-        return f"{url}/storage/v1/object/public/{BUCKET}/{filename}"
+        bucket, filename = _parse_stored_path(stored_path)
+        return f"{url}/storage/v1/object/public/{bucket}/{filename}"
     return None
+
+
+def save_thumbnail(content: bytes, filename: str, thumbnail_dir: str) -> str:
+    stored = _save_object(THUMBNAIL_BUCKET, content, filename, "image/png", thumbnail_dir)
+    if is_remote_path(stored):
+        return stored
+    return f"thumbnails/{filename}"
 
 
 def resolve_logo_local_path(stored_path: str | None, logo_dir: str) -> str | None:
@@ -125,14 +155,14 @@ def resolve_logo_local_path(stored_path: str | None, logo_dir: str) -> str | Non
     if is_remote_path(stored_path):
         if not storage_enabled():
             return None
-        filename = _remote_filename(stored_path)
+        bucket, filename = _parse_stored_path(stored_path)
         cache_dir = os.path.join(logo_dir, ".cache")
         os.makedirs(cache_dir, exist_ok=True)
-        cache_path = safe_join(cache_dir, filename)
+        cache_path = safe_join(cache_dir, os.path.basename(filename))
         if not os.path.exists(cache_path):
             data = _request(
                 "GET",
-                f"/storage/v1/object/public/{BUCKET}/{filename}",
+                f"/storage/v1/object/public/{bucket}/{filename}",
             )
             with open(cache_path, "wb") as handle:
                 handle.write(data)
