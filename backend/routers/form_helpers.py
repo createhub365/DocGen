@@ -12,6 +12,7 @@ import models
 from auth import get_current_user
 from database import get_db
 from utils.file_utils import safe_filename, validate_logo_upload, safe_join
+from services.logo_storage import delete_logo, save_logo as persist_logo
 
 load_dotenv()
 
@@ -103,10 +104,7 @@ async def upload_logo(
     ext = os.path.splitext(file.filename or "")[1].lower()
     safe_company = re.sub(r"[^\w\-]", "_", company_name.strip()) or "company"
     filename = f"{safe_company}_{logo_id}{ext}"
-    os.makedirs(LOGO_DIR, exist_ok=True)
-    path = os.path.join(LOGO_DIR, filename)
-    with open(path, "wb") as f:
-        f.write(content)
+    stored = persist_logo(content, filename, file.content_type or "application/octet-stream", LOGO_DIR)
 
     logo = models.CompanyLogo(
         id=logo_id,

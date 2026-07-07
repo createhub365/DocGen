@@ -58,6 +58,7 @@ class CompanyResponse(BaseModel):
     id: int
     name: str
     has_template: bool
+    trade_id: int | None = None
 
 
 class DocumentTypeResponse(BaseModel):

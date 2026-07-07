@@ -71,6 +71,7 @@ import {
   getCountries,
   getTrades,
   getCompanies,
+  getCompaniesForIndustry,
   getDocumentTypes,
   importEmployersCsv,
   addCountry,
@@ -641,10 +642,10 @@ function UploadDrawer({ open, onClose, countries, docTypes, tradeBank, onCountri
       setSelectedCompany(null)
       return
     }
-    fetchCompaniesForIndustry(selectedCountryId, selectedIndustry, trades, tradeToIndustry)
+    fetchCompaniesForIndustry(selectedCountryId, selectedIndustry)
       .then(setCompanies)
       .catch(() => setCompanies([]))
-  }, [selectedCountryId, selectedIndustry, trades, tradeToIndustry])
+  }, [selectedCountryId, selectedIndustry])
 
   const handleFileSelect = async (file) => {
     setUploadFile(file)
@@ -816,7 +817,7 @@ function EditDrawer({ open, template, countries, docTypes, tradeBank, onCountrie
 
   useEffect(() => {
     if (!open || !editCountryId || !editIndustry) { setEditCompanies([]); return }
-    fetchCompaniesForIndustry(editCountryId, editIndustry, editTrades, tradeToIndustry)
+    fetchCompaniesForIndustry(editCountryId, editIndustry)
       .then((list) => {
         setEditCompanies(list)
         if (template?.company_id) {
@@ -825,7 +826,7 @@ function EditDrawer({ open, template, countries, docTypes, tradeBank, onCountrie
         }
       })
       .catch(() => setEditCompanies([]))
-  }, [open, editCountryId, editIndustry, editTrades, tradeToIndustry, template?.company_id])
+  }, [open, editCountryId, editIndustry, template?.company_id])
 
   const handleEditFileSelect = async (file) => {
     setEditReplaceFile(file)
@@ -1100,24 +1101,13 @@ function buildTradeBankIndustryOptions(tradeBank) {
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
-async function fetchCompaniesForIndustry(countryId, industryName, trades, tradeToIndustry) {
-  const matchingTrades = trades.filter((t) => {
-    const ind = tradeToIndustry.get(t.name.toLowerCase())
-    return ind && normalizeIndustryName(ind) === normalizeIndustryName(industryName)
-  })
-  if (!matchingTrades.length) return []
-  const groups = await Promise.all(
-    matchingTrades.map((t) =>
-      getCompanies(t.id, countryId).then((list) =>
-        list.map((c) => ({ ...c, trade_id: t.id }))
-      )
-    )
-  )
-  const map = new Map()
-  groups.flat().forEach((c) => {
-    if (!map.has(c.id)) map.set(c.id, c)
-  })
-  return [...map.values()]
+async function fetchCompaniesForIndustry(countryId, industryName) {
+  if (!countryId || !industryName) return []
+  const list = await getCompaniesForIndustry(countryId, industryName)
+  return list.map((company) => ({
+    ...company,
+    trade_id: company.trade_id,
+  }))
 }
 
 function resolveTemplateIndustry(tpl, tradeToIndustry) {

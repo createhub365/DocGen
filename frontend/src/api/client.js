@@ -46,6 +46,13 @@ export async function getTrades(countryId) {
   return data
 }
 
+export async function getCompaniesForIndustry(countryId, industry) {
+  const { data } = await client.get('/companies/for-industry', {
+    params: { country_id: countryId, industry },
+  })
+  return data
+}
+
 export async function getCompanies(tradeId, countryId) {
   const { data } = await client.get('/companies', {
     params: { trade_id: tradeId, country_id: countryId },

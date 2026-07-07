@@ -64,10 +64,6 @@ def merge_generation_fields(
 def employer_logo_path(employer, logo_dir: str) -> str | None:
     if not employer or not employer.company_logo_path:
         return None
-    from utils.file_utils import safe_join
+    from services.logo_storage import resolve_logo_local_path
 
-    basename = os.path.basename(employer.company_logo_path)
-    full_path = safe_join(logo_dir, basename)
-    if full_path and os.path.exists(full_path):
-        return full_path
-    return None
+    return resolve_logo_local_path(employer.company_logo_path, logo_dir)

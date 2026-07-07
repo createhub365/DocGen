@@ -11,6 +11,7 @@ from services.country_employer_config import (
     get_country_employer_config,
     get_country_employer_fields,
 )
+from services.employer_company_sync import list_companies_for_industry
 from services.trade_bank_admin import get_merged_trade_bank
 
 router = APIRouter(tags=["filters"])
@@ -99,6 +100,42 @@ def get_trades(
     return [
         TradeResponse(id=t.id, name=t.name, country_id=t.country_id) for t in trades
     ]
+
+
+@router.get("/companies/for-industry", response_model=list[CompanyResponse])
+def get_companies_for_industry(
+    country_id: int = Query(...),
+    industry: str = Query(...),
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    country = db.query(models.Country).filter(models.Country.id == country_id).first()
+    if not country:
+        return []
+
+    synced = list_companies_for_industry(db, country, industry)
+    result = []
+    for company, trade in synced:
+        has_template = (
+            db.query(models.Template)
+            .filter(
+                models.Template.company_id == company.id,
+                models.Template.trade_id == trade.id,
+                models.Template.country_id == country_id,
+                models.Template.is_active == True,
+            )
+            .first()
+            is not None
+        )
+        result.append(
+            CompanyResponse(
+                id=company.id,
+                name=company.name,
+                has_template=has_template,
+                trade_id=trade.id,
+            )
+        )
+    return result
 
 
 @router.get("/companies", response_model=list[CompanyResponse])

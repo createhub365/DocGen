@@ -5,7 +5,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,14 @@ from auth import get_current_user
 from database import get_db
 from routers.form_helpers import logo_api_url
 from services.employer_templates import summarize_all_employers, summarize_employer_templates
-from utils.file_utils import safe_filename, validate_logo_upload, safe_join
+from services.employer_company_sync import sync_employer_to_company
+from services.logo_storage import (
+    delete_logo,
+    public_url_for_stored_path,
+    resolve_logo_local_path,
+    save_logo as persist_logo,
+)
+from utils.file_utils import validate_logo_upload
 
 load_dotenv()
 
@@ -32,7 +39,11 @@ def _employer_to_dict(employer: models.Employer, summary: dict | None = None) ->
 
     logo_url = None
     if employer.company_logo_path:
-        logo_url = f"{logo_api_url(employer.company_logo_path)}?v={cache_key}"
+        logo_url = public_url_for_stored_path(employer.company_logo_path)
+        if not logo_url:
+            logo_url = f"{logo_api_url(employer.company_logo_path)}?v={cache_key}"
+        else:
+            logo_url = f"{logo_url}?v={cache_key}"
 
     return {
         "id": employer.id,
@@ -70,13 +81,9 @@ async def _save_logo(file: UploadFile, company_name: str) -> str:
     content = await file.read()
     validate_logo_upload(file.filename, file.content_type, len(content))
     ext = os.path.splitext(file.filename or "")[1].lower()
-    os.makedirs(LOGO_DIR, exist_ok=True)
     safe_name = re.sub(r"[^\w\-]", "_", company_name.strip()) or "employer"
     filename = f"employer_{safe_name}_{uuid.uuid4().hex}{ext}"
-    path = os.path.join(LOGO_DIR, filename)
-    with open(path, "wb") as f:
-        f.write(content)
-    return filename
+    return persist_logo(content, filename, file.content_type or "application/octet-stream", LOGO_DIR)
 
 
 @router.get("/employers")
@@ -176,6 +183,8 @@ async def create_employer(
     db.add(employer)
     db.commit()
     db.refresh(employer)
+    sync_employer_to_company(db, employer)
+    db.commit()
     return _employer_to_dict(employer, summarize_employer_templates(db, employer, current_user))
 
 
@@ -210,16 +219,12 @@ async def update_employer(
         raise HTTPException(status_code=404, detail="Employer not found")
 
     if remove_logo.lower() == "true" and employer.company_logo_path:
-        old_path = os.path.join(LOGO_DIR, employer.company_logo_path)
-        if os.path.exists(old_path):
-            os.unlink(old_path)
+        delete_logo(employer.company_logo_path, LOGO_DIR)
         employer.company_logo_path = None
 
     if logo and logo.filename:
         if employer.company_logo_path:
-            old_path = os.path.join(LOGO_DIR, employer.company_logo_path)
-            if os.path.exists(old_path):
-                os.unlink(old_path)
+            delete_logo(employer.company_logo_path, LOGO_DIR)
         employer.company_logo_path = await _save_logo(logo, company_name)
 
     employer.company_name = company_name.strip()
@@ -244,6 +249,8 @@ async def update_employer(
 
     db.commit()
     db.refresh(employer)
+    sync_employer_to_company(db, employer)
+    db.commit()
     return _employer_to_dict(employer, summarize_employer_templates(db, employer, current_user))
 
 
@@ -257,9 +264,7 @@ def delete_employer(
     if not employer:
         raise HTTPException(status_code=404, detail="Employer not found")
     if employer.company_logo_path:
-        path = os.path.join(LOGO_DIR, employer.company_logo_path)
-        if os.path.exists(path):
-            os.unlink(path)
+        delete_logo(employer.company_logo_path, LOGO_DIR)
     db.delete(employer)
     db.commit()
     return {"ok": True}
@@ -273,9 +278,13 @@ def get_employer_logo(
     employer = db.query(models.Employer).filter(models.Employer.id == employer_id).first()
     if not employer or not employer.company_logo_path:
         raise HTTPException(status_code=404, detail="Logo not found")
-    safe_name = safe_filename(employer.company_logo_path)
-    path = safe_join(LOGO_DIR, safe_name)
-    if not os.path.exists(path):
+
+    public_url = public_url_for_stored_path(employer.company_logo_path)
+    if public_url:
+        return RedirectResponse(public_url)
+
+    path = resolve_logo_local_path(employer.company_logo_path, LOGO_DIR)
+    if not path:
         raise HTTPException(status_code=404, detail="Logo file not found")
     ext = os.path.splitext(path)[1].lower()
     media = "image/png" if ext == ".png" else "image/jpeg"
