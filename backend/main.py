@@ -130,8 +130,8 @@ async def validate_environment():
 
     from services.pdf_converter import pdf_converter_available
 
-    pdf_ok, pdf_detail = pdf_converter_available()
+    pdf_ok, pdf_engine = pdf_converter_available()
     if pdf_ok:
-        print(f"[STARTUP] PDF converter OK: {pdf_detail}", flush=True)
+        print(f"[STARTUP] PDF converter OK: {pdf_engine}", flush=True)
     else:
-        print(f"[STARTUP] PDF converter unavailable: {pdf_detail}", flush=True)
+        print(f"[STARTUP] PDF converter unavailable: {pdf_engine}", flush=True)

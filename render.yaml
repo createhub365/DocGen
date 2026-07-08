@@ -1,13 +1,25 @@
 services:
   - type: web
-    name: docgen-api
-    runtime: docker
-    rootDir: backend
+    name: docgen-backend
+    env: docker
     dockerfilePath: ./Dockerfile
-    dockerContext: .
     plan: starter
     envVars:
+      - key: JWT_SECRET
+        generateValue: true
       - key: ENVIRONMENT
         value: production
-      - key: PYTHONUNBUFFERED
-        value: "1"
+      - key: ALLOW_DEMO_SEED
+        value: false
+      - key: CORS_ORIGINS
+        value: https://docgen.createhub365.workers.dev
+      - key: OUTPUT_DIR
+        value: ./output
+      - key: TEMPLATE_DIR
+        value: ./template_store
+      - key: LOGO_DIR
+        value: ./uploads/logos
+    disk:
+      name: docgen-data
+      mountPath: /app/data-volume
+      sizeGB: 10

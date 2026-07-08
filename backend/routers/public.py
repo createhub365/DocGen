@@ -9,13 +9,13 @@ router = APIRouter(tags=["public"])
 
 @router.get("/health")
 def health_check():
-    pdf_ok, pdf_detail = pdf_converter_available()
+    available, engine = pdf_converter_available()
     return {
         "status": "ok",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0",
-        "pdf_available": pdf_ok,
-        "pdf_detail": pdf_detail,
+        "pdf_available": available,
+        "pdf_engine": engine if available else None,
     }
 
 

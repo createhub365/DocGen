@@ -23,7 +23,7 @@ export default function FormatChoiceModal({
       .then((health) => {
         if (cancelled) return
         setPdfAvailable(health.pdf_available !== false)
-        setPdfDetail(health.pdf_detail || '')
+        setPdfDetail(health.pdf_engine || health.pdf_detail || '')
       })
       .catch(() => {
         if (!cancelled) setPdfAvailable(false)
