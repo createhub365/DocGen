@@ -8,9 +8,22 @@ from fastapi import HTTPException
 
 def _libreoffice_bin() -> str | None:
     configured = os.getenv("LIBREOFFICE_PATH", "").strip()
-    if configured and os.path.isfile(configured):
-        return configured
-    return shutil.which("libreoffice") or shutil.which("soffice")
+    candidates: list[str | None] = []
+    if configured:
+        candidates.append(configured)
+    candidates.extend(
+        [
+            shutil.which("libreoffice"),
+            shutil.which("soffice"),
+            "/usr/bin/libreoffice",
+            "/usr/bin/soffice",
+            "/usr/lib/libreoffice/program/soffice",
+        ]
+    )
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return path
+    return None
 
 
 def pdf_converter_available() -> tuple[bool, str]:
