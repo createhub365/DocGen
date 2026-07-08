@@ -12,6 +12,8 @@ import subprocess
 import tempfile
 from typing import Optional
 
+from services.logo_storage import resolve_template_local_path
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_THUMBNAIL_WIDTH_PX = int(os.getenv("THUMBNAIL_WIDTH_PX", "1200"))
@@ -184,8 +186,8 @@ def regenerate_all_thumbnails(template_store_dir: str, templates: list) -> dict:
     results: dict = {"success": [], "failed": [], "paths": {}}
 
     for template in templates:
-        docx_path = os.path.join(template_store_dir, template.docx_filename)
-        if not os.path.exists(docx_path):
+        docx_path = resolve_template_local_path(template.docx_filename, template_store_dir)
+        if not docx_path:
             results["failed"].append(template.id)
             continue
 

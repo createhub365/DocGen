@@ -7,7 +7,9 @@ from utils.file_utils import safe_join
 
 BUCKET = "employer-logos"
 THUMBNAIL_BUCKET = "template-thumbnails"
+TEMPLATE_BUCKET = "template-documents"
 SB_PREFIX = "sb://"
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 _LOGO_MEDIA_TYPES = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
@@ -175,3 +177,64 @@ def resolve_logo_local_path(stored_path: str | None, logo_dir: str) -> str | Non
 def media_type_for_path(stored_path: str) -> str:
     ext = os.path.splitext(stored_path)[1].lower()
     return _LOGO_MEDIA_TYPES.get(ext, "application/octet-stream")
+
+
+def save_template_docx(content: bytes, filename: str, template_dir: str) -> str:
+    safe_name = os.path.basename(filename)
+    os.makedirs(template_dir, exist_ok=True)
+    local_path = safe_join(template_dir, safe_name)
+    with open(local_path, "wb") as handle:
+        handle.write(content)
+    if storage_enabled():
+        ensure_bucket(TEMPLATE_BUCKET)
+        object_path = f"{TEMPLATE_BUCKET}/{safe_name}"
+        _request(
+            "POST",
+            f"/storage/v1/object/{object_path}",
+            data=content,
+            headers={
+                "Content-Type": DOCX_MIME,
+                "x-upsert": "true",
+            },
+        )
+    return safe_name
+
+
+def resolve_template_local_path(filename: str | None, template_dir: str) -> str | None:
+    if not filename:
+        return None
+
+    safe_name = os.path.basename(filename)
+    os.makedirs(template_dir, exist_ok=True)
+    local_path = safe_join(template_dir, safe_name)
+    if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+        return local_path
+
+    if not storage_enabled():
+        return None
+
+    cache_dir = os.path.join(template_dir, ".cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_path = safe_join(cache_dir, safe_name)
+    if os.path.exists(cache_path) and os.path.getsize(cache_path) > 0:
+        return cache_path
+
+    try:
+        data = _request("GET", f"/storage/v1/object/public/{TEMPLATE_BUCKET}/{safe_name}")
+    except urllib.error.HTTPError:
+        try:
+            data = _request("GET", f"/storage/v1/object/{TEMPLATE_BUCKET}/{safe_name}")
+        except urllib.error.HTTPError:
+            return None
+
+    with open(cache_path, "wb") as handle:
+        handle.write(data)
+    return cache_path if os.path.exists(cache_path) and os.path.getsize(cache_path) > 0 else None
+
+
+def public_template_url(filename: str | None) -> str | None:
+    if not filename or not storage_enabled():
+        return None
+    url, _ = _supabase_config()
+    safe_name = os.path.basename(filename)
+    return f"{url}/storage/v1/object/public/{TEMPLATE_BUCKET}/{safe_name}"

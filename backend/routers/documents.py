@@ -21,6 +21,7 @@ from services.employer_prefill import merge_generation_fields, employer_logo_pat
 from services.occupation_codes import resolve_country_code
 from utils.duty_resolver import resolve_duties
 from services.pdf_converter import pdf_converter_available, try_convert_to_pdf
+from services.template_storage import require_template_docx_path
 from utils.file_utils import remove_file, safe_filename, safe_join
 
 load_dotenv()
@@ -201,9 +202,7 @@ def preview_document_pdf(
     try:
         template = _resolve_template(db, body)
 
-        docx_template_path = os.path.join(TEMPLATE_DIR, template.docx_filename)
-        if not os.path.exists(docx_template_path):
-            raise HTTPException(status_code=404, detail="Template file not found on disk")
+        docx_template_path = require_template_docx_path(template.docx_filename, TEMPLATE_DIR)
 
         form_data, employer, trade_duties = _prepare_form_data(db, body)
         logo_path = employer_logo_path(employer, LOGO_DIR) if employer else None
@@ -272,9 +271,7 @@ def preview_document(
     if not template:
         raise HTTPException(status_code=404, detail="Template not found or inactive")
 
-    docx_template_path = os.path.join(TEMPLATE_DIR, template.docx_filename)
-    if not os.path.exists(docx_template_path):
-        raise HTTPException(status_code=404, detail="Template file not found on disk")
+    docx_template_path = require_template_docx_path(template.docx_filename, TEMPLATE_DIR)
 
     form_data, employer, trade_duties = _prepare_form_data(db, body)
     logo_path = get_employer_logo_path(body.employer_id, db)
@@ -306,9 +303,7 @@ def generate_doc(
 ):
     template = _resolve_template(db, body)
 
-    docx_template_path = os.path.join(TEMPLATE_DIR, template.docx_filename)
-    if not os.path.exists(docx_template_path):
-        raise HTTPException(status_code=404, detail="Template file not found on disk")
+    docx_template_path = require_template_docx_path(template.docx_filename, TEMPLATE_DIR)
 
     form_data, employer, trade_duties = _prepare_form_data(db, body)
     logo_path = get_employer_logo_path(body.employer_id, db)

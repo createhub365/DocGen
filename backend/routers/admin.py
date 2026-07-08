@@ -35,6 +35,8 @@ from services.trade_bank_admin import (
 from services.placeholder_extractor import extract_placeholders
 from services.thumbnail_gen import generate_docx_thumbnail, regenerate_all_thumbnails
 from services.thumbnail_service import persist_generated_thumbnail, serve_template_thumbnail
+from services.template_storage import require_template_docx_path
+from services.logo_storage import save_template_docx, resolve_template_local_path
 from services.employer_import import (
     MAX_EMPLOYER_CSV_SIZE,
     import_employer_rows,
@@ -120,8 +122,8 @@ async def upload_template(
 
     content = await file.read()
     validate_docx_upload(file.filename, file.content_type, len(content))
-    with open(file_path, "wb") as f:
-        f.write(content)
+    save_template_docx(content, filename, TEMPLATE_DIR)
+    file_path = safe_join(TEMPLATE_DIR, filename)
 
     label_overrides = {}
     if label_overrides_json:
@@ -160,8 +162,8 @@ async def upload_template(
 def _apply_template_thumbnail(template, db, docx_path: str | None = None) -> None:
     """Generate thumbnail after upload/replace. Never raises — upload must succeed."""
     if docx_path is None:
-        docx_path = safe_join(TEMPLATE_DIR, template.docx_filename)
-    if not os.path.exists(docx_path):
+        docx_path = resolve_template_local_path(template.docx_filename, TEMPLATE_DIR)
+    if not docx_path:
         return
 
     thumbnail_dir = os.path.join(TEMPLATE_DIR, "thumbnails")
@@ -220,9 +222,9 @@ def _get_template_or_404(template_id: int, db: Session) -> models.Template:
 
 
 def _template_response(template: models.Template, db: Session) -> dict:
-    docx_path = os.path.join(TEMPLATE_DIR, template.docx_filename)
+    docx_path = resolve_template_local_path(template.docx_filename, TEMPLATE_DIR)
     label_overrides = _parse_label_overrides(template.label_overrides_json)
-    placeholders = extract_placeholders(docx_path, label_overrides) if os.path.exists(docx_path) else []
+    placeholders = extract_placeholders(docx_path, label_overrides) if docx_path else []
     return {
         "id": template.id,
         "country_id": template.country_id,
@@ -265,8 +267,7 @@ async def update_template(
                     detail=f"File too large. Max {MAX_TEMPLATE_SIZE // (1024 * 1024)}MB",
                 )
             docx_path = safe_join(TEMPLATE_DIR, template.docx_filename)
-            with open(docx_path, "wb") as f:
-                f.write(content)
+            save_template_docx(content, template.docx_filename, TEMPLATE_DIR)
             template.version = (template.version or 1) + 1
             docx_updated = True
 
@@ -349,8 +350,7 @@ async def edit_template(
 
         template.version = (template.version or 1) + 1
         docx_path = safe_join(TEMPLATE_DIR, template.docx_filename)
-        with open(docx_path, "wb") as f:
-            f.write(content)
+        save_template_docx(content, template.docx_filename, TEMPLATE_DIR)
 
     db.commit()
     db.refresh(template)
@@ -369,9 +369,7 @@ def download_template_docx(
 ):
     """Download the raw .docx template for editing in Microsoft Word."""
     template = _get_template_or_404(template_id, db)
-    file_path = safe_join(TEMPLATE_DIR, template.docx_filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Template file not found on disk")
+    file_path = require_template_docx_path(template.docx_filename, TEMPLATE_DIR)
 
     return FileResponse(
         file_path,
@@ -442,9 +440,9 @@ def list_admin_templates(
             .filter(models.DocumentType.id == t.document_type_id)
             .first()
         )
-        docx_path = os.path.join(TEMPLATE_DIR, t.docx_filename)
+        docx_path = resolve_template_local_path(t.docx_filename, TEMPLATE_DIR)
         placeholder_count = 0
-        if os.path.exists(docx_path):
+        if docx_path:
             label_overrides = {}
             if t.label_overrides_json:
                 try:

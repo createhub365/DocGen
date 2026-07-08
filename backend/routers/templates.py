@@ -18,6 +18,7 @@ from services.template_catalog import (
     resolve_template_industry,
 )
 from services.thumbnail_service import serve_template_thumbnail
+from services.template_storage import require_template_docx_path
 
 load_dotenv()
 TEMPLATE_DIR = os.getenv("TEMPLATE_DIR", "./template_store")
@@ -153,9 +154,7 @@ def get_template_by_id(
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
 
-    docx_path = os.path.join(TEMPLATE_DIR, template.docx_filename)
-    if not os.path.exists(docx_path):
-        raise HTTPException(status_code=404, detail="Template file not found on disk")
+    docx_path = require_template_docx_path(template.docx_filename, TEMPLATE_DIR)
 
     label_overrides = {}
     if template.label_overrides_json:
@@ -197,9 +196,7 @@ def get_template(
             detail="No template configured for this combination",
         )
 
-    docx_path = os.path.join(TEMPLATE_DIR, template.docx_filename)
-    if not os.path.exists(docx_path):
-        raise HTTPException(status_code=404, detail="Template file not found on disk")
+    docx_path = require_template_docx_path(template.docx_filename, TEMPLATE_DIR)
 
     label_overrides = {}
     if template.label_overrides_json:
