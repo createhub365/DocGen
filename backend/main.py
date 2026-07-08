@@ -127,3 +127,11 @@ async def validate_environment():
 
     for w in warnings:
         print(f"[SECURITY] {w}", flush=True)
+
+    from services.pdf_converter import pdf_converter_available
+
+    pdf_ok, pdf_detail = pdf_converter_available()
+    if pdf_ok:
+        print(f"[STARTUP] PDF converter OK: {pdf_detail}", flush=True)
+    else:
+        print(f"[STARTUP] PDF converter unavailable: {pdf_detail}", flush=True)
