@@ -416,6 +416,11 @@ export async function getTradeBankIndustries() {
   return data
 }
 
+export async function getHealth() {
+  const { data } = await client.get('/public/health')
+  return data
+}
+
 export async function smartGenerate(payload) {
   const { data } = await client.post('/generate', payload)
   return data
@@ -425,7 +430,7 @@ export async function smartGenerateAndDownload(payload, format) {
   const result = await smartGenerate(payload)
   if (format === 'pdf' && !result.pdf_available) {
     const err = new Error(
-      result.pdf_error || 'PDF generation requires Microsoft Word on Windows.'
+      result.pdf_error || 'PDF is not available on this server. Choose Word (.docx) instead.'
     )
     err.code = 'PDF_UNAVAILABLE'
     throw err

@@ -122,7 +122,7 @@ export default function StepSmartFillPreview({
       setPreviewOpen(true)
     } catch (err) {
       const detail = await readApiErrorDetail(err)
-      message.error(detail || 'PDF preview requires Microsoft Word on Windows')
+      message.error(detail || 'PDF preview is not available. Use Word (.docx) or install LibreOffice on the server.')
     } finally {
       setPreviewLoading(false)
     }
