@@ -13,12 +13,9 @@ export function templateThumbnailUrl(templateId) {
 }
 
 function probeImage(url) {
-  return new Promise((resolve) => {
-    const img = new Image()
-    img.onload = () => resolve(true)
-    img.onerror = () => resolve(false)
-    img.src = url
-  })
+  return fetch(url, { method: 'GET', mode: 'cors', credentials: 'omit' })
+    .then((res) => res.ok)
+    .catch(() => false)
 }
 
 export { probeImage }

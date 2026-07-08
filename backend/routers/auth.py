@@ -1,17 +1,16 @@
 import os
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-from jose import JWTError, jwt
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 import models
 from auth import (
-    ALGORITHM,
     COOKIE_MAX_AGE,
-    SECRET_KEY,
     create_access_token,
+    resolve_request_token,
+    resolve_user_from_token,
     verify_password,
 )
 from database import get_db
@@ -23,13 +22,16 @@ router = APIRouter(tags=["auth"])
 
 def _cookie_params() -> dict:
     is_prod = os.getenv("ENVIRONMENT", "development").lower() == "production"
-    return {
+    params = {
         "httponly": True,
         "secure": is_prod,
         "samesite": "none" if is_prod else "lax",
         "max_age": COOKIE_MAX_AGE,
         "path": "/",
     }
+    if is_prod:
+        params["partitioned"] = True
+    return params
 
 
 def _display_name(user: models.User) -> str:
@@ -63,8 +65,18 @@ def login(
             detail="Account is inactive. Contact your administrator.",
         )
     token = create_access_token(data={"sub": user.username})
-    response.set_cookie(key="access_token", value=token, **_cookie_params())
-    return LoginResponse(role=user.role, username=user.username, name=_display_name(user))
+    cookie_params = _cookie_params()
+    try:
+        response.set_cookie(key="access_token", value=token, **cookie_params)
+    except TypeError:
+        cookie_params.pop("partitioned", None)
+        response.set_cookie(key="access_token", value=token, **cookie_params)
+    return LoginResponse(
+        role=user.role,
+        username=user.username,
+        name=_display_name(user),
+        access_token=token,
+    )
 
 
 @router.post("/logout")
@@ -77,28 +89,22 @@ def logout(response: Response):
 @router.get("/me", response_model=Optional[UserResponse])
 def get_me(
     access_token: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ):
     """Return current user, or null when not logged in (no 401 for session checks)."""
-    if not access_token:
+    token = resolve_request_token(access_token, authorization)
+    if not token:
         return None
 
     try:
-        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if not username:
-            return None
-    except JWTError:
-        return None
-
-    try:
-        user = db.query(models.User).filter(models.User.username == username).first()
+        user = resolve_user_from_token(token, db)
     except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database unavailable. Check DATABASE_URL on the server.",
         )
-    if not user or not getattr(user, "is_active", True):
+    if not user:
         return None
 
     return UserResponse(

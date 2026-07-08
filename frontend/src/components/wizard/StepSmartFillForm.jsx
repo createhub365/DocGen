@@ -63,6 +63,7 @@ export default function StepSmartFillForm({
     setFillMaxCompleted,
   } = useDocStore()
   const [loading, setLoading] = useState(true)
+  const [templateMissing, setTemplateMissing] = useState(false)
   const [refNumber, setRefNumber] = useState('')
   const [previewKey, setPreviewKey] = useState(0)
   const [generateSuccess, setGenerateSuccess] = useState(false)
@@ -117,14 +118,20 @@ export default function StepSmartFillForm({
   useEffect(() => {
     if (!templateId || !employer) return
     setLoading(true)
+    setTemplateMissing(false)
     refInit.current = false
 
     getTemplateById(templateId)
-      .finally(() => {
-        initForm(true)
-          .catch(() => message.error('Failed to prepare form'))
-          .finally(() => setLoading(false))
+      .then(() => initForm(true))
+      .catch((err) => {
+        const detail = err.response?.data?.detail || ''
+        if (err.response?.status === 404) {
+          setTemplateMissing(true)
+        } else {
+          message.error(detail || 'Failed to load template')
+        }
       })
+      .finally(() => setLoading(false))
   }, [templateId, employer])
 
   useEffect(() => {
@@ -342,6 +349,27 @@ export default function StepSmartFillForm({
     navCenter,
     onRegisterNav,
   ])
+
+  if (templateMissing) {
+    return (
+      <Form form={form}>
+        <Result
+          status="warning"
+          title="Template file missing"
+          subTitle="The template record exists but the .docx file is not on the server. An admin must re-upload it."
+          extra={
+            <Space direction="vertical" style={{ width: '100%', maxWidth: 420 }}>
+              <Text type="secondary">
+                Admin Panel → Templates → open this template → <strong>Upload New Version</strong> →
+                select your .docx file.
+              </Text>
+              <Button onClick={onBack}>Back to template selection</Button>
+            </Space>
+          }
+        />
+      </Form>
+    )
+  }
 
   if (loading) {
     return (

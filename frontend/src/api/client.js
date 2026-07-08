@@ -1,14 +1,42 @@
 import axios from 'axios'
 
+const TOKEN_KEY = 'docgen_access_token'
+
+function getStoredToken() {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+function setStoredToken(token) {
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token)
+    else sessionStorage.removeItem(TOKEN_KEY)
+  } catch {
+    /* private browsing */
+  }
+}
+
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   withCredentials: true,
+})
+
+client.interceptors.request.use((config) => {
+  const token = getStoredToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
 })
 
 client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      setStoredToken(null)
       localStorage.removeItem('role')
       localStorage.removeItem('username')
       if (!window.location.pathname.includes('/login')) {
@@ -19,16 +47,25 @@ client.interceptors.response.use(
   }
 )
 
+export function clearAuthToken() {
+  setStoredToken(null)
+}
+
 export default client
 
 export async function login(username, password) {
   const { data } = await client.post('/auth/login', { username, password })
+  if (data.access_token) setStoredToken(data.access_token)
   return data
 }
 
 export async function logout() {
-  const { data } = await client.post('/auth/logout')
-  return data
+  try {
+    const { data } = await client.post('/auth/logout')
+    return data
+  } finally {
+    setStoredToken(null)
+  }
 }
 
 export async function getMe() {

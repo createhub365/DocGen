@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getMe, logout as apiLogout } from '../api/client'
+import { getMe, logout as apiLogout, clearAuthToken } from '../api/client'
 import { clearWizardSession } from '../store/useDocStore'
 
 const AuthContext = createContext(null)
@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
     return getMe()
       .then((res) => {
         if (!res) {
+          clearAuthToken()
           localStorage.removeItem('role')
           localStorage.removeItem('username')
           localStorage.removeItem('name')
@@ -27,6 +28,7 @@ export function AuthProvider({ children }) {
         setUser(res)
       })
       .catch(() => {
+        clearAuthToken()
         localStorage.removeItem('role')
         localStorage.removeItem('username')
         localStorage.removeItem('name')

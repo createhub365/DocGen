@@ -20,6 +20,7 @@ class LoginResponse(BaseModel):
     role: str
     username: str
     name: str
+    access_token: str
 
 
 class UserResponse(BaseModel):

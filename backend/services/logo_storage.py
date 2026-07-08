@@ -179,6 +179,39 @@ def media_type_for_path(stored_path: str) -> str:
     return _LOGO_MEDIA_TYPES.get(ext, "application/octet-stream")
 
 
+def read_stored_file_bytes(stored_path: str, local_dir: str) -> tuple[bytes, str] | None:
+    """Load file bytes from Supabase or local disk. Returns (bytes, media_type)."""
+    if not stored_path:
+        return None
+
+    if is_remote_path(stored_path):
+        if not storage_enabled():
+            return None
+        bucket, filename = _parse_stored_path(stored_path)
+        try:
+            data = _request("GET", f"/storage/v1/object/public/{bucket}/{filename}")
+        except urllib.error.HTTPError:
+            try:
+                data = _request("GET", f"/storage/v1/object/{bucket}/{filename}")
+            except urllib.error.HTTPError:
+                return None
+        return data, media_type_for_path(filename)
+
+    rel_path = stored_path.replace("\\", "/")
+    if rel_path.startswith("thumbnails/") or "/" in rel_path:
+        from utils.file_utils import safe_join_relative
+
+        full_path = safe_join_relative(local_dir, rel_path)
+    else:
+        full_path = safe_join(local_dir, os.path.basename(stored_path))
+
+    if not os.path.exists(full_path):
+        return None
+
+    with open(full_path, "rb") as handle:
+        return handle.read(), media_type_for_path(full_path)
+
+
 def save_template_docx(content: bytes, filename: str, template_dir: str) -> str:
     safe_name = os.path.basename(filename)
     os.makedirs(template_dir, exist_ok=True)

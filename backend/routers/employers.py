@@ -5,19 +5,19 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 import models
 from auth import get_current_user
 from database import get_db
-from routers.form_helpers import logo_api_url
 from services.employer_templates import summarize_all_employers, summarize_employer_templates
 from services.employer_company_sync import sync_employer_to_company
 from services.logo_storage import (
     delete_logo,
-    public_url_for_stored_path,
+    is_remote_path,
+    read_stored_file_bytes,
     resolve_logo_local_path,
     save_logo as persist_logo,
 )
@@ -39,11 +39,7 @@ def _employer_to_dict(employer: models.Employer, summary: dict | None = None) ->
 
     logo_url = None
     if employer.company_logo_path:
-        logo_url = public_url_for_stored_path(employer.company_logo_path)
-        if not logo_url:
-            logo_url = f"{logo_api_url(employer.company_logo_path)}?v={cache_key}"
-        else:
-            logo_url = f"{logo_url}?v={cache_key}"
+        logo_url = f"/api/employers/{employer.id}/logo?v={cache_key}"
 
     return {
         "id": employer.id,
@@ -279,9 +275,12 @@ def get_employer_logo(
     if not employer or not employer.company_logo_path:
         raise HTTPException(status_code=404, detail="Logo not found")
 
-    public_url = public_url_for_stored_path(employer.company_logo_path)
-    if public_url:
-        return RedirectResponse(public_url)
+    if is_remote_path(employer.company_logo_path):
+        payload = read_stored_file_bytes(employer.company_logo_path, LOGO_DIR)
+        if not payload:
+            raise HTTPException(status_code=404, detail="Logo file not found")
+        data, media_type = payload
+        return Response(content=data, media_type=media_type)
 
     path = resolve_logo_local_path(employer.company_logo_path, LOGO_DIR)
     if not path:

@@ -1,9 +1,9 @@
 import os
 
 from fastapi import HTTPException
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, Response
 
-from services.logo_storage import public_url_for_stored_path
+from services.logo_storage import is_remote_path, read_stored_file_bytes
 from utils.file_utils import safe_join_relative
 
 
@@ -11,9 +11,16 @@ def serve_template_thumbnail(template, template_dir: str):
     if not template or not template.thumbnail_path:
         raise HTTPException(status_code=404, detail="No thumbnail available")
 
-    public_url = public_url_for_stored_path(template.thumbnail_path)
-    if public_url:
-        return RedirectResponse(public_url, headers={"Cache-Control": "max-age=3600"})
+    if is_remote_path(template.thumbnail_path):
+        payload = read_stored_file_bytes(template.thumbnail_path, template_dir)
+        if not payload:
+            raise HTTPException(status_code=404, detail="Thumbnail file not found")
+        data, media_type = payload
+        return Response(
+            content=data,
+            media_type=media_type,
+            headers={"Cache-Control": "max-age=3600"},
+        )
 
     thumb_path = safe_join_relative(template_dir, template.thumbnail_path)
     if os.path.exists(thumb_path):
