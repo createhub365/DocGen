@@ -22,16 +22,26 @@ router = APIRouter(tags=["auth"])
 
 def _cookie_params() -> dict:
     is_prod = os.getenv("ENVIRONMENT", "development").lower() == "production"
-    params = {
+    return {
         "httponly": True,
         "secure": is_prod,
         "samesite": "none" if is_prod else "lax",
         "max_age": COOKIE_MAX_AGE,
         "path": "/",
     }
-    if is_prod:
-        params["partitioned"] = True
-    return params
+
+
+def _set_access_cookie(response: Response, token: str) -> None:
+    """Set auth cookie. Failures are non-fatal — Bearer token is also returned."""
+    params = _cookie_params()
+    try:
+        response.set_cookie(key="access_token", value=token, **params)
+    except Exception:
+        try:
+            params.pop("partitioned", None)
+            response.set_cookie(key="access_token", value=token, **params)
+        except Exception:
+            pass
 
 
 def _display_name(user: models.User) -> str:
@@ -65,12 +75,7 @@ def login(
             detail="Account is inactive. Contact your administrator.",
         )
     token = create_access_token(data={"sub": user.username})
-    cookie_params = _cookie_params()
-    try:
-        response.set_cookie(key="access_token", value=token, **cookie_params)
-    except TypeError:
-        cookie_params.pop("partitioned", None)
-        response.set_cookie(key="access_token", value=token, **cookie_params)
+    _set_access_cookie(response, token)
     return LoginResponse(
         role=user.role,
         username=user.username,
