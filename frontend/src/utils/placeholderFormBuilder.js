@@ -9,6 +9,7 @@ import { VISIBLE_FORM_SECTIONS } from '../components/wizard/smartFormConfig'
 /** Template placeholder id → canonical wizard field id (mirrors backend docx_xml_fill aliases). */
 export const WIZARD_FIELD_ALIASES = {
   candidate_full_name: ['cand_name', 'candidate_name'],
+  candidate_salutation: ['salutation'],
   candidate_date_of_birth: ['cand_dob', 'date_of_birth'],
   candidate_passport_number: ['cand_passport', 'passport_number'],
   candidate_nationality: ['cand_nationality', 'nationality'],

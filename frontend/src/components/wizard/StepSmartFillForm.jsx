@@ -221,6 +221,10 @@ export default function StepSmartFillForm({
   const handleReview = useCallback(async () => {
     try {
       computeValidityExpiry()
+      if (showSalutation && !form.getFieldValue('_salutation_prefix')) {
+        form.setFieldValue('_salutation_prefix', 'Mr.')
+        syncSalutation({ _salutation_prefix: 'Mr.' })
+      }
       const fieldIds = getVisibleFieldIds(formFields)
       if (showSalutation) {
         await form.validateFields(['_salutation_prefix', ...fieldIds])
@@ -516,14 +520,10 @@ export default function StepSmartFillForm({
                       <Form.Item
                         name="_salutation_prefix"
                         label="Salutation"
+                        initialValue="Mr."
                         rules={[{ required: true, message: 'Salutation is required' }]}
                       >
-                        <Select
-                          options={SALUTATION_OPTIONS}
-                          onChange={(value) => {
-                            syncSalutation({ _salutation_prefix: value })
-                          }}
-                        />
+                        <Select options={SALUTATION_OPTIONS} />
                       </Form.Item>
                     )}
                     {formFields.map((field) => renderField(field))}
