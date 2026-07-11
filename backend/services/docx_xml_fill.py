@@ -23,21 +23,34 @@ _XML_PREFIXES = (
     "word/comments",
 )
 
-# Wizard field ids → legacy short placeholder ids used in older templates
-_WIZARD_TO_LEGACY_PLACEHOLDER = {
-    "candidate_full_name": "cand_name",
-    "candidate_date_of_birth": "cand_dob",
-    "candidate_passport_number": "cand_passport",
-    "candidate_nationality": "cand_nationality",
-    "commencement_date": "joining_date",
-    "position_title": "position",
-    "issue_date": "offer_date",
-    "work_location": "location",
-    "contract_duration": "duration",
-    "probation_period": "probation",
-    "weekly_hours": "working_hours",
-    "annual_salary": "salary",
-    "candidate_sign_date": "sign_date",
+# Wizard field ids → template placeholder ids (supports multiple aliases per field)
+_WIZARD_FIELD_ALIASES: dict[str, list[str]] = {
+    "candidate_full_name": ["cand_name", "candidate_name"],
+    "candidate_date_of_birth": ["cand_dob", "date_of_birth"],
+    "candidate_passport_number": ["cand_passport", "passport_number"],
+    "candidate_nationality": ["cand_nationality", "nationality"],
+    "candidate_address": ["country_of_residence"],
+    "passport_expiry_date": ["passport_expiry"],
+    "passport_issue_date": ["passport_issue"],
+    "commencement_date": ["joining_date"],
+    "position_title": ["position"],
+    "issue_date": ["offer_date"],
+    "work_location": ["location"],
+    "contract_duration": ["duration"],
+    "probation_period": ["probation"],
+    "weekly_hours": ["working_hours"],
+    "annual_salary": ["salary"],
+    "candidate_sign_date": ["sign_date"],
+    "pay_frequency": ["payment_frequency"],
+    "overtime_rate": ["overtime_terms"],
+    "accommodation_allowance": ["accommodation"],
+    "travel_allowance": ["transport_allowance"],
+    "medical_insurance": ["health_insurance"],
+    "employer_accreditation_no": ["accreditation_number"],
+    "validity_expiry_date": ["offer_validity"],
+    "trade_duties": ["duties_block"],
+    "relocation_assistance": ["other_benefits"],
+    "professional_development": ["other_benefits"],
 }
 
 # Human-readable template labels → wizard field id (case-insensitive lookup)
@@ -120,12 +133,20 @@ def _label_lookup_key(label: str) -> str:
 
 
 def _build_replacement_values(form_data: dict) -> dict:
-    """Expand wizard field ids to legacy and human-readable template placeholder ids."""
+    """Expand wizard field ids to template placeholder ids and human-readable labels."""
     values = _normalize_form_data(form_data)
 
-    for wizard_key, legacy_id in _WIZARD_TO_LEGACY_PLACEHOLDER.items():
-        if wizard_key in values and legacy_id not in values:
-            values[legacy_id] = values[wizard_key]
+    for wizard_key, alias_ids in _WIZARD_FIELD_ALIASES.items():
+        if wizard_key not in values or values[wizard_key] is None:
+            continue
+        for alias_id in alias_ids:
+            if alias_id not in values:
+                values[alias_id] = values[wizard_key]
+
+    if values.get("validity_expiry_date") and "offer_validity" not in values:
+        values["offer_validity"] = values["validity_expiry_date"]
+    elif values.get("validity_days") and "offer_validity" not in values:
+        values["offer_validity"] = f"{values['validity_days']} days"
 
     if "work_location" in values and "location" not in values:
         values["location"] = values["work_location"]

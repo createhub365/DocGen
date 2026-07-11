@@ -122,6 +122,8 @@ def _prepare_form_data(db: Session, body: GenerateRequest) -> tuple[dict, models
         merged, trade_info = merge_generation_fields(
             employer, body.trade, country, trade_category, user_fields
         )
+        if trade_category and not merged.get("department"):
+            merged["department"] = trade_category
         if trade_info:
             country_name = body.template.get("country") if body.template else employer.country
             country_code = resolve_country_code(country_name) or "NZ"

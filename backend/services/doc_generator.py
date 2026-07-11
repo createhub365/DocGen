@@ -12,7 +12,9 @@ def fill_template(
 ) -> str:
     data = dict(form_data)
     if trade_duties:
-        data["trade_duties"] = format_duties_for_docx(trade_duties)
+        duties_text = format_duties_for_docx(trade_duties)
+        data["trade_duties"] = duties_text
+        data["duties_block"] = duties_text
     if logo_path:
         data.pop("company_logo", None)
 
