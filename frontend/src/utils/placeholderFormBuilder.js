@@ -4,7 +4,7 @@ import {
   isFieldRequired,
   SPECIAL_FIELD_IDS,
 } from '../components/form/formFieldConfig'
-import { VISIBLE_FORM_SECTIONS } from '../components/wizard/smartFormConfig'
+import { VISIBLE_FORM_SECTIONS, EMPLOYER_PREFILL_IDS } from '../components/wizard/smartFormConfig'
 
 /** Template placeholder id → canonical wizard field id (mirrors backend docx_xml_fill aliases). */
 export const WIZARD_FIELD_ALIASES = {
@@ -125,6 +125,7 @@ export function buildFormFieldsFromPlaceholders(placeholders = []) {
     const id = canonicalPlaceholderId(placeholder.id)
     if (seen.has(id)) continue
     if (INJECT_ONLY_IDS.has(id) || AUTO_FILL_IDS.has(id) || COMPUTED_IDS.has(id)) continue
+    if (EMPLOYER_PREFILL_IDS.has(id)) continue
     seen.add(id)
     ordered.push(buildFieldDef(placeholder))
   }
