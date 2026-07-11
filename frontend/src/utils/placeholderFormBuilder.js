@@ -54,8 +54,11 @@ export const INJECT_ONLY_IDS = new Set(['company_logo', 'ref_number_barcode'])
 /** Auto-filled at generation — no user input. */
 export const AUTO_FILL_IDS = new Set(['trade_duties', 'duties_block'])
 
-/** Computed from other fields — hidden inputs. */
-export const COMPUTED_IDS = new Set(['candidate_salutation', 'validity_expiry_date'])
+/** Computed from other fields — hidden inputs, not shown as separate form rows. */
+export const COMPUTED_IDS = new Set(['candidate_salutation'])
+
+/** Read-only derived dates — shown via dedicated widget, not a plain text input. */
+export const DERIVED_READONLY_IDS = new Set(['validity_expiry_date'])
 
 const DATE_FIELD_IDS = new Set([
   'issue_date',
@@ -120,7 +123,7 @@ export function buildFormFieldsFromPlaceholders(placeholders = []) {
   for (const placeholder of placeholders) {
     const id = canonicalPlaceholderId(placeholder.id)
     if (seen.has(id)) continue
-    if (INJECT_ONLY_IDS.has(id) || AUTO_FILL_IDS.has(id)) continue
+    if (INJECT_ONLY_IDS.has(id) || AUTO_FILL_IDS.has(id) || COMPUTED_IDS.has(id)) continue
     seen.add(id)
     ordered.push(buildFieldDef(placeholder))
   }
@@ -145,12 +148,19 @@ export function buildFormFieldsFromPlaceholders(placeholders = []) {
 
 export function getVisibleFieldIds(formFields) {
   return formFields
-    .filter((f) => f.type !== 'readonly_expiry' && !COMPUTED_IDS.has(f.id))
+    .filter(
+      (f) =>
+        f.type !== 'readonly_expiry' &&
+        f.type !== 'salutation_select' &&
+        !COMPUTED_IDS.has(f.id)
+    )
     .map((f) => f.id)
 }
 
+const SALUTATION_PLACEHOLDER_IDS = new Set(['candidate_salutation', 'salutation'])
+
 export function templateNeedsSalutation(placeholders = []) {
-  return placeholders.some((p) => canonicalPlaceholderId(p.id) === 'candidate_salutation')
+  return placeholders.some((p) => SALUTATION_PLACEHOLDER_IDS.has(canonicalPlaceholderId(p.id)))
 }
 
 export function getDefaultValues(formFields) {

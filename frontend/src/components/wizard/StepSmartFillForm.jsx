@@ -68,7 +68,6 @@ export default function StepSmartFillForm({
   const [showPreview, setShowPreview] = useState(false)
   const [resolvedPlaceholders, setResolvedPlaceholders] = useState(placeholders)
   const [form] = Form.useForm()
-  const salutationPrefix = Form.useWatch('_salutation_prefix', form)
   const message = useAppMessage()
   const backgroundFieldsRef = useRef({})
 
@@ -317,6 +316,9 @@ export default function StepSmartFillForm({
         </Form.Item>
       )
     }
+    if (type === 'salutation_select') {
+      return null
+    }
     return (
       <Form.Item key={id} name={id} label={label || fieldLabel(id)} rules={rules}>
         <Input placeholder={placeholder || `Enter ${label || id}`} />
@@ -507,19 +509,18 @@ export default function StepSmartFillForm({
                 <Form.Item name="candidate_salutation" hidden>
                   <Input />
                 </Form.Item>
-                <Form.Item name="_salutation_prefix" hidden={!showSalutation}>
-                  <Input />
-                </Form.Item>
 
                 {!showPreview && (
                   <>
                     {showSalutation && (
-                      <Form.Item label="Salutation" required>
+                      <Form.Item
+                        name="_salutation_prefix"
+                        label="Salutation"
+                        rules={[{ required: true, message: 'Salutation is required' }]}
+                      >
                         <Select
-                          value={salutationPrefix || 'Mr.'}
                           options={SALUTATION_OPTIONS}
                           onChange={(value) => {
-                            form.setFieldValue('_salutation_prefix', value)
                             syncSalutation({ _salutation_prefix: value })
                           }}
                         />
