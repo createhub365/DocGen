@@ -4,6 +4,7 @@ Only w:t text nodes change; drawings, stamps, logos, and layout stay intact.
 """
 import re
 import zipfile
+from copy import deepcopy
 
 from lxml import etree
 
@@ -213,6 +214,66 @@ def _iter_placeholders(text: str) -> list[tuple[str, str]]:
     return [(pid, token) for _, _, pid, token in found]
 
 
+def _clear_paragraph_runs(p_elem) -> None:
+    for child in list(p_elem):
+        if etree.QName(child).localname != "pPr":
+            p_elem.remove(child)
+
+
+def _set_paragraph_multiline_text(p_elem, text: str) -> None:
+    """Write text with Word line breaks so each duty appears on its own line in PDF."""
+    _clear_paragraph_runs(p_elem)
+    lines = text.split("\n")
+    for index, line in enumerate(lines):
+        run = etree.SubElement(p_elem, f"{{{W_NS}}}r")
+        if line:
+            text_node = etree.SubElement(run, f"{{{W_NS}}}t")
+            if line.startswith(" ") or line.endswith(" "):
+                text_node.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+            text_node.text = line
+        if index < len(lines) - 1:
+            etree.SubElement(run, f"{{{W_NS}}}br")
+
+
+def _set_paragraph_single_line_text(p_elem, text: str, t_nodes: list | None = None) -> None:
+    if t_nodes is None:
+        t_nodes = p_elem.xpath(".//w:t", namespaces=NSMAP)
+    if t_nodes:
+        t_nodes[0].text = text
+        for node in t_nodes[1:]:
+            node.text = ""
+        return
+    _clear_paragraph_runs(p_elem)
+    run = etree.SubElement(p_elem, f"{{{W_NS}}}r")
+    text_node = etree.SubElement(run, f"{{{W_NS}}}t")
+    text_node.text = text
+
+
+def _paragraph_is_placeholder_only(combined: str, token: str) -> bool:
+    return combined.replace(token, "").strip() == ""
+
+
+def _split_duties_into_paragraphs(p_elem, text: str) -> None:
+    """One duty per paragraph — renders as a vertical bullet list in PDF."""
+    parent = p_elem.getparent()
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    if not lines:
+        _clear_paragraph_runs(p_elem)
+        return
+    if parent is None:
+        _set_paragraph_multiline_text(p_elem, "\n".join(lines))
+        return
+
+    anchor_index = list(parent).index(p_elem)
+    _set_paragraph_single_line_text(p_elem, lines[0])
+
+    for offset, line in enumerate(lines[1:], start=1):
+        new_paragraph = deepcopy(p_elem)
+        _clear_paragraph_runs(new_paragraph)
+        _set_paragraph_single_line_text(new_paragraph, line)
+        parent.insert(anchor_index + offset, new_paragraph)
+
+
 def _replace_in_paragraph(p_elem, form_data: dict) -> bool:
     _merge_paragraph_runs(p_elem)
 
@@ -251,9 +312,19 @@ def _replace_in_paragraph(p_elem, form_data: dict) -> bool:
     if not changed or new_combined == combined:
         return changed
 
-    t_nodes[0].text = new_combined
-    for t in t_nodes[1:]:
-        t.text = ""
+    duty_tokens = {
+        token
+        for pid, token in _iter_placeholders(combined)
+        if pid in {"duties_block", "trade_duties"}
+        and token in new_combined
+        and _paragraph_is_placeholder_only(combined, token)
+    }
+    if duty_tokens and "\n" in new_combined:
+        _split_duties_into_paragraphs(p_elem, new_combined)
+    elif "\n" in new_combined:
+        _set_paragraph_multiline_text(p_elem, new_combined)
+    else:
+        _set_paragraph_single_line_text(p_elem, new_combined, t_nodes)
     return True
 
 
