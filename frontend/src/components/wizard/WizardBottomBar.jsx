@@ -8,6 +8,7 @@ export default function WizardBottomBar({
   nextLabel = 'Continue',
   nextDisabled = false,
   backHidden = false,
+  nextHidden = false,
   nextLoading = false,
   center = null,
 }) {
@@ -23,16 +24,18 @@ export default function WizardBottomBar({
               {backLabel}
             </button>
           )}
-          <Button
-            type="primary"
-            className="wizard-btn-next"
-            onClick={onNext}
-            disabled={nextDisabled}
-            loading={nextLoading}
-            block={backHidden}
-          >
-            {nextLabel}
-          </Button>
+          {!nextHidden && (
+            <Button
+              type="primary"
+              className="wizard-btn-next"
+              onClick={onNext}
+              disabled={nextDisabled}
+              loading={nextLoading}
+              block={backHidden}
+            >
+              {nextLabel}
+            </Button>
+          )}
         </div>
       </div>
     )
@@ -61,9 +64,11 @@ export default function WizardBottomBar({
       </div>
 
       <div style={{ flex: '0 0 120px', display: 'flex', justifyContent: 'flex-end' }}>
-        <Button type="primary" onClick={onNext} disabled={nextDisabled} loading={nextLoading}>
-          {nextLabel}
-        </Button>
+        {!nextHidden && (
+          <Button type="primary" onClick={onNext} disabled={nextDisabled} loading={nextLoading}>
+            {nextLabel}
+          </Button>
+        )}
       </div>
     </div>
   )

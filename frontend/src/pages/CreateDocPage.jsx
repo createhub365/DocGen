@@ -23,6 +23,7 @@ function navEquals(a, b) {
     a.nextLabel === b.nextLabel &&
     a.nextDisabled === b.nextDisabled &&
     a.backHidden === b.backHidden &&
+    a.nextHidden === b.nextHidden &&
     a.nextLoading === b.nextLoading &&
     a.center === b.center
   )
@@ -146,9 +147,6 @@ export default function CreateDocPage() {
       case 4:
         return (
           <StepSmartFillForm
-            mainStepCurrent={currentStep}
-            mainStepContext={stepTips[currentStep]}
-            onGoToMainStep={goToStep}
             onBack={goToStep3}
             onEditEmployer={goToStep2}
             onStartFresh={handleStartFresh}
@@ -201,6 +199,7 @@ export default function CreateDocPage() {
           nextLabel={nav.nextLabel}
           nextDisabled={nav.nextDisabled}
           backHidden={nav.backHidden}
+          nextHidden={nav.nextHidden}
           nextLoading={nav.nextLoading}
           center={nav.center}
         />

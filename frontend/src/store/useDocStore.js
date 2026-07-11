@@ -78,7 +78,11 @@ export const useDocStore = create(
         set({ tradeCategory, selectedTrade: null, tradeDetails: null }),
       setSelectedTrade: (selectedTrade, tradeDetails) => set({ selectedTrade, tradeDetails }),
       setTemplate: (templateId, placeholders) =>
-        set({ templateId, placeholders, formData: {} }),
+        set((state) => ({
+          templateId,
+          placeholders,
+          formData: state.templateId === templateId ? state.formData : {},
+        })),
       setFormData: (key, value) =>
         set((state) => ({
           formData: { ...state.formData, [key]: value },

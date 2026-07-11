@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { CheckOutlined, ArrowLeftOutlined, EyeOutlined } from '@ant-design/icons'
-import { getTemplatesCatalog, getTradeBankIndustries } from '../../api/client'
+import { getTemplatesCatalog, getTradeBankIndustries, getTemplateById } from '../../api/client'
 import { useDocStore } from '../../store/useDocStore'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import TemplatePreviewModal from '../ui/TemplatePreviewModal'
@@ -650,6 +650,11 @@ export default function StepTemplateSelect({ phase = 'full', onContinue, onBack,
       selectedFormat.template_id
     )
     setLocationDraft({ draftFormatSlug: formatSlug })
+    getTemplateById(selectedFormat.template_id)
+      .then((data) => {
+        useDocStore.getState().setTemplate(selectedFormat.template_id, data.placeholders || [])
+      })
+      .catch(() => {})
     onContinue()
   }, [
     isLocationPhase,

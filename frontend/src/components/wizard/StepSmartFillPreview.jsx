@@ -12,38 +12,9 @@ import { EditOutlined, EyeOutlined, CheckOutlined } from '@ant-design/icons'
 import { smartPreviewPdf, smartGenerateAndDownload, readApiErrorDetail } from '../../api/client'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import FormatChoiceModal from '../ui/FormatChoiceModal'
-import { VISIBLE_FORM_SECTIONS } from './smartFormConfig'
+import { COMPUTED_IDS } from '../../utils/placeholderFormBuilder'
 
 const { Text, Title } = Typography
-
-const SECTION_TITLES = {
-  candidate: '👤 Candidate Details',
-  document: '📄 Document Details',
-  position: '💼 Position Details',
-  remuneration: '💰 Remuneration',
-  allowances: '🎁 Allowances',
-  qualifications: '🎓 Qualifications',
-  signature: '✍️ Candidate Signature',
-}
-
-const REVIEW_SECTIONS = [
-  {
-    key: 'employer',
-    title: '🏢 Employer Info',
-    isEmployer: true,
-    fields: [
-      { id: 'company_name', label: 'Company' },
-      { id: 'position_title', label: 'Trade / Position' },
-      { id: 'ref_number', label: 'Reference Number' },
-    ],
-  },
-  ...VISIBLE_FORM_SECTIONS.map((s, index) => ({
-    key: s.key,
-    title: SECTION_TITLES[s.key],
-    fields: s.fields,
-    subStepIndex: index,
-  })),
-]
 
 function ReviewRow({ label, value }) {
   return (
@@ -62,7 +33,9 @@ export default function StepSmartFillPreview({
   allFields,
   buildPayload,
   employerSummary,
-  onJumpToSubStep,
+  formFields = [],
+  onBackToForm,
+  onEditEmployer,
   onGenerateSuccess,
   hideDocumentPreview = false,
 }) {
@@ -73,45 +46,68 @@ export default function StepSmartFillPreview({
   const [formatModalOpen, setFormatModalOpen] = useState(false)
   const message = useAppMessage()
 
-  const getDisplayValue = (field, section) => {
-    if (section.isEmployer) {
-      if (field.id === 'company_name') return employerSummary.companyName
-      if (field.id === 'position_title') return employerSummary.tradeLabel
-      if (field.id === 'ref_number') return employerSummary.refNumber
-    }
-    return allFields[field.id]
-  }
+  const reviewFields = formFields.filter(
+    (field) => field.type !== 'salutation_select' && !COMPUTED_IDS.has(field.id)
+  )
 
-  const collapseItems = REVIEW_SECTIONS.map((section) => ({
-    key: section.key,
-    label: (
-      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', paddingRight: 8 }}>
-        <span>{section.title}</span>
-        <Button
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={(e) => {
-            e.stopPropagation()
-            onJumpToSubStep(section.isEmployer ? -1 : section.subStepIndex)
-          }}
-        >
-          Edit
-        </Button>
-      </div>
-    ),
-    children: (
-      <div>
-        {section.fields.map((field) => (
-          <ReviewRow
-            key={field.id}
-            label={field.label || field.id}
-            value={getDisplayValue(field, section)}
-          />
-        ))}
-      </div>
-    ),
-  }))
+  const collapseItems = [
+    {
+      key: 'employer',
+      label: (
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', paddingRight: 8 }}>
+          <span>🏢 Employer Info</span>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditEmployer?.()
+            }}
+          >
+            Edit
+          </Button>
+        </div>
+      ),
+      children: (
+        <div>
+          <ReviewRow label="Company" value={employerSummary.companyName} />
+          <ReviewRow label="Trade / Position" value={employerSummary.tradeLabel} />
+          <ReviewRow label="Reference Number" value={employerSummary.refNumber} />
+        </div>
+      ),
+    },
+    {
+      key: 'fields',
+      label: (
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', paddingRight: 8 }}>
+          <span>📋 Form Fields ({reviewFields.length})</span>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={(e) => {
+              e.stopPropagation()
+              onBackToForm?.()
+            }}
+          >
+            Edit
+          </Button>
+        </div>
+      ),
+      children: (
+        <div>
+          {reviewFields.map((field) => (
+            <ReviewRow
+              key={field.id}
+              label={field.label || field.id}
+              value={allFields[field.id]}
+            />
+          ))}
+        </div>
+      ),
+    },
+  ]
 
   const handlePreview = async () => {
     setPreviewLoading(true)
@@ -158,7 +154,7 @@ export default function StepSmartFillPreview({
         Review before generating
       </Title>
 
-      <Collapse items={collapseItems} defaultActiveKey={REVIEW_SECTIONS.map((s) => s.key)} />
+      <Collapse items={collapseItems} defaultActiveKey={['employer', 'fields']} />
 
       <Space style={{ marginTop: 24 }} wrap>
         {!hideDocumentPreview && (
