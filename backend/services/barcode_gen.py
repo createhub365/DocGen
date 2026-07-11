@@ -26,7 +26,7 @@ def _load_label_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     return ImageFont.load_default()
 
 
-def generate_barcode(ref_number: str) -> bytes:
+def generate_barcode(ref_number: str, *, include_label: bool = False) -> bytes:
     buffer = BytesIO()
     barcode = Code128(ref_number, writer=ImageWriter())
 
@@ -47,6 +47,12 @@ def generate_barcode(ref_number: str) -> bytes:
     aspect = barcode_img.width / barcode_img.height
     barcode_h = int(TARGET_WIDTH / aspect)
     barcode_img = barcode_img.resize((TARGET_WIDTH, barcode_h), Image.LANCZOS)
+
+    if not include_label:
+        output = BytesIO()
+        barcode_img.save(output, format="PNG")
+        output.seek(0)
+        return output.read()
 
     font = _load_label_font(TEXT_SIZE)
     label_bbox = ImageDraw.Draw(barcode_img).textbbox((0, 0), ref_number, font=font)

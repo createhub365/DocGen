@@ -1,6 +1,6 @@
 {
   "format": "NZ_Construction_OfferLetter_Format1",
-  "total_variables": 53,
+  "total_variables": 54,
   "variables": [
     {
       "variable": "{{company_logo}}",
@@ -46,9 +46,17 @@
       "variable": "{{ref_number}}",
       "field_label": "Reference Number",
       "section": "Document Info",
-      "example": "OL-0047/25",
+      "example": "OL-0110369060T",
       "required": "Yes",
-      "notes": "Auto-generated \u2014 format OL-XXXX/YY"
+      "notes": "Auto-generated text only \u2014 use {{ref_number_barcode}} separately for the barcode image"
+    },
+    {
+      "variable": "{{ref_number_barcode}}",
+      "field_label": "Reference Barcode",
+      "section": "Document Info",
+      "example": "Code128 barcode image",
+      "required": "No",
+      "notes": "Replaced by barcode image at generation time; {{ref_number}} holds the readable text"
     },
     {
       "variable": "{{issue_date}}",

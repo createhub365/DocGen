@@ -18,7 +18,8 @@ def fill_template(
     if logo_path:
         data.pop("company_logo", None)
 
-    ref_number = data.pop("ref_number", None) or None
+    data.pop("ref_number_barcode", None)
+    ref_number = data.get("ref_number") or None
     issue_date = data.get("issue_date")
 
     fill_docx_zip(template_path, data, output_path)

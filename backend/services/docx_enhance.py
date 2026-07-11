@@ -8,9 +8,10 @@ from docx.shared import Inches, Pt, RGBColor
 from services.barcode_gen import generate_barcode
 
 LOGO_PLACEHOLDER = "{{company_logo}}"
-REF_PLACEHOLDER = "{{ref_number}}"
+REF_BARCODE_PLACEHOLDER = "{{ref_number_barcode}}"
 LOGO_WIDTH_INCHES = 1.4  # fixed — do not change
 BARCODE_WIDTH_INCHES = 1.65
+
 
 def _replace_logo_in_paragraph(paragraph, logo_bytes: bytes) -> bool:
     full_text = "".join(run.text for run in paragraph.runs)
@@ -22,7 +23,7 @@ def _replace_logo_in_paragraph(paragraph, logo_bytes: bytes) -> bool:
     return True
 
 
-def _scan_paragraphs(paragraphs, logo_bytes: bytes) -> bool:
+def _scan_paragraphs_for_logo(paragraphs, logo_bytes: bytes) -> bool:
     changed = False
     for paragraph in paragraphs:
         if _replace_logo_in_paragraph(paragraph, logo_bytes):
@@ -38,49 +39,53 @@ def inject_logo(docx_path: str, image_path: str) -> None:
         logo_bytes = f.read()
 
     doc = Document(docx_path)
-    changed = _scan_paragraphs(doc.paragraphs, logo_bytes)
+    changed = _scan_paragraphs_for_logo(doc.paragraphs, logo_bytes)
 
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
-                if _scan_paragraphs(cell.paragraphs, logo_bytes):
+                if _scan_paragraphs_for_logo(cell.paragraphs, logo_bytes):
                     changed = True
 
     for section in doc.sections:
         header = section.header
         if header:
-            if _scan_paragraphs(header.paragraphs, logo_bytes):
+            if _scan_paragraphs_for_logo(header.paragraphs, logo_bytes):
                 changed = True
             for table in header.tables:
                 for row in table.rows:
                     for cell in row.cells:
-                        if _scan_paragraphs(cell.paragraphs, logo_bytes):
+                        if _scan_paragraphs_for_logo(cell.paragraphs, logo_bytes):
                             changed = True
 
         for extra_header in (section.first_page_header, section.even_page_header):
             if extra_header:
-                if _scan_paragraphs(extra_header.paragraphs, logo_bytes):
+                if _scan_paragraphs_for_logo(extra_header.paragraphs, logo_bytes):
                     changed = True
                 for table in extra_header.tables:
                     for row in table.rows:
                         for cell in row.cells:
-                            if _scan_paragraphs(cell.paragraphs, logo_bytes):
+                            if _scan_paragraphs_for_logo(cell.paragraphs, logo_bytes):
                                 changed = True
 
         for footer in (section.footer, section.first_page_footer, section.even_page_footer):
-            if footer and _scan_paragraphs(footer.paragraphs, logo_bytes):
+            if footer and _scan_paragraphs_for_logo(footer.paragraphs, logo_bytes):
                 changed = True
 
     if changed:
         doc.save(docx_path)
 
 
-def _paragraph_has_ref_placeholder(paragraph) -> bool:
-    return REF_PLACEHOLDER in "".join(run.text for run in paragraph.runs)
+def _paragraph_has_barcode_placeholder(paragraph) -> bool:
+    return REF_BARCODE_PLACEHOLDER in "".join(run.text for run in paragraph.runs)
 
 
-def _replace_ref_in_paragraph(paragraph, ref_number: str, barcode_bytes: bytes | None) -> bool:
-    if not _paragraph_has_ref_placeholder(paragraph):
+def _replace_barcode_in_paragraph(
+    paragraph,
+    ref_number: str,
+    barcode_bytes: bytes | None,
+) -> bool:
+    if not _paragraph_has_barcode_placeholder(paragraph):
         return False
 
     paragraph.clear()
@@ -99,37 +104,69 @@ def _replace_ref_in_paragraph(paragraph, ref_number: str, barcode_bytes: bytes |
     return True
 
 
-def _scan_body_for_ref(paragraphs, ref_number: str, barcode_bytes: bytes | None) -> bool:
+def _scan_paragraphs_for_barcode(
+    paragraphs,
+    ref_number: str,
+    barcode_bytes: bytes | None,
+) -> bool:
+    changed = False
     for paragraph in paragraphs:
-        if _replace_ref_in_paragraph(paragraph, ref_number, barcode_bytes):
-            return True
-    return False
+        if _replace_barcode_in_paragraph(paragraph, ref_number, barcode_bytes):
+            changed = True
+    return changed
+
+
+def _scan_doc_for_barcode(doc: Document, ref_number: str, barcode_bytes: bytes | None) -> bool:
+    changed = _scan_paragraphs_for_barcode(doc.paragraphs, ref_number, barcode_bytes)
+
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                if _scan_paragraphs_for_barcode(cell.paragraphs, ref_number, barcode_bytes):
+                    changed = True
+
+    for section in doc.sections:
+        header = section.header
+        if header:
+            if _scan_paragraphs_for_barcode(header.paragraphs, ref_number, barcode_bytes):
+                changed = True
+            for table in header.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if _scan_paragraphs_for_barcode(cell.paragraphs, ref_number, barcode_bytes):
+                            changed = True
+
+        for extra_header in (section.first_page_header, section.even_page_header):
+            if extra_header:
+                if _scan_paragraphs_for_barcode(extra_header.paragraphs, ref_number, barcode_bytes):
+                    changed = True
+                for table in extra_header.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            if _scan_paragraphs_for_barcode(cell.paragraphs, ref_number, barcode_bytes):
+                                changed = True
+
+        for footer in (section.footer, section.first_page_footer, section.even_page_footer):
+            if footer and _scan_paragraphs_for_barcode(footer.paragraphs, ref_number, barcode_bytes):
+                changed = True
+
+    return changed
 
 
 def inject_ref_barcode(docx_path: str, ref_number: str, issue_date: str | None = None) -> None:
+    """Replace {{ref_number_barcode}} with a Code128 barcode image (text-only ref uses {{ref_number}})."""
+    _ = issue_date
     if not ref_number:
         return
 
     barcode_bytes = None
     try:
-        barcode_bytes = generate_barcode(ref_number)
+        barcode_bytes = generate_barcode(ref_number, include_label=False)
     except Exception:
         barcode_bytes = None
 
     doc = Document(docx_path)
-    changed = _scan_body_for_ref(doc.paragraphs, ref_number, barcode_bytes)
-
-    if not changed:
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if _scan_body_for_ref(cell.paragraphs, ref_number, barcode_bytes):
-                        changed = True
-                        break
-                if changed:
-                    break
-            if changed:
-                break
+    changed = _scan_doc_for_barcode(doc, ref_number, barcode_bytes)
 
     if changed:
         doc.save(docx_path)

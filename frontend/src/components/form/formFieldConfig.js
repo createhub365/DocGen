@@ -47,7 +47,12 @@ export const DATE_FIELD_LABELS = Object.fromEntries(
     .map((id) => [id, FIELD_REF[id].label])
 )
 
-export const SPECIAL_FIELD_IDS = new Set(['company_logo', 'ref_number', ...DATE_FIELD_IDS])
+export const SPECIAL_FIELD_IDS = new Set([
+  'company_logo',
+  'ref_number',
+  'ref_number_barcode',
+  ...DATE_FIELD_IDS,
+])
 
 export function getFieldMeta(ph) {
   return FIELD_REF[ph.id] || null
