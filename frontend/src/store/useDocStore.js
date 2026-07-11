@@ -72,6 +72,8 @@ export const useDocStore = create(
         set({
           templateMeta,
           templateId,
+          placeholders: [],
+          formData: {},
         }),
       setEmployer: (employer) => set({ employer }),
       setTradeCategory: (tradeCategory) =>

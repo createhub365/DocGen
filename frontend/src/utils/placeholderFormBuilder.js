@@ -101,7 +101,7 @@ function buildFieldDef(placeholder) {
 
   return {
     id,
-    label: known.label || getFieldLabel(ph),
+    label: placeholder.label || known.label || getFieldLabel(ph),
     type: resolveFieldType(id),
     required: known.required ?? isFieldRequired(ph),
     placeholder: known.placeholder || getFieldPlaceholder(ph),
@@ -178,4 +178,17 @@ export function getDefaultValues(formFields) {
 
 export function isSpecialBackgroundField(id) {
   return SPECIAL_FIELD_IDS.has(id) || INJECT_ONLY_IDS.has(id) || AUTO_FILL_IDS.has(id)
+}
+
+/** Values applied to the Ant Design form — only keys that have a visible Form.Item. */
+export function pickFormValues(values, formFields, extraKeys = []) {
+  const allowed = new Set([
+    ...formFields.map((f) => f.id),
+    'candidate_salutation',
+    '_salutation_prefix',
+    ...extraKeys,
+  ])
+  return Object.fromEntries(
+    Object.entries(values).filter(([key]) => allowed.has(key))
+  )
 }

@@ -21,6 +21,7 @@ import {
 import {
   buildFormFieldsFromPlaceholders,
   getVisibleFieldIds,
+  pickFormValues,
   templateNeedsSalutation,
 } from '../../utils/placeholderFormBuilder'
 
@@ -52,7 +53,6 @@ export default function StepSmartFillForm({
     selectedTrade,
     tradeDetails,
     formData,
-    placeholders,
     setFormDataBulk,
     mergeFormData,
     resetFormForSameEmployer,
@@ -66,7 +66,7 @@ export default function StepSmartFillForm({
   const [generatedDoc, setGeneratedDoc] = useState(null)
   const [generatedFormat, setGeneratedFormat] = useState('docx')
   const [showPreview, setShowPreview] = useState(false)
-  const [resolvedPlaceholders, setResolvedPlaceholders] = useState(placeholders)
+  const [resolvedPlaceholders, setResolvedPlaceholders] = useState([])
   const [form] = Form.useForm()
   const message = useAppMessage()
   const backgroundFieldsRef = useRef({})
@@ -107,13 +107,19 @@ export default function StepSmartFillForm({
       ? Object.fromEntries(Object.entries(formData).filter(([key]) => visibleIds.has(key)))
       : {}
 
-    const initial = {
-      ...defaults,
-      ...prefill,
-      ...savedVisible,
-      ref_number: ref,
-      _salutation_prefix: savedVisible._salutation_prefix || 'Mr.',
-    }
+    const prefillForForm = pickFormValues(prefill, fields)
+    const initial = pickFormValues(
+      {
+        ...defaults,
+        ...prefillForForm,
+        ...savedVisible,
+        ref_number: ref,
+        _salutation_prefix: savedVisible._salutation_prefix || 'Mr.',
+      },
+      fields,
+      ['ref_number']
+    )
+    form.resetFields()
     form.setFieldsValue(initial)
     syncSalutation(initial)
     setFormDataBulk({ ...backgroundFieldsRef.current, ...initial })
@@ -125,6 +131,7 @@ export default function StepSmartFillForm({
     setTemplateMissing(false)
     setShowPreview(false)
     setFillSubStep(0)
+    setResolvedPlaceholders([])
 
     getTemplateById(templateId)
       .then((data) => {
@@ -145,15 +152,20 @@ export default function StepSmartFillForm({
   }, [templateId, employer])
 
   useEffect(() => {
-    if (!employer || !selectedTrade || loading) return
+    if (!employer || !selectedTrade || loading || !formFields.length) return
     const prefill = buildEmployerPrefill(employer, selectedTrade)
     const existingRef =
       backgroundFieldsRef.current.ref_number || formData.ref_number || refNumber
     backgroundFieldsRef.current = { ...prefill, ref_number: existingRef }
-    mergeFormData({ ...prefill, ref_number: existingRef })
-    form.setFieldsValue({ ...prefill, ref_number: existingRef })
+    const prefillForForm = pickFormValues(
+      { ...prefill, ref_number: existingRef },
+      formFields,
+      ['ref_number']
+    )
+    mergeFormData({ ...backgroundFieldsRef.current, ...prefillForForm })
+    form.setFieldsValue(prefillForForm)
     if (existingRef) setRefNumber(existingRef)
-  }, [selectedTrade])
+  }, [selectedTrade, loading, formFields])
 
   useLayoutEffect(() => {
     if (loading || showPreview || !showSalutation) return
@@ -502,7 +514,7 @@ export default function StepSmartFillForm({
               <Form
                 form={form}
                 layout="vertical"
-                preserve
+                preserve={false}
                 onValuesChange={() => {
                   syncSalutation()
                   const values = form.getFieldsValue(true)
