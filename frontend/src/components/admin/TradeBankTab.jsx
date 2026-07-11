@@ -20,7 +20,7 @@ import AddTradeModal from './AddTradeModal'
 import AddIndustryModal from './AddIndustryModal'
 import CountryFlag from '../ui/CountryFlag'
 import COUNTRIES, { PRIORITY_COUNTRIES, getCountryByCode } from '../../data/countries'
-import { resolveDuties, isAnzCountry } from '../../utils/dutyResolver'
+import { resolveDuties } from '../../utils/dutyResolver'
 import {
   DEFAULT_CODE,
   getCodeSystemForCountry,
@@ -169,7 +169,6 @@ export default function TradeBankTab({ tradeBank, onRefresh }) {
   const [selectedTrade, setSelectedTrade] = useState(null)
   const [searchText, setSearchText] = useState('')
   const [countryFilter, setCountryFilter] = useState('NZ')
-  const [dutyViewMode, setDutyViewMode] = useState('auto')
   const [copied, setCopied] = useState(null)
   const [mobileStep, setMobileStep] = useState(1)
 
@@ -249,19 +248,8 @@ export default function TradeBankTab({ tradeBank, onRefresh }) {
 
   const displayDuties = useMemo(() => {
     if (!selectedTrade) return []
-    const nzDuties =
-      selectedTrade.duties_by_country?.NZ ||
-      selectedTrade.duties ||
-      []
-    const genericDuties =
-      selectedTrade.duties_generic ||
-      selectedTrade.duties ||
-      []
-
-    if (dutyViewMode === 'nz') return nzDuties
-    if (dutyViewMode === 'generic') return genericDuties
-    return resolveDuties(selectedTrade, countryFilter)
-  }, [selectedTrade, countryFilter, dutyViewMode])
+    return resolveDuties(selectedTrade)
+  }, [selectedTrade])
 
   const totalTrades = useMemo(() => {
     if (!tradeBank?.industries) return 0
@@ -627,15 +615,13 @@ export default function TradeBankTab({ tradeBank, onRefresh }) {
                 padding: '4px 12px',
                 borderRadius: 999,
                 fontSize: 12,
-                background: isAnzCountry(selectedCountry.code) ? '#EEF2F7' : '#F0FBF4',
-                color: isAnzCountry(selectedCountry.code) ? '#1A3C5E' : '#0D7C4A',
+                background: '#F0FBF4',
+                color: '#0D7C4A',
                 border: '1px solid currentColor',
               }}
             >
               <span>{selectedCountry.flag}</span>
-              {isAnzCountry(selectedCountry.code)
-                ? 'NZ/AU Specific Duties'
-                : 'Generic International Duties'}
+              Generic International Duties
             </div>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -809,51 +795,18 @@ export default function TradeBankTab({ tradeBank, onRefresh }) {
               </span>
             </h3>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <button
-                type="button"
-                onClick={() => setDutyViewMode('generic')}
+              <span
                 style={{
                   padding: '4px 10px',
                   borderRadius: 6,
-                  border: dutyViewMode === 'generic' ? '1px solid #0D7C4A' : '1px solid #DDE3EC',
-                  background: dutyViewMode === 'generic' ? '#F0FBF4' : 'white',
-                  cursor: 'pointer',
+                  border: '1px solid #0D7C4A',
+                  background: '#F0FBF4',
                   fontSize: 11,
-                  color: dutyViewMode === 'generic' ? '#0D7C4A' : '#5A6478',
+                  color: '#0D7C4A',
                 }}
               >
                 🌍 Generic
-              </button>
-              <button
-                type="button"
-                onClick={() => setDutyViewMode('nz')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  border: dutyViewMode === 'nz' ? '1px solid #1A3C5E' : '1px solid #DDE3EC',
-                  background: dutyViewMode === 'nz' ? '#EEF2F7' : 'white',
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  color: dutyViewMode === 'nz' ? '#1A3C5E' : '#5A6478',
-                }}
-              >
-                🇳🇿 NZ Specific
-              </button>
-              <button
-                type="button"
-                onClick={() => setDutyViewMode('auto')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  border: dutyViewMode === 'auto' ? '1px solid #D4A017' : '1px solid #DDE3EC',
-                  background: dutyViewMode === 'auto' ? '#FFF8E6' : 'white',
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  color: dutyViewMode === 'auto' ? '#7D6608' : '#5A6478',
-                }}
-              >
-                Auto
-              </button>
+              </span>
             </div>
             <button
               type="button"

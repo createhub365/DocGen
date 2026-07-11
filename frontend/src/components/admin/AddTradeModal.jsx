@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 
-import { Modal, Form, Input, Select, Button, Space, Divider, Tabs } from 'antd'
+import { Modal, Form, Input, Select, Button, Space, Divider } from 'antd'
 
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons'
 
@@ -207,11 +207,6 @@ export default function AddTradeModal({
           : editingTrade.duties?.length
             ? editingTrade.duties
             : [''],
-        duties_nz: editingTrade.duties_by_country?.NZ?.length
-          ? editingTrade.duties_by_country.NZ
-          : editingTrade.duties?.length
-            ? editingTrade.duties
-            : [''],
 
         countries: countryCodes,
 
@@ -234,7 +229,6 @@ export default function AddTradeModal({
         responsibilities: [''],
 
         duties_generic: [''],
-        duties_nz: [''],
 
         countries: ['NZ'],
 
@@ -285,8 +279,7 @@ export default function AddTradeModal({
     const selectedInd = industries.find((i) => i.industry === values.industry_mode)
 
     const genericDuties = values.duties_generic.filter((d) => d?.trim())
-    const nzDuties = values.duties_nz.filter((d) => d?.trim())
-    if (!genericDuties.length && !nzDuties.length) return
+    if (!genericDuties.length) return
 
     const payload = {
 
@@ -309,11 +302,7 @@ export default function AddTradeModal({
       responsibilities: values.responsibilities.filter((r) => r?.trim()),
 
       duties_generic: genericDuties,
-      duties_by_country: {
-        NZ: nzDuties.length ? nzDuties : genericDuties,
-        AU: nzDuties.length ? nzDuties : genericDuties,
-      },
-      duties: nzDuties.length ? nzDuties : genericDuties,
+      duties: genericDuties,
 
       countries: (values.countries || ['NZ']).map(
 
@@ -557,93 +546,43 @@ export default function AddTradeModal({
           📋 Duties
         </Divider>
 
-        <Tabs
-          defaultActiveKey="generic"
-          items={[
-            {
-              key: 'generic',
-              label: '🌍 Generic Duties',
-              children: (
-                <>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: '#9AA3B0',
-                      marginBottom: 12,
-                      lineHeight: 1.5,
-                    }}
+        <div
+          style={{
+            fontSize: 12,
+            color: '#9AA3B0',
+            marginBottom: 12,
+            lineHeight: 1.5,
+          }}
+        >
+          Use internationally neutral wording — e.g. &quot;applicable legislation&quot; instead of
+          country-specific laws, &quot;local authority&quot; instead of named regulators.
+        </div>
+        <Form.List name="duties_generic">
+          {(fields, { add, remove }) => (
+            <>
+              {fields.map((field) => (
+                <Space key={field.key} style={{ display: 'flex', marginBottom: 8 }} align="start">
+                  <Form.Item
+                    {...field}
+                    style={{ flex: 1, marginBottom: 0 }}
+                    rules={[{ required: true, message: 'Required' }]}
                   >
-                    Do not mention country-specific laws. Use generic terms like
-                    &quot;applicable legislation&quot; instead of &quot;HSWA 2015&quot;,
-                    &quot;local authority&quot; instead of &quot;WorkSafe NZ&quot;.
-                  </div>
-                  <Form.List name="duties_generic">
-                    {(fields, { add, remove }) => (
-                      <>
-                        {fields.map((field) => (
-                          <Space key={field.key} style={{ display: 'flex', marginBottom: 8 }} align="start">
-                            <Form.Item
-                              {...field}
-                              style={{ flex: 1, marginBottom: 0 }}
-                              rules={[{ required: true, message: 'Required' }]}
-                            >
-                              <Input.TextArea rows={2} placeholder="International duty (no country-specific refs)" />
-                            </Form.Item>
-                            {fields.length > 1 && (
-                              <MinusCircleOutlined
-                                onClick={() => remove(field.name)}
-                                style={{ color: '#999', marginTop: 8 }}
-                              />
-                            )}
-                          </Space>
-                        ))}
-                        <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                          Add generic duty
-                        </Button>
-                      </>
-                    )}
-                  </Form.List>
-                </>
-              ),
-            },
-            {
-              key: 'nz',
-              label: '🇳🇿 NZ/AU Specific Duties',
-              children: (
-                <>
-                  <div style={{ fontSize: 12, color: '#9AA3B0', marginBottom: 12 }}>
-                    Optional — only needed when this trade is used in New Zealand or Australia.
-                  </div>
-                  <Form.List name="duties_nz">
-                    {(fields, { add, remove }) => (
-                      <>
-                        {fields.map((field) => (
-                          <Space key={field.key} style={{ display: 'flex', marginBottom: 8 }} align="start">
-                            <Form.Item
-                              {...field}
-                              style={{ flex: 1, marginBottom: 0 }}
-                            >
-                              <Input.TextArea rows={2} placeholder="NZ/AU-specific duty (HSWA, WorkSafe NZ, NZS…)" />
-                            </Form.Item>
-                            {fields.length > 1 && (
-                              <MinusCircleOutlined
-                                onClick={() => remove(field.name)}
-                                style={{ color: '#999', marginTop: 8 }}
-                              />
-                            )}
-                          </Space>
-                        ))}
-                        <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                          Add NZ/AU duty
-                        </Button>
-                      </>
-                    )}
-                  </Form.List>
-                </>
-              ),
-            },
-          ]}
-        />
+                    <Input.TextArea rows={2} placeholder="Generic duty (no country-specific refs)" />
+                  </Form.Item>
+                  {fields.length > 1 && (
+                    <MinusCircleOutlined
+                      onClick={() => remove(field.name)}
+                      style={{ color: '#999', marginTop: 8 }}
+                    />
+                  )}
+                </Space>
+              ))}
+              <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                Add duty
+              </Button>
+            </>
+          )}
+        </Form.List>
 
       </Form>
 

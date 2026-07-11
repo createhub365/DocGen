@@ -14,8 +14,6 @@ from services.occupation_codes import (
     normalize_trade_entry,
     sanitize_occupation_codes_payload,
 )
-from utils.duty_resolver import make_duties_generic
-
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 BUILTIN_PATH = DATA_DIR / "complete_trade_bank.json"
 CUSTOM_PATH = DATA_DIR / "custom_trade_bank.json"
@@ -204,20 +202,11 @@ def create_custom_trade(body: dict) -> dict:
     if not occupation_codes:
         raise HTTPException(status_code=400, detail="At least one occupation code is required")
     responsibilities = [r.strip() for r in body.get("responsibilities") or [] if r and r.strip()]
-    nz_duties = [d.strip() for d in body.get("duties_by_country", {}).get("NZ") or body.get("duties") or [] if d and d.strip()]
-    generic_duties = [d.strip() for d in body.get("duties_generic") or [] if d and d.strip()]
+    generic_duties = [d.strip() for d in body.get("duties_generic") or body.get("duties") or [] if d and d.strip()]
     if not responsibilities:
         raise HTTPException(status_code=400, detail="At least one responsibility is required")
-    if not nz_duties and not generic_duties:
+    if not generic_duties:
         raise HTTPException(status_code=400, detail="At least one duty is required")
-    if not generic_duties and nz_duties:
-        generic_duties = make_duties_generic(nz_duties)
-    if not nz_duties:
-        nz_duties = generic_duties
-
-    duties_by_country = body.get("duties_by_country") or {}
-    if not duties_by_country.get("NZ"):
-        duties_by_country = {**duties_by_country, "NZ": nz_duties, "AU": nz_duties}
 
     custom = _load_custom()
     record = {
@@ -232,8 +221,8 @@ def create_custom_trade(body: dict) -> dict:
         "anzsco_title": occupation_codes.get("ANZSCO", {}).get("title", trade_name),
         "responsibilities": responsibilities,
         "duties_generic": generic_duties,
-        "duties_by_country": duties_by_country,
-        "duties": nz_duties,
+        "duties_by_country": {},
+        "duties": generic_duties,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     custom.setdefault("trades", []).append(record)
@@ -272,31 +261,21 @@ def update_custom_trade(trade_id: str, body: dict) -> dict:
         if not responsibilities:
             raise HTTPException(status_code=400, detail="At least one responsibility is required")
         record["responsibilities"] = responsibilities
-    if "duties_generic" in body or "duties_by_country" in body or "duties" in body:
-        nz_duties = [
+    if "duties_generic" in body or "duties" in body:
+        generic_duties = [
             d.strip()
-            for d in (body.get("duties_by_country") or {}).get("NZ")
+            for d in body.get("duties_generic")
             or body.get("duties")
-            or record.get("duties_by_country", {}).get("NZ")
+            or record.get("duties_generic")
             or record.get("duties")
             or []
             if d and d.strip()
         ]
-        generic_duties = [
-            d.strip() for d in body.get("duties_generic") or record.get("duties_generic") or [] if d and d.strip()
-        ]
-        if not nz_duties and not generic_duties:
+        if not generic_duties:
             raise HTTPException(status_code=400, detail="At least one duty is required")
-        if not generic_duties and nz_duties:
-            generic_duties = make_duties_generic(nz_duties)
-        if not nz_duties:
-            nz_duties = generic_duties
-        duties_by_country = body.get("duties_by_country") or record.get("duties_by_country") or {}
-        if not duties_by_country.get("NZ"):
-            duties_by_country = {**duties_by_country, "NZ": nz_duties, "AU": nz_duties}
         record["duties_generic"] = generic_duties
-        record["duties_by_country"] = duties_by_country
-        record["duties"] = nz_duties
+        record["duties_by_country"] = {}
+        record["duties"] = generic_duties
     if "industry_icon" in body and body["industry_icon"]:
         record["industry_icon"] = body["industry_icon"]
     if "industry_color" in body and body["industry_color"]:

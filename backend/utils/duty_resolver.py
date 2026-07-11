@@ -1,10 +1,7 @@
-"""Resolve trade duties by country — generic vs country-specific layers."""
+"""Resolve trade duties — internationally neutral (generic) wording only."""
 from __future__ import annotations
 
 from typing import Any
-
-ANZSCO_COUNTRIES = frozenset({"NZ", "AU"})
-GULF_COUNTRIES = frozenset({"AE", "SA", "QA", "KW", "BH", "OM"})
 
 NZ_TERM_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ("Health and Safety at Work Act 2015 (HSWA)", "applicable health and safety legislation"),
@@ -52,27 +49,15 @@ def make_duties_generic(duties: list[str]) -> list[str]:
     return generic
 
 
-def resolve_duties(trade: dict[str, Any], country_code: str) -> list[str]:
-    """
-    Return duties appropriate for the given ISO country code.
-    Priority: exact country → GULF region → generic → legacy duties field.
-    """
-    code = (country_code or "").upper()
-    duties_by_country = trade.get("duties_by_country") or {}
-    generic_duties = trade.get("duties_generic") or trade.get("duties") or []
+def resolve_duties(trade: dict[str, Any], country_code: str = "") -> list[str]:
+    """Return generic duties only; country-specific overrides are ignored."""
+    _ = country_code
 
-    if code in duties_by_country and duties_by_country[code]:
-        return list(duties_by_country[code])
+    if trade.get("duties_generic"):
+        return make_duties_generic(list(trade["duties_generic"]))
 
-    if code in ANZSCO_COUNTRIES:
-        nz_duties = duties_by_country.get("NZ") or duties_by_country.get("AU")
-        if nz_duties:
-            return list(nz_duties)
+    legacy_duties = trade.get("duties") or []
+    if legacy_duties:
+        return make_duties_generic(list(legacy_duties))
 
-    if code in GULF_COUNTRIES and duties_by_country.get("GULF"):
-        return list(duties_by_country["GULF"])
-
-    if generic_duties:
-        return list(generic_duties)
-
-    return list(trade.get("duties") or [])
+    return []

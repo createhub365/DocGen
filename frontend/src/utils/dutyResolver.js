@@ -1,5 +1,4 @@
 const ANZSCO_COUNTRIES = new Set(['NZ', 'AU'])
-const GULF_COUNTRIES = new Set(['AE', 'SA', 'QA', 'KW', 'BH', 'OM'])
 
 const NZ_TERM_REPLACEMENTS = [
   ['Health and Safety at Work Act 2015 (HSWA)', 'applicable health and safety legislation'],
@@ -45,28 +44,18 @@ export function makeDutiesGeneric(duties = []) {
   })
 }
 
-export function resolveDuties(trade, countryCode) {
+export function resolveDuties(trade) {
   if (!trade) return []
 
-  const code = (countryCode || '').toUpperCase()
-  const dutiesByCountry = trade.duties_by_country || {}
-  const genericDuties = trade.duties_generic || trade.duties || []
-
-  if (dutiesByCountry[code]?.length) {
-    return dutiesByCountry[code]
+  if (trade.duties_generic?.length) {
+    return makeDutiesGeneric(trade.duties_generic)
   }
 
-  if (ANZSCO_COUNTRIES.has(code)) {
-    const nzDuties = dutiesByCountry.NZ || dutiesByCountry.AU
-    if (nzDuties?.length) return nzDuties
+  if (trade.duties?.length) {
+    return makeDutiesGeneric(trade.duties)
   }
 
-  if (GULF_COUNTRIES.has(code) && dutiesByCountry.GULF?.length) {
-    return dutiesByCountry.GULF
-  }
-
-  if (genericDuties.length) return genericDuties
-  return trade.duties || []
+  return []
 }
 
 export function isAnzCountry(code) {
