@@ -67,9 +67,11 @@ export default function StepSmartFillForm({
   const [generatedFormat, setGeneratedFormat] = useState('docx')
   const [showPreview, setShowPreview] = useState(false)
   const [resolvedPlaceholders, setResolvedPlaceholders] = useState([])
+  const [fieldsSnapshot, setFieldsSnapshot] = useState({})
   const [form] = Form.useForm()
   const message = useAppMessage()
   const backgroundFieldsRef = useRef({})
+  const fieldsSnapshotRef = useRef({})
 
   const formFields = useMemo(
     () => buildFormFieldsFromPlaceholders(resolvedPlaceholders),
@@ -122,7 +124,10 @@ export default function StepSmartFillForm({
     form.resetFields()
     form.setFieldsValue(initial)
     syncSalutation(initial)
-    setFormDataBulk({ ...backgroundFieldsRef.current, ...initial })
+    const merged = { ...backgroundFieldsRef.current, ...initial }
+    setFormDataBulk(merged)
+    fieldsSnapshotRef.current = merged
+    setFieldsSnapshot(merged)
   }
 
   useEffect(() => {
@@ -199,23 +204,26 @@ export default function StepSmartFillForm({
     }
   }
 
-  const buildAllFields = () => {
+  const collectFormValues = () => {
     computeValidityExpiry()
-    const values = {
+    const live = form.getFieldsValue(true) || {}
+    const cleaned = Object.fromEntries(
+      Object.entries(live).filter(([, value]) => value !== undefined)
+    )
+    delete cleaned._salutation_prefix
+    return {
       ...backgroundFieldsRef.current,
       ...formData,
-      ...form.getFieldsValue(true),
+      ...cleaned,
     }
-    delete values._salutation_prefix
-    return values
   }
 
   const persistFields = () => {
-    computeValidityExpiry()
-    const values = form.getFieldsValue(true)
-    delete values._salutation_prefix
-    mergeFormData(values)
-    return { ...backgroundFieldsRef.current, ...formData, ...values }
+    const merged = collectFormValues()
+    setFormDataBulk(merged)
+    fieldsSnapshotRef.current = merged
+    setFieldsSnapshot(merged)
+    return merged
   }
 
   const buildPayload = useCallback(
@@ -225,7 +233,9 @@ export default function StepSmartFillForm({
       employer_id: employer.id,
       trade: selectedTrade,
       trade_category: tradeCategory,
-      fields: buildAllFields(),
+      fields: fieldsSnapshotRef.current?.ref_number
+        ? fieldsSnapshotRef.current
+        : collectFormValues(),
     }),
     [templateId, templateMeta, employer, selectedTrade, tradeCategory, formData]
   )
@@ -250,7 +260,7 @@ export default function StepSmartFillForm({
     } catch {
       message.error('Please fill all required fields')
     }
-  }, [form, formFields, showSalutation, message, setFillSubStep])
+  }, [form, formFields, showSalutation, message, setFillSubStep, formData])
 
   const handleBack = useCallback(() => {
     if (showPreview) {
@@ -514,38 +524,39 @@ export default function StepSmartFillForm({
               <Form
                 form={form}
                 layout="vertical"
-                preserve={false}
+                preserve
                 onValuesChange={() => {
                   syncSalutation()
-                  const values = form.getFieldsValue(true)
-                  delete values._salutation_prefix
-                  mergeFormData(values)
+                  const values = form.getFieldsValue(true) || {}
+                  const cleaned = Object.fromEntries(
+                    Object.entries(values).filter(([, value]) => value !== undefined)
+                  )
+                  delete cleaned._salutation_prefix
+                  mergeFormData(cleaned)
                 }}
               >
                 <Form.Item name="candidate_salutation" hidden>
                   <Input />
                 </Form.Item>
 
-                {!showPreview && (
-                  <>
-                    {showSalutation && (
-                      <Form.Item
-                        name="_salutation_prefix"
-                        label="Salutation"
-                        initialValue="Mr."
-                        rules={[{ required: true, message: 'Salutation is required' }]}
-                      >
-                        <Select options={SALUTATION_OPTIONS} />
-                      </Form.Item>
-                    )}
-                    {formFields.map((field) => renderField(field))}
-                  </>
-                )}
+                <div style={{ display: showPreview ? 'none' : 'block' }}>
+                  {showSalutation && (
+                    <Form.Item
+                      name="_salutation_prefix"
+                      label="Salutation"
+                      initialValue="Mr."
+                      rules={[{ required: true, message: 'Salutation is required' }]}
+                    >
+                      <Select options={SALUTATION_OPTIONS} />
+                    </Form.Item>
+                  )}
+                  {formFields.map((field) => renderField(field))}
+                </div>
 
                 {showPreview && (
                   <StepSmartFillPreview
                     key={previewKey}
-                    allFields={buildAllFields()}
+                    allFields={fieldsSnapshot}
                     buildPayload={buildPayload}
                     formFields={formFields}
                     employerSummary={{
