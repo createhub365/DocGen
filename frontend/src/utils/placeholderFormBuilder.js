@@ -33,12 +33,20 @@ export const WIZARD_FIELD_ALIASES = {
   employer_accreditation_no: ['accreditation_number'],
   validity_expiry_date: ['offer_validity'],
   trade_duties: ['duties_block'],
+  authorized_signatory_date: [
+    'Authorized_Signatory_Date',
+    'authorised_signatory_date',
+    'signatory_date',
+    'signatory_sign_date',
+  ],
 }
 
 const ALIAS_TO_CANONICAL = Object.entries(WIZARD_FIELD_ALIASES).reduce((map, [canonical, aliases]) => {
   aliases.forEach((alias) => {
     map[alias] = canonical
+    map[String(alias).toLowerCase()] = canonical
   })
+  map[String(canonical).toLowerCase()] = canonical
   return map
 }, {})
 
@@ -74,21 +82,43 @@ const DATE_FIELD_IDS = new Set([
   'date_of_birth',
   'joining_date',
   'offer_date',
+  'authorized_signatory_date',
+  'authorised_signatory_date',
+  'Authorized_Signatory_Date',
+  'signatory_date',
+  'signatory_sign_date',
 ])
 
 export function canonicalPlaceholderId(id) {
-  return ALIAS_TO_CANONICAL[id] || id
+  if (!id) return id
+  if (ALIAS_TO_CANONICAL[id]) return ALIAS_TO_CANONICAL[id]
+  const lower = String(id).toLowerCase()
+  if (ALIAS_TO_CANONICAL[lower]) return ALIAS_TO_CANONICAL[lower]
+  return id
+}
+
+export function isDateFieldId(id) {
+  if (!id) return false
+  const key = String(id).toLowerCase()
+  if (DATE_FIELD_IDS.has(id) || DATE_FIELD_IDS.has(key)) return true
+  // Permanent rule: any new *date* placeholder gets the date picker
+  if (key.endsWith('_date') || key.endsWith('_dob') || key.includes('date_of_')) return true
+  if (key.endsWith('date') && (key.includes('sign') || key.includes('expiry') || key.includes('issue'))) {
+    return true
+  }
+  return false
 }
 
 function resolveFieldType(id) {
   const known = KNOWN_FIELD_DEFS[id]
   if (known?.type) return known.type
-  if (DATE_FIELD_IDS.has(id)) return 'date'
-  if (id.includes('email')) return 'email'
+  if (isDateFieldId(id)) return 'date'
+  const lower = String(id || '').toLowerCase()
+  if (lower.includes('email')) return 'email'
   if (id === 'candidate_nationality' || id === 'cand_nationality' || id === 'nationality') {
     return 'country_select'
   }
-  if (id.includes('address')) return 'textarea'
+  if (lower.includes('address')) return 'textarea'
   if (id === 'validity_expiry_date' || id === 'offer_validity') return 'readonly_expiry'
   if (id === 'ref_number') return 'readonly'
   return 'text'

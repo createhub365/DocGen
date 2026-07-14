@@ -13,9 +13,10 @@ const DATE_FIELD_IDS = new Set([
   'sign_date',
   'candidate_sign_date',
   'candidate_date_of_birth',
+  'authorized_signatory_date',
 ])
 
-const DOB_FIELD_IDS = new Set(['candidate_date_of_birth'])
+const DOB_FIELD_IDS = new Set(['candidate_date_of_birth', 'date_of_birth', 'cand_dob'])
 
 function variableToId(variable) {
   return variable.replace(/^\{\{|\}\}$/g, '')
@@ -81,7 +82,11 @@ export function getFieldExtra(ph) {
 }
 
 export function getDateStoreFormat(fieldId) {
-  return DOB_FIELD_IDS.has(fieldId) ? DOB_STORE_DATE_FORMAT : STORE_DATE_FORMAT
+  const key = String(fieldId || '').toLowerCase()
+  if (DOB_FIELD_IDS.has(fieldId) || DOB_FIELD_IDS.has(key) || key.includes('date_of_birth') || key.endsWith('_dob')) {
+    return DOB_STORE_DATE_FORMAT
+  }
+  return STORE_DATE_FORMAT
 }
 
 export function groupPlaceholdersBySection(placeholders) {

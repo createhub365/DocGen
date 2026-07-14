@@ -52,6 +52,12 @@ _WIZARD_FIELD_ALIASES: dict[str, list[str]] = {
     "trade_duties": ["duties_block"],
     "relocation_assistance": ["other_benefits"],
     "professional_development": ["other_benefits"],
+    "authorized_signatory_date": [
+        "Authorized_Signatory_Date",
+        "authorised_signatory_date",
+        "signatory_date",
+        "signatory_sign_date",
+    ],
 }
 
 # Human-readable template labels → wizard field id (case-insensitive lookup)
