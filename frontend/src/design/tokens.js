@@ -83,6 +83,8 @@ export const antTheme = {
     borderRadiusLG: radius.lg,
     fontFamily: typography.fontBody,
     controlHeight: 40,
+    // Must sit above custom AppDrawer (1100/1101) so Select/Picker popups stay visible
+    zIndexPopupBase: 1200,
   },
   components: {
     Button: {

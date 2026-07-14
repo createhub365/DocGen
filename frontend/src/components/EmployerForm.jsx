@@ -107,6 +107,9 @@ export default function EmployerForm({ form, initialValues, logoPreviewUrl }) {
           options={countryOptions}
           onChange={handleCountryChange}
           optionFilterProp="label"
+          listHeight={320}
+          getPopupContainer={() => document.body}
+          styles={{ popup: { root: { zIndex: 1200 } } }}
           optionRender={(option) => (
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CountryFlag name={option.value} size={16} />
@@ -127,7 +130,11 @@ export default function EmployerForm({ form, initialValues, logoPreviewUrl }) {
           placeholder="Select industry"
           options={industryOptions}
           optionFilterProp="label"
+          listHeight={320}
+          getPopupContainer={() => document.body}
+          styles={{ popup: { root: { zIndex: 1200 } } }}
           suffixIcon={<AppstoreOutlined />}
+          notFoundContent={industryOptions.length ? undefined : 'No industries loaded'}
         />
       </Form.Item>
 

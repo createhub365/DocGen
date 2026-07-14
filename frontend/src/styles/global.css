@@ -1650,8 +1650,12 @@ body {
   transition: transform 380ms var(--ease-out-expo) !important;
 }
 
+/* Above custom AppDrawer (z-index 1100/1101) so Select/DatePicker lists are visible */
 .ant-select-dropdown,
-.ant-picker-dropdown {
+.ant-picker-dropdown,
+.ant-cascader-dropdown,
+.ant-dropdown {
+  z-index: 1200 !important;
   animation: fadeInDown 220ms var(--ease-out-expo) both;
 }
 
