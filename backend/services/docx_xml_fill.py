@@ -317,24 +317,90 @@ def _paragraph_is_placeholder_only(combined: str, token: str) -> bool:
     return combined.replace(token, "").strip() == ""
 
 
+def _strip_leading_bullet(line: str) -> str:
+    text = (line or "").strip()
+    for prefix in ("• ", "•", "- ", "* ", "– ", "— "):
+        if text.startswith(prefix):
+            return text[len(prefix) :].strip()
+    return text
+
+
+def _ensure_ppr(p_elem):
+    pPr = p_elem.find(f"{{{W_NS}}}pPr")
+    if pPr is None:
+        pPr = etree.Element(f"{{{W_NS}}}pPr")
+        p_elem.insert(0, pPr)
+    return pPr
+
+
+def _apply_bullet_list_props(p_elem) -> None:
+    """
+    Word-style bullet list layout (hanging indent):
+    bullet hangs left, wrapped lines align under the first text character.
+    """
+    pPr = _ensure_ppr(p_elem)
+
+    for child in list(pPr):
+        local = etree.QName(child).localname
+        if local in {"ind", "spacing", "numPr"}:
+            pPr.remove(child)
+
+    ind = etree.SubElement(pPr, f"{{{W_NS}}}ind")
+    # 0.5" left + 0.25" hanging ≈ grey Word bullets with clean wrap
+    ind.set(f"{{{W_NS}}}left", "720")
+    ind.set(f"{{{W_NS}}}hanging", "360")
+
+    spacing = etree.SubElement(pPr, f"{{{W_NS}}}spacing")
+    spacing.set(f"{{{W_NS}}}after", "80")
+    spacing.set(f"{{{W_NS}}}before", "0")
+    spacing.set(f"{{{W_NS}}}line", "276")
+    spacing.set(f"{{{W_NS}}}lineRule", "auto")
+
+
+def _copy_first_run_props(source_p, target_run) -> None:
+    """Preserve italic/font from the original placeholder run when possible."""
+    for run in source_p.xpath("./w:r", namespaces=NSMAP):
+        rPr = run.find(f"{{{W_NS}}}rPr")
+        if rPr is not None:
+            target_run.insert(0, deepcopy(rPr))
+            return
+
+
+def _set_duty_bullet_paragraph(p_elem, duty_text: str, style_source=None) -> None:
+    props_source = style_source if style_source is not None else p_elem
+    _clear_paragraph_runs(p_elem)
+    _apply_bullet_list_props(p_elem)
+
+    run = etree.SubElement(p_elem, f"{{{W_NS}}}r")
+    _copy_first_run_props(props_source, run)
+    text_node = etree.SubElement(run, f"{{{W_NS}}}t")
+    text = f"• {_strip_leading_bullet(duty_text)}"
+    if text.startswith(" ") or text.endswith(" "):
+        text_node.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    text_node.text = text
+
+
 def _split_duties_into_paragraphs(p_elem, text: str) -> None:
-    """One duty per paragraph — renders as a vertical bullet list in PDF."""
+    """One duty per bullet paragraph — hanging-indent list like Word List Bullet."""
     parent = p_elem.getparent()
-    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    lines = [_strip_leading_bullet(line) for line in text.split("\n") if line.strip()]
+    lines = [line for line in lines if line]
     if not lines:
         _clear_paragraph_runs(p_elem)
         return
     if parent is None:
-        _set_paragraph_multiline_text(p_elem, "\n".join(lines))
+        _set_duty_bullet_paragraph(p_elem, "\n".join(lines))
         return
 
+    # Keep a clean style clone of the placeholder paragraph (before overwrite)
+    style_source = deepcopy(p_elem)
+
     anchor_index = list(parent).index(p_elem)
-    _set_paragraph_single_line_text(p_elem, lines[0])
+    _set_duty_bullet_paragraph(p_elem, lines[0], style_source=style_source)
 
     for offset, line in enumerate(lines[1:], start=1):
-        new_paragraph = deepcopy(p_elem)
-        _clear_paragraph_runs(new_paragraph)
-        _set_paragraph_single_line_text(new_paragraph, line)
+        new_paragraph = deepcopy(style_source)
+        _set_duty_bullet_paragraph(new_paragraph, line, style_source=style_source)
         parent.insert(anchor_index + offset, new_paragraph)
 
 
@@ -380,7 +446,6 @@ def _replace_in_paragraph(p_elem, form_data: dict) -> bool:
         token
         for pid, token in _iter_placeholders(combined)
         if pid in {"duties_block", "trade_duties"}
-        and token in new_combined
         and _paragraph_is_placeholder_only(combined, token)
     }
     if duty_tokens and "\n" in new_combined:

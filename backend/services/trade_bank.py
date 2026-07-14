@@ -227,4 +227,5 @@ def get_trade_details(country: str, trade: str, category: str | None = None) -> 
 
 
 def format_duties_for_docx(duties: list[str]) -> str:
-    return "\n".join(f"• {duty}" for duty in duties)
+    """One duty per line; bullet markers are applied by the DOCX list formatter."""
+    return "\n".join(duty.strip() for duty in duties if duty and str(duty).strip())
