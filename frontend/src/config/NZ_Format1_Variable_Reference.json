@@ -184,7 +184,7 @@
       "section": "Formal Offer",
       "example": "Mr. Rajinder Singh",
       "required": "Yes",
-      "notes": "Mr. / Ms. / Mrs. + Full Name"
+      "notes": "Title only when {{candidate_name}} is also in the template (Mr. / Ms. / Mrs. / Dr.); otherwise Mr. + Full Name"
     },
     {
       "variable": "{{position_title}}",

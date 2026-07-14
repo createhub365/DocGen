@@ -133,6 +133,62 @@ def _label_lookup_key(label: str) -> str:
     return re.sub(r"\s+", " ", label.strip().lower())
 
 
+def _candidate_name_from_values(values: dict) -> str:
+    for key in ("candidate_full_name", "candidate_name", "cand_name", "name"):
+        val = values.get(key)
+        if val is not None and str(val).strip():
+            return str(val).strip()
+    return ""
+
+
+def _strip_duplicated_name_from_salutation(salutation: str, name: str) -> str:
+    """Prevent 'Mr. John Doe John Doe' when salutation already includes the full name."""
+    sal = (salutation or "").strip()
+    name = (name or "").strip()
+    if not sal or not name:
+        return sal
+
+    lower_sal = sal.lower()
+    lower_name = name.lower()
+    if lower_sal == lower_name:
+        return sal
+
+    # Trailing name: "Mr. Rajinder Sinngh" → "Mr."
+    if lower_sal.endswith(lower_name):
+        prefix = sal[: -len(name)].strip(" ,")
+        return prefix or sal
+
+    # Name embedded after title with extra spaces
+    idx = lower_sal.find(lower_name)
+    if idx > 0:
+        prefix = sal[:idx].strip(" ,")
+        suffix = sal[idx + len(name) :].strip(" ,")
+        if not suffix:
+            return prefix or sal
+
+    return sal
+
+
+def _dedupe_salutation_against_name(values: dict) -> None:
+    """If salutation already contains the candidate name, keep title/prefix only."""
+    name = _candidate_name_from_values(values)
+    if not name:
+        return
+
+    # Only dedupe when a separate name field will also be filled in the document.
+    has_name_field = any(
+        values.get(key) not in (None, "")
+        for key in ("candidate_full_name", "candidate_name", "cand_name")
+    )
+    if not has_name_field:
+        return
+
+    for key in ("candidate_salutation", "salutation"):
+        if key not in values or values[key] is None:
+            continue
+        values[key] = _strip_duplicated_name_from_salutation(str(values[key]), name)
+
+
 def _build_replacement_values(form_data: dict) -> dict:
     """Expand wizard field ids to template placeholder ids and human-readable labels."""
     values = _normalize_form_data(form_data)
@@ -157,6 +213,14 @@ def _build_replacement_values(form_data: dict) -> dict:
         values["position"] = values["position_title"]
     if "issue_date" in values and "offer_date" not in values:
         values["offer_date"] = values["issue_date"]
+
+    # Keep candidate_full_name / candidate_name in sync before salutation dedupe
+    if values.get("candidate_full_name") and not values.get("candidate_name"):
+        values["candidate_name"] = values["candidate_full_name"]
+    if values.get("candidate_name") and not values.get("candidate_full_name"):
+        values["candidate_full_name"] = values["candidate_name"]
+
+    _dedupe_salutation_against_name(values)
 
     for label, wizard_key in _LABEL_TO_WIZARD.items():
         if wizard_key not in values:

@@ -160,9 +160,29 @@ export function getVisibleFieldIds(formFields) {
 }
 
 const SALUTATION_PLACEHOLDER_IDS = new Set(['candidate_salutation', 'salutation'])
+const NAME_PLACEHOLDER_CANONICAL = 'candidate_full_name'
 
 export function templateNeedsSalutation(placeholders = []) {
   return placeholders.some((p) => SALUTATION_PLACEHOLDER_IDS.has(canonicalPlaceholderId(p.id)))
+}
+
+/** True when template also has a separate candidate name field (avoid "Mr. Name Name"). */
+export function templateHasSeparateCandidateName(placeholders = []) {
+  return placeholders.some((p) => canonicalPlaceholderId(p.id) === NAME_PLACEHOLDER_CANONICAL)
+}
+
+/**
+ * Build salutation for document fill.
+ * If template has both salutation + name → prefix only ("Mr.").
+ * If template has salutation only → "Mr. Full Name".
+ */
+export function buildSalutationValue(prefix, name, placeholders = []) {
+  const title = (prefix || 'Mr.').trim() || 'Mr.'
+  const fullName = (name || '').trim()
+  if (templateHasSeparateCandidateName(placeholders)) {
+    return title
+  }
+  return fullName ? `${title} ${fullName}`.trim() : title
 }
 
 export function getDefaultValues(formFields) {

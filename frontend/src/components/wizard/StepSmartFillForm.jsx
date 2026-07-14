@@ -20,6 +20,7 @@ import {
 } from './smartFormConfig'
 import {
   buildFormFieldsFromPlaceholders,
+  buildSalutationValue,
   getVisibleFieldIds,
   pickFormValues,
   templateNeedsSalutation,
@@ -186,7 +187,10 @@ export default function StepSmartFillForm({
     const prefix = values?._salutation_prefix || form.getFieldValue('_salutation_prefix') || 'Mr.'
     const name =
       values?.candidate_full_name ?? form.getFieldValue('candidate_full_name') ?? ''
-    form.setFieldValue('candidate_salutation', name ? `${prefix} ${name}`.trim() : prefix)
+    form.setFieldValue(
+      'candidate_salutation',
+      buildSalutationValue(prefix, name, resolvedPlaceholders)
+    )
   }
 
   const computeValidityExpiry = () => {
