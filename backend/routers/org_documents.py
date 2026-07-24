@@ -73,11 +73,21 @@ def _resolve_org_template_for_doc_type(
         models.Template.is_active.is_(True),
     )
     if template_id is not None:
-        q = q.filter(models.Template.id == template_id)
-    row = q.order_by(models.Template.id.desc()).first()
-    if not row:
+        row = q.filter(models.Template.id == template_id).first()
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+        return row
+
+    # When the client omits template_id, prefer a mapping-complete template
+    # (latest id alone can pick an unmapped upload and 400).
+    candidates = q.order_by(models.Template.id.desc()).all()
+    if not candidates:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    return row
+    for row in candidates:
+        is_complete, _, _, _ = _mapping_completeness(db, row)
+        if is_complete:
+            return row
+    return candidates[0]
 
 
 @router.post(

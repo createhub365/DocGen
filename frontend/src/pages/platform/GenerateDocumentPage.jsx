@@ -168,7 +168,11 @@ export default function GenerateDocumentPage() {
 
       setDocumentType(detail)
       setSteps(hydrated)
-      setTemplateId(readiness.completeTemplateIds.at(-1) || null)
+      const preferredTemplateId =
+        readiness.completeTemplateIds.at(-1) ||
+        readiness.completeTemplateIds[0] ||
+        null
+      setTemplateId(preferredTemplateId)
     } catch (error) {
       setLoadError(
         (await readPlatformErrorDetail(error)) || 'Could not load generation wizard'
@@ -212,8 +216,15 @@ export default function GenerateDocumentPage() {
         return
       }
 
+      if (!templateId) {
+        setSubmitError(
+          'No complete template selected. Open Templates, finish mapping, then return here.'
+        )
+        return
+      }
+
       const data = await generateOrgDocument(documentTypeId, {
-        template_id: templateId || undefined,
+        template_id: templateId,
         fields,
       })
       setResult(data)
