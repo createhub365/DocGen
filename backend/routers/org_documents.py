@@ -136,7 +136,11 @@ def generate_org_document(
     if not template_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Template file not found",
+            detail=(
+                "Template file not found on the server. "
+                "Re-upload the .docx on the Templates tab "
+                "(Render disk is ephemeral unless the file is in Supabase storage)."
+            ),
         )
 
     out_dir = org_output_dir(OUTPUT_DIR, current.org_id)

@@ -17,7 +17,7 @@ from routers.platform_scope import (
     org_template_dir,
     unique_docx_name,
 )
-from services.logo_storage import save_template_docx
+from services.logo_storage import resolve_template_local_path, save_template_docx
 from services.placeholder_extractor import extract_placeholders
 from utils.file_utils import safe_join, safe_join_relative, validate_docx_upload
 
@@ -27,14 +27,33 @@ TEMPLATE_DIR = os.getenv("TEMPLATE_DIR", "./template_store")
 
 
 def _resolve_stored_template_path(docx_filename: str) -> str | None:
-    """Resolve org-relative path under TEMPLATE_DIR (parallel to basename-only helper)."""
-    try:
-        path = safe_join_relative(TEMPLATE_DIR, docx_filename)
-    except HTTPException:
+    """
+    Resolve an org template path for read (mapping extract / generate).
+
+    DB stores org-relative paths like orgs/{org_id}/{file}.docx. Files are
+    written locally and mirrored to Supabase (basename key). After ephemeral
+    disk wipe (e.g. Render redeploy), fall back to resolve_template_local_path
+    which re-hydrates from storage into a local cache.
+    """
+    if not docx_filename:
         return None
-    if os.path.exists(path) and os.path.getsize(path) > 0:
-        return path
-    return None
+    try:
+        local = safe_join_relative(TEMPLATE_DIR, docx_filename)
+        if os.path.exists(local) and os.path.getsize(local) > 0:
+            return local
+    except HTTPException:
+        pass
+
+    basename = os.path.basename(docx_filename.replace("\\", "/"))
+    if not basename:
+        return None
+
+    normalized = docx_filename.replace("\\", "/")
+    parts = normalized.split("/")
+    if len(parts) >= 3 and parts[0] == "orgs" and parts[1]:
+        org_dir = org_template_dir(TEMPLATE_DIR, parts[1])
+        return resolve_template_local_path(basename, org_dir)
+    return resolve_template_local_path(basename, TEMPLATE_DIR)
 
 
 @router.post("/{document_type_id}/templates", status_code=status.HTTP_201_CREATED)

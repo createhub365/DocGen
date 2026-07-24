@@ -43,12 +43,19 @@ def _detected_placeholder_ids(template: models.Template) -> list[str]:
 def _mapping_completeness(
     db: Session, template: models.Template
 ) -> tuple[bool, list[str], list[str], list[models.PlaceholderMapping]]:
-    detected = _detected_placeholder_ids(template)
+    path = _resolve_stored_template_path(template.docx_filename)
     rows = (
         db.query(models.PlaceholderMapping)
         .filter(models.PlaceholderMapping.template_id == template.id)
         .all()
     )
+    # Missing on-disk/storage file: never treat as complete (empty detect used to
+    # mark is_complete=True and let Generate open, then 404 on fill).
+    if template.docx_filename and not path:
+        mapped_keys = [r.placeholder_key for r in rows if r.is_mapped]
+        return False, mapped_keys, mapped_keys or ["__template_file_missing__"], rows
+
+    detected = _detected_placeholder_ids(template)
     mapped_keys = {r.placeholder_key for r in rows if r.is_mapped}
     unmapped = [pid for pid in detected if pid not in mapped_keys]
     is_complete = len(detected) > 0 and len(unmapped) == 0
