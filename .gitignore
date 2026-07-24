@@ -9,12 +9,26 @@ env/
 
 # Environment files — NEVER commit these
 .env
+.env.*
+*.env
+!.env.example
+!**/.env.example
 .env.local
 .env.production
 backend/.env
+frontend/.env.deploy
+
+# Local debug / auth artifacts
+.cookies.txt
+.seed_admin_password.txt
+*_creds.json
+*_password*.txt
 
 # Backend
 backend/docgen.db
+backend/docgen.db-*
+backend/*.db-shm
+backend/*.db-wal
 backend/output/
 backend/template_store/*.docx
 backend/template_store/google_docs_map.json
@@ -57,3 +71,8 @@ backend/google-service-account.json
 data/real_*.json
 employers_real*.csv
 backend/scripts/employers_real*.csv
+
+# Pytest sqlite sidecars
+backend/tests/*.db
+backend/tests/*.db-*
+

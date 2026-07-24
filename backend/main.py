@@ -14,6 +14,17 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from database import Base, engine, DATABASE_URL
 import models
 from routers import auth, filters, templates, documents, admin, public, form_helpers, employers, trade_bank
+from routers import (
+    organizations,
+    org_document_types,
+    flow_config,
+    org_templates,
+    placeholder_mapping,
+    org_documents,
+    org_users,
+    audit_log,
+    presets,
+)
 from limiter import limiter
 
 load_dotenv()
@@ -90,6 +101,16 @@ app.include_router(public.router, prefix="/api/public")
 app.include_router(form_helpers.router, prefix="/api")
 app.include_router(employers.router, prefix="/api")
 app.include_router(trade_bank.router, prefix="/api")
+# Platform multi-tenant API (Phase 2+) — parallel to legacy immigration flow
+app.include_router(organizations.router, prefix="/api/platform")
+app.include_router(org_users.router, prefix="/api/platform")
+app.include_router(audit_log.router, prefix="/api/platform")
+app.include_router(presets.router, prefix="/api/platform")
+app.include_router(org_document_types.router, prefix="/api/platform/document-types")
+app.include_router(flow_config.router, prefix="/api/platform")
+app.include_router(org_templates.router, prefix="/api/platform")
+app.include_router(placeholder_mapping.router, prefix="/api/platform")
+app.include_router(org_documents.router, prefix="/api/platform")
 
 LOGO_DIR = os.getenv("LOGO_DIR", "./uploads/logos")
 os.makedirs(os.getenv("OUTPUT_DIR", "./output"), exist_ok=True)

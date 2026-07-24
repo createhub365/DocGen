@@ -37,6 +37,7 @@ from services.thumbnail_gen import generate_docx_thumbnail, regenerate_all_thumb
 from services.thumbnail_service import persist_generated_thumbnail, serve_template_thumbnail
 from services.template_storage import require_template_docx_path
 from services.logo_storage import save_template_docx, resolve_template_local_path
+from routers.platform_scope import PLATFORM_LEGACY_COMPANY_NAME
 from services.employer_import import (
     MAX_EMPLOYER_CSV_SIZE,
     import_employer_rows,
@@ -555,7 +556,11 @@ def get_stats(
     active_templates = (
         db.query(models.Template).filter(models.Template.is_active == True).count()
     )
-    total_companies = db.query(models.Company).count()
+    total_companies = (
+        db.query(models.Company)
+        .filter(models.Company.name != PLATFORM_LEGACY_COMPANY_NAME)
+        .count()
+    )
 
     docs_today = (
         db.query(models.GeneratedDocument)

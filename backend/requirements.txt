@@ -17,3 +17,5 @@ alembic
 docx2pdf
 psutil
 pymupdf
+pytest
+httpx

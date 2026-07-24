@@ -21,6 +21,8 @@ Internal document automation system for immigration consultancy operations.
 - Microsoft Word (Windows) — required for PDF generation  
   DOCX download is available on all platforms
 
+> **Note:** `DOCGEN_SKIP_PDF` is **test-only** scaffolding used by the pytest suite to avoid Word COM. Do **not** set it in production `.env` files — when unset, PDF generation behaves as before Phase 3.
+
 ### Backend Setup
 
 ```bash

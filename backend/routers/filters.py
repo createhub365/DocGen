@@ -6,6 +6,12 @@ from sqlalchemy.orm import Session
 import models
 from auth import get_current_user
 from database import get_db
+from routers.platform_scope import (
+    PLATFORM_LEGACY_COMPANY_NAME,
+    PLATFORM_LEGACY_COUNTRY_CODE,
+    PLATFORM_LEGACY_DOC_TYPE_SLUG,
+    PLATFORM_LEGACY_TRADE_NAME,
+)
 from schemas import CountryResponse, TradeResponse, CompanyResponse, DocumentTypeResponse
 from services.country_employer_config import (
     get_country_employer_config,
@@ -81,7 +87,12 @@ def get_countries(
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
 ):
-    countries = db.query(models.Country).order_by(models.Country.name).all()
+    countries = (
+        db.query(models.Country)
+        .filter(models.Country.code != PLATFORM_LEGACY_COUNTRY_CODE)
+        .order_by(models.Country.name)
+        .all()
+    )
     return [CountryResponse(id=c.id, name=c.name, code=c.code) for c in countries]
 
 
@@ -93,7 +104,10 @@ def get_trades(
 ):
     trades = (
         db.query(models.Trade)
-        .filter(models.Trade.country_id == country_id)
+        .filter(
+            models.Trade.country_id == country_id,
+            models.Trade.name != PLATFORM_LEGACY_TRADE_NAME,
+        )
         .order_by(models.Trade.name)
         .all()
     )
@@ -116,6 +130,11 @@ def get_companies_for_industry(
     synced = list_companies_for_industry(db, country, industry)
     result = []
     for company, trade in synced:
+        if (
+            company.name == PLATFORM_LEGACY_COMPANY_NAME
+            or trade.name == PLATFORM_LEGACY_TRADE_NAME
+        ):
+            continue
         has_template = (
             db.query(models.Template)
             .filter(
@@ -150,6 +169,7 @@ def get_companies(
         .filter(
             models.Company.trade_id == trade_id,
             models.Company.country_id == country_id,
+            models.Company.name != PLATFORM_LEGACY_COMPANY_NAME,
         )
         .order_by(models.Company.name)
         .all()
@@ -178,7 +198,12 @@ def get_document_types(
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
 ):
-    doc_types = db.query(models.DocumentType).order_by(models.DocumentType.name).all()
+    doc_types = (
+        db.query(models.DocumentType)
+        .filter(models.DocumentType.slug != PLATFORM_LEGACY_DOC_TYPE_SLUG)
+        .order_by(models.DocumentType.name)
+        .all()
+    )
     return [
         DocumentTypeResponse(id=d.id, name=d.name, slug=d.slug) for d in doc_types
     ]

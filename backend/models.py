@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Index
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -61,8 +61,13 @@ class DocumentType(Base):
 
 class Template(Base):
     __tablename__ = "templates"
+    __table_args__ = (
+        Index("ix_templates_org_id", "org_id"),
+        Index("ix_templates_org_document_type_id", "org_document_type_id"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
+    # Legacy immigration catalog FK (existing rows / wizard). Kept NOT NULL.
     document_type_id = Column(Integer, ForeignKey("document_types.id"), nullable=False)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     trade_id = Column(Integer, ForeignKey("trades.id"), nullable=False)
@@ -76,11 +81,23 @@ class Template(Base):
     version = Column(Integer, default=1)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Phase 1 multi-tenant: nullable so existing rows keep working.
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=True)
+    # Platform org-scoped document type (parallel to legacy document_type_id).
+    org_document_type_id = Column(
+        Integer, ForeignKey("org_document_types.id"), nullable=True
+    )
 
     document_type = relationship("DocumentType")
     company = relationship("Company")
     trade = relationship("Trade")
     country = relationship("Country")
+    organization = relationship("Organization")
+    org_document_type = relationship("OrgDocumentType")
+    placeholder_mappings = relationship(
+        "PlaceholderMapping",
+        back_populates="template",
+    )
 
 
 class Employer(Base):
@@ -129,6 +146,7 @@ class CompanyLogo(Base):
 
 class GeneratedDocument(Base):
     __tablename__ = "generated_documents"
+    __table_args__ = (Index("ix_generated_documents_org_id", "org_id"),)
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -137,6 +155,25 @@ class GeneratedDocument(Base):
     docx_filename = Column(String, nullable=True)
     pdf_filename = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Phase 1 multi-tenant: nullable so existing rows keep working.
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=True)
 
     user = relationship("User")
     template = relationship("Template")
+    organization = relationship("Organization")
+
+
+# Platform / multi-tenant models (Organization, OrgUser, OrgDocumentType, …)
+from models_platform import (  # noqa: E402,F401
+    AuditLog,
+    FieldDefinition,
+    FieldDefinitionType,
+    FlowConfig,
+    FlowStep,
+    FlowStepType,
+    OrgDocumentType,
+    Organization,
+    OrgUser,
+    OrgUserRole,
+    PlaceholderMapping,
+)

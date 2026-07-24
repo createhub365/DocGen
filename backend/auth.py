@@ -1,5 +1,6 @@
 import os
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -35,6 +36,19 @@ SECRET_KEY = _JWT_SECRET or "changeme_use_strong_random_secret"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
 COOKIE_MAX_AGE = 60 * 60 * 8
+# Legacy auth cookie (routers/auth.py) — do not reuse for platform JWTs.
+LEGACY_ACCESS_COOKIE = "access_token"
+# Platform org JWT cookie — must stay distinct so both sessions can coexist.
+PLATFORM_ACCESS_COOKIE = "platform_access_token"
+
+
+@dataclass(frozen=True)
+class OrgUserContext:
+    """Authenticated platform user scoped to a single organization."""
+
+    user_id: int
+    org_id: str
+    role: str
 
 
 def hash_password(plain: str) -> str:
@@ -55,6 +69,24 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_org_jwt(
+    user_id: int,
+    org_id: str,
+    role: str,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
+    """Issue a platform JWT (same secret/expiry pattern as legacy; separate cookie)."""
+    return create_access_token(
+        data={
+            "user_id": user_id,
+            "org_id": org_id,
+            "role": role,
+            "token_type": "org",
+        },
+        expires_delta=expires_delta,
+    )
 
 
 def extract_bearer_token(authorization: Optional[str]) -> Optional[str]:
@@ -114,3 +146,94 @@ def get_admin_user(current_user: models.User = Depends(get_current_user)) -> mod
             detail="Admin access required",
         )
     return current_user
+
+
+def get_current_org_user(
+    platform_access_token: Optional[str] = Cookie(
+        None, alias=PLATFORM_ACCESS_COOKIE
+    ),
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+) -> OrgUserContext:
+    """
+    Resolve the platform org JWT from the platform_access_token cookie
+    (or Authorization Bearer). Never reads the legacy access_token cookie.
+
+    Missing/invalid/expired token → 401.
+    Token org deactivated (or missing) → 401 (never return stale org context).
+    """
+    token = resolve_request_token(platform_access_token, authorization)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+
+    user_id = payload.get("user_id")
+    org_id = payload.get("org_id")
+    role = payload.get("role")
+    if user_id is None or not org_id or not role:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+
+    org = (
+        db.query(models.Organization)
+        .filter(
+            models.Organization.id == org_id,
+            models.Organization.is_active.is_(True),
+        )
+        .first()
+    )
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Organization inactive or not found",
+        )
+
+    membership = (
+        db.query(models.OrgUser)
+        .filter(
+            models.OrgUser.org_id == org_id,
+            models.OrgUser.user_id == int(user_id),
+        )
+        .first()
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not a member of this organization",
+        )
+
+    return OrgUserContext(
+        user_id=int(user_id),
+        org_id=str(org_id),
+        role=str(membership.role),
+    )
+
+
+def require_org_role(required_role: str):
+    """Dependency factory: org_admin always passes; otherwise role must match."""
+
+    def _dependency(
+        current: OrgUserContext = Depends(get_current_org_user),
+    ) -> OrgUserContext:
+        if current.role == "org_admin":
+            return current
+        if current.role != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient organization role",
+            )
+        return current
+
+    return _dependency
