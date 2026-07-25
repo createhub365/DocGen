@@ -76,3 +76,7 @@ backend/scripts/employers_real*.csv
 backend/tests/*.db
 backend/tests/*.db-*
 
+# Local-only dev scripts (hardcoded localhost / Downloads paths)
+backend/scripts/local_appointment_letter_e2e.py
+backend/scripts/seed_countries.sql
+
