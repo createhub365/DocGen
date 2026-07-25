@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Alert,
@@ -30,6 +30,7 @@ import {
   slugifyOrgName,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { usePlatformPageChrome } from '../../components/PlatformLayout'
 
 const { Title, Paragraph } = Typography
 
@@ -157,17 +158,23 @@ export default function PlatformDashboard() {
     }
   }
 
-  return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
+  const header = useMemo(
+    () => (
+      <>
         <Title level={3} style={{ margin: 0 }}>
           Dashboard
         </Title>
-        <Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0 }}>
+        <Paragraph type="secondary" style={{ margin: 0 }}>
           Create document types and manage their flow steps.
         </Paragraph>
-      </div>
+      </>
+    ),
+    []
+  )
+  usePlatformPageChrome({ header })
 
+  return (
+    <div>
       {loadError && (
         <Alert type="error" showIcon message={loadError} style={{ marginBottom: 16 }} />
       )}

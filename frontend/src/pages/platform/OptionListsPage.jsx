@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Button,
@@ -29,6 +29,7 @@ import {
 } from '../../api/platformClient'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { usePlatformPageChrome } from '../../components/PlatformLayout'
 
 const { Title, Paragraph, Text } = Typography
 
@@ -208,6 +209,31 @@ export default function OptionListsPage() {
     }
   }
 
+  const header = useMemo(
+    () => (
+      <>
+        <Title level={3} style={{ margin: 0 }}>
+          Option lists
+        </Title>
+        <Paragraph type="secondary" style={{ margin: 0 }}>
+          Reusable dropdown choices for flow fields. Staff can view; only org admins can edit.
+        </Paragraph>
+      </>
+    ),
+    []
+  )
+
+  const footer = useMemo(
+    () =>
+      isAdmin ? (
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateList} size="large">
+          New list
+        </Button>
+      ) : null,
+    [isAdmin]
+  )
+  usePlatformPageChrome({ header, footer })
+
   if (loading) {
     return (
       <div style={{ display: 'grid', placeItems: 'center', minHeight: 280 }}>
@@ -218,22 +244,6 @@ export default function OptionListsPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
-        <div>
-          <Title level={3} style={{ marginTop: 0, marginBottom: 4 }}>
-            Option lists
-          </Title>
-          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            Reusable dropdown choices for flow fields. Staff can view; only org admins can edit.
-          </Paragraph>
-        </div>
-        {isAdmin && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateList}>
-            New list
-          </Button>
-        )}
-      </div>
-
       {loadError && (
         <Alert type="error" showIcon message={loadError} style={{ marginBottom: 16 }} />
       )}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Alert,
@@ -17,6 +17,7 @@ import {
   readPlatformErrorDetail,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { usePlatformPageChrome } from '../../components/PlatformLayout'
 
 const { Title, Paragraph, Text } = Typography
 
@@ -80,15 +81,23 @@ export default function GeneratedDocumentsPage() {
     }
   }
 
+  const header = useMemo(
+    () => (
+      <>
+        <Title level={3} style={{ margin: 0 }}>
+          Generated documents
+        </Title>
+        <Paragraph type="secondary" style={{ margin: 0 }}>
+          Documents created from platform flows. Download the DOCX for each run.
+        </Paragraph>
+      </>
+    ),
+    []
+  )
+  usePlatformPageChrome({ header })
+
   return (
     <div>
-      <Title level={3} style={{ marginTop: 0 }}>
-        Generated documents
-      </Title>
-      <Paragraph type="secondary">
-        Documents created from platform flows. Download the DOCX for each run.
-      </Paragraph>
-
       {loadError && (
         <Alert type="error" showIcon message={loadError} style={{ marginBottom: 16 }} />
       )}

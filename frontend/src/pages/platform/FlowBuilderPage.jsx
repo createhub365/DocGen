@@ -56,6 +56,7 @@ import {
   updateFlowStep,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import TemplatesPanel from './TemplatesPanel'
 
 const { Title, Paragraph, Text } = Typography
@@ -749,38 +750,14 @@ export default function FlowBuilderPage() {
   }
 
   return (
-    <div>
-      <Button
-        type="text"
-        icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/platform/document-types')}
-        style={{ marginBottom: 12 }}
-      >
-        Document types
-      </Button>
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 16,
-          marginBottom: 12,
-        }}
-      >
-        <div>
-          <Space align="center">
-            <Title level={3} style={{ margin: 0 }}>
-              {documentType?.name || 'Document type'}
-            </Title>
-            <Tag color={status.color}>{status.text}</Tag>
-          </Space>
-          <Paragraph type="secondary" style={{ margin: '6px 0 0' }}>
-            Configure the generation flow and Word templates for this type.
-          </Paragraph>
-        </div>
-      </div>
-
+    <FlowBuilderChrome
+      documentName={documentType?.name || 'Document type'}
+      status={status}
+      onBack={() => navigate('/platform/document-types')}
+      editable={editable}
+      busy={busy}
+      onPublish={publish}
+    >
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
@@ -804,28 +781,11 @@ export default function FlowBuilderPage() {
                       ? `Flow version ${flow.version}`
                       : 'Define the steps users complete'}
                   </Paragraph>
-                  <Space>
-                    {documentType?.has_published_flow && !documentType?.has_draft_flow && (
-                      <Button icon={<EditOutlined />} onClick={editPublished} loading={busy}>
-                        Edit
-                      </Button>
-                    )}
-                    <Tooltip
-                      title={!editable ? 'Create or open a draft before publishing' : ''}
-                    >
-                      <span>
-                        <Button
-                          type="primary"
-                          icon={<SendOutlined />}
-                          disabled={!editable}
-                          loading={busy}
-                          onClick={publish}
-                        >
-                          Publish
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  </Space>
+                  {documentType?.has_published_flow && !documentType?.has_draft_flow && (
+                    <Button icon={<EditOutlined />} onClick={editPublished} loading={busy}>
+                      Edit
+                    </Button>
+                  )}
                 </div>
 
                 {loadError && <Alert type="error" showIcon message={loadError} />}
@@ -955,6 +915,64 @@ export default function FlowBuilderPage() {
           },
         ]}
       />
-    </div>
+    </FlowBuilderChrome>
   )
+}
+
+function FlowBuilderChrome({
+  documentName,
+  status,
+  onBack,
+  editable,
+  busy,
+  onPublish,
+  children,
+}) {
+  const header = useMemo(
+    () => (
+      <>
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={onBack}
+          style={{ alignSelf: 'flex-start', marginLeft: -8, height: 28, paddingInline: 8 }}
+        >
+          Document types
+        </Button>
+        <Space align="center" wrap>
+          <Title level={3} style={{ margin: 0 }}>
+            {documentName}
+          </Title>
+          <Tag color={status.color}>{status.text}</Tag>
+        </Space>
+        <Paragraph type="secondary" style={{ margin: 0 }}>
+          Configure the generation flow and Word templates for this type.
+        </Paragraph>
+      </>
+    ),
+    [documentName, onBack, status.color, status.text]
+  )
+
+  const footer = useMemo(
+    () => (
+      <Tooltip title={!editable ? 'Create or open a draft before publishing' : ''}>
+        <span>
+          <Button
+            type="primary"
+            icon={<SendOutlined />}
+            disabled={!editable}
+            loading={busy}
+            onClick={onPublish}
+            size="large"
+          >
+            Publish
+          </Button>
+        </span>
+      </Tooltip>
+    ),
+    [busy, editable, onPublish]
+  )
+
+  usePlatformPageChrome({ header, footer })
+  return children
 }

@@ -30,6 +30,7 @@ import {
   listFlowSteps,
   readPlatformErrorDetail,
 } from '../../api/platformClient'
+import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import { useAppMessage } from '../../hooks/useAppMessage'
 
 const { Title, Paragraph, Text } = Typography
@@ -411,24 +412,16 @@ export default function GenerateDocumentPage() {
     )
   }
 
+  const showGenerateFooter = !loadError && !result
+
   return (
-    <div>
-      <Button
-        type="text"
-        icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/platform/document-types')}
-        style={{ marginBottom: 12 }}
-      >
-        Document types
-      </Button>
-
-      <Title level={3} style={{ marginTop: 0 }}>
-        Generate — {documentType?.name || 'Document'}
-      </Title>
-      <Paragraph type="secondary">
-        Fill the published flow steps. Disabled steps are hidden automatically.
-      </Paragraph>
-
+    <GenerateDocumentChrome
+      documentName={documentType?.name || 'Document'}
+      onBack={() => navigate('/platform/document-types')}
+      showFooter={showGenerateFooter}
+      submitting={submitting}
+      onGenerate={() => form.submit()}
+    >
       {loadError && <Alert type="error" showIcon message={loadError} />}
 
       {!loadError && result && (
@@ -498,18 +491,52 @@ export default function GenerateDocumentPage() {
           <Space direction="vertical" size={14} style={{ width: '100%' }}>
             {steps.map((step) => renderStep(step))}
           </Space>
-
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={submitting}
-            size="large"
-            style={{ marginTop: 20 }}
-          >
-            Generate document
-          </Button>
         </Form>
       )}
-    </div>
+    </GenerateDocumentChrome>
   )
+}
+
+function GenerateDocumentChrome({
+  documentName,
+  onBack,
+  showFooter,
+  submitting,
+  onGenerate,
+  children,
+}) {
+  const header = useMemo(
+    () => (
+      <>
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={onBack}
+          style={{ alignSelf: 'flex-start', marginLeft: -8, height: 28, paddingInline: 8 }}
+        >
+          Document types
+        </Button>
+        <Title level={3} style={{ margin: 0 }}>
+          Generate — {documentName}
+        </Title>
+        <Paragraph type="secondary" style={{ margin: 0 }}>
+          Fill the published flow steps. Disabled steps are hidden automatically.
+        </Paragraph>
+      </>
+    ),
+    [documentName, onBack]
+  )
+
+  const footer = useMemo(
+    () =>
+      showFooter ? (
+        <Button type="primary" size="large" loading={submitting} onClick={onGenerate}>
+          Generate document
+        </Button>
+      ) : null,
+    [onGenerate, showFooter, submitting]
+  )
+
+  usePlatformPageChrome({ header, footer })
+  return children
 }
