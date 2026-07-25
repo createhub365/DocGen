@@ -20,6 +20,7 @@ from schemas_platform import (
     OrgUserRead,
     OrgUserRoleUpdate,
 )
+from services.invite_email import send_invite_email
 
 router = APIRouter(tags=["platform-org-users"])
 
@@ -48,10 +49,12 @@ def invite_org_user(
     current: OrgUserContext = Depends(require_org_role("org_admin")),
     db: Session = Depends(get_db),
 ):
-    # User model has username (no email column) — invite "email" is stored as username.
-    username = (body.email or "").strip().lower()
+    # email is stored on User.email; username stays derived from email so
+    # legacy username login continues to work for invited platform users.
+    email = (body.email or "").strip().lower()
+    username = email
     role = (body.role or "").strip()
-    if not username:
+    if not email:
         raise HTTPException(status_code=422, detail="email is required")
     if role not in _ALLOWED_ROLES:
         raise HTTPException(
@@ -74,12 +77,15 @@ def invite_org_user(
                 detail="User already belongs to an organization",
             )
         user = existing_user
+        if not getattr(user, "email", None):
+            user.email = email
         temp_password = None
     else:
         temp_password = secrets.token_urlsafe(12)
         user = models.User(
             username=username,
-            full_name=username.split("@")[0],
+            email=email,
+            full_name=email.split("@")[0],
             password_hash=hash_password(temp_password),
             role="staff",
             is_active=True,
@@ -111,6 +117,19 @@ def invite_org_user(
             detail="User already belongs to an organization",
         )
 
+    org = (
+        db.query(models.Organization)
+        .filter(models.Organization.id == current.org_id)
+        .first()
+    )
+    # Soft-fail: never let email delivery block invite success.
+    send_invite_email(
+        to_email=email,
+        username=user.username,
+        temporary_password=temp_password,
+        org_name=org.name if org else None,
+    )
+
     log_audit_event(
         db,
         current.org_id,
@@ -118,7 +137,7 @@ def invite_org_user(
         "user.invited",
         "OrgUser",
         membership.id,
-        metadata={"role": role, "username": user.username},
+        metadata={"role": role, "username": user.username, "email": email},
     )
 
     return OrgUserInviteResponse(

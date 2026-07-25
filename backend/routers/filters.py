@@ -7,10 +7,7 @@ import models
 from auth import get_current_user
 from database import get_db
 from routers.platform_scope import (
-    PLATFORM_LEGACY_COMPANY_NAME,
-    PLATFORM_LEGACY_COUNTRY_CODE,
-    PLATFORM_LEGACY_DOC_TYPE_SLUG,
-    PLATFORM_LEGACY_TRADE_NAME,
+    is_platform_sentinel_company,
 )
 from schemas import CountryResponse, TradeResponse, CompanyResponse, DocumentTypeResponse
 from services.country_employer_config import (
@@ -89,7 +86,7 @@ def get_countries(
 ):
     countries = (
         db.query(models.Country)
-        .filter(models.Country.code != PLATFORM_LEGACY_COUNTRY_CODE)
+        .filter(models.Country.is_platform_sentinel.is_(False))
         .order_by(models.Country.name)
         .all()
     )
@@ -106,7 +103,7 @@ def get_trades(
         db.query(models.Trade)
         .filter(
             models.Trade.country_id == country_id,
-            models.Trade.name != PLATFORM_LEGACY_TRADE_NAME,
+            models.Trade.is_platform_sentinel.is_(False),
         )
         .order_by(models.Trade.name)
         .all()
@@ -130,9 +127,8 @@ def get_companies_for_industry(
     synced = list_companies_for_industry(db, country, industry)
     result = []
     for company, trade in synced:
-        if (
-            company.name == PLATFORM_LEGACY_COMPANY_NAME
-            or trade.name == PLATFORM_LEGACY_TRADE_NAME
+        if is_platform_sentinel_company(company) or getattr(
+            trade, "is_platform_sentinel", False
         ):
             continue
         has_template = (
@@ -169,7 +165,7 @@ def get_companies(
         .filter(
             models.Company.trade_id == trade_id,
             models.Company.country_id == country_id,
-            models.Company.name != PLATFORM_LEGACY_COMPANY_NAME,
+            models.Company.is_platform_sentinel.is_(False),
         )
         .order_by(models.Company.name)
         .all()
@@ -200,7 +196,7 @@ def get_document_types(
 ):
     doc_types = (
         db.query(models.DocumentType)
-        .filter(models.DocumentType.slug != PLATFORM_LEGACY_DOC_TYPE_SLUG)
+        .filter(models.DocumentType.is_platform_sentinel.is_(False))
         .order_by(models.DocumentType.name)
         .all()
     )

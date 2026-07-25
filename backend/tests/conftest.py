@@ -24,6 +24,9 @@ os.environ["DOCGEN_SKIP_PDF"] = "true"
 os.environ["PLATFORM_SIGNUP_RATE_LIMIT"] = "1000/hour"
 os.environ["PLATFORM_LOGIN_RATE_LIMIT"] = "1000/minute"
 os.environ["PLATFORM_INVITE_RATE_LIMIT"] = "1000/hour"
+# Never hit live Supabase storage during unit tests (load_dotenv won't override).
+os.environ["SUPABASE_URL"] = ""
+os.environ["SUPABASE_SERVICE_ROLE_KEY"] = ""
 
 _TEST_FILE_ROOT = Path(tempfile.mkdtemp(prefix="docgen_platform_test_"))
 _TEST_TEMPLATE_DIR = _TEST_FILE_ROOT / "template_store"

@@ -188,6 +188,7 @@ class FieldDefinition(Base):
             name="uq_field_definitions_step_key",
         ),
         Index("ix_field_definitions_flow_step_id", "flow_step_id"),
+        Index("ix_field_definitions_option_list_id", "option_list_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -197,8 +198,62 @@ class FieldDefinition(Base):
     field_type = Column(String, nullable=False)
     is_required = Column(Boolean, default=False, nullable=False)
     options_json = Column(JSON, nullable=True)
+    # Phase 12: optional org-scoped reusable list (wins over options_json when set).
+    option_list_id = Column(
+        Integer, ForeignKey("org_option_lists.id"), nullable=True
+    )
 
     flow_step = relationship("FlowStep", back_populates="field_definitions")
+    option_list = relationship("OrgOptionList", back_populates="field_definitions")
+
+
+class OrgOptionList(Base):
+    """Org-scoped reusable dropdown option list (Phase 12)."""
+
+    __tablename__ = "org_option_lists"
+    __table_args__ = (
+        UniqueConstraint("org_id", "slug", name="uq_org_option_lists_org_slug"),
+        Index("ix_org_option_lists_org_id", "org_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
+    name = Column(String, nullable=False)
+    slug = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    organization = relationship("Organization")
+    items = relationship(
+        "OrgOptionListItem",
+        back_populates="option_list",
+        cascade="all, delete-orphan",
+        order_by="OrgOptionListItem.sort_order",
+    )
+    field_definitions = relationship(
+        "FieldDefinition",
+        back_populates="option_list",
+    )
+
+
+class OrgOptionListItem(Base):
+    __tablename__ = "org_option_list_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "list_id",
+            "value",
+            name="uq_org_option_list_items_list_value",
+        ),
+        Index("ix_org_option_list_items_list_id", "list_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    list_id = Column(Integer, ForeignKey("org_option_lists.id"), nullable=False)
+    value = Column(String, nullable=False)
+    label = Column(String, nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    option_list = relationship("OrgOptionList", back_populates="items")
 
 
 class PlaceholderMapping(Base):

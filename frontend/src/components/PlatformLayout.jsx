@@ -6,6 +6,7 @@ import {
   FileTextOutlined,
   LogoutOutlined,
   TeamOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons'
 import { usePlatformAuth } from '../context/PlatformAuthContext'
 import FullPageSpinner from './ui/FullPageSpinner'
@@ -13,6 +14,7 @@ import FullPageSpinner from './ui/FullPageSpinner'
 const NAV_ITEMS = [
   { key: '/platform', icon: DashboardOutlined, label: 'Dashboard', exact: true },
   { key: '/platform/document-types', icon: FileTextOutlined, label: 'Document Types' },
+  { key: '/platform/option-lists', icon: UnorderedListOutlined, label: 'Option Lists' },
   { key: '/platform/generated', icon: FileDoneOutlined, label: 'Generated' },
   { key: '/platform/users', icon: TeamOutlined, label: 'Users' },
   { key: '/platform/audit-log', icon: AuditOutlined, label: 'Audit Log' },
@@ -36,11 +38,20 @@ export default function PlatformLayout() {
   const { currentOrg, currentUser, role, logout } = usePlatformAuth()
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--surface2, #FDF7F7)' }}>
+    <div
+      style={{
+        display: 'flex',
+        height: '100vh',
+        overflow: 'hidden',
+        background: 'var(--surface2, #FDF7F7)',
+      }}
+    >
       <aside
         style={{
           width: 240,
           flexShrink: 0,
+          height: '100%',
+          overflow: 'hidden',
           background: 'linear-gradient(180deg, #6B0F0F 0%, #2D0505 100%)',
           color: 'white',
           display: 'flex',
@@ -50,6 +61,7 @@ export default function PlatformLayout() {
         <div
           style={{
             height: 64,
+            flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             gap: 10,
@@ -90,7 +102,7 @@ export default function PlatformLayout() {
           </div>
         </div>
 
-        <div style={{ padding: '16px 18px 8px' }}>
+        <div style={{ padding: '16px 18px 8px', flexShrink: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Organization
           </div>
@@ -99,7 +111,17 @@ export default function PlatformLayout() {
           </div>
         </div>
 
-        <nav style={{ flex: 1, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <nav
+          style={{
+            flex: 1,
+            minHeight: 0,
+            padding: '8px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            overflowY: 'auto',
+          }}
+        >
           {NAV_ITEMS.map(({ key, icon: Icon, label, exact }) => {
             const active = isSelected(location.pathname, { key, exact })
             return (
@@ -116,7 +138,13 @@ export default function PlatformLayout() {
           })}
         </nav>
 
-        <div style={{ padding: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div
+          style={{
+            padding: 12,
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            flexShrink: 0,
+          }}
+        >
           <div style={{ padding: '0 8px 10px' }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{currentUser?.username || '—'}</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
@@ -135,7 +163,17 @@ export default function PlatformLayout() {
         </div>
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, padding: 28 }}>
+      <main
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          height: '100%',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          padding: 28,
+        }}
+      >
         <Outlet />
       </main>
     </div>

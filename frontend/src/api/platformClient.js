@@ -241,8 +241,8 @@ export async function downloadGeneratedDocument(docId, format = 'docx') {
 }
 
 /**
- * Phase 9 pattern: list templates for a type, then GET mappings per template
- * to learn is_complete. Returns { ready, reason, completeTemplateIds }.
+ * Uses is_complete from GET .../templates (server-side) — no per-template
+ * mappings round-trips.
  */
 export async function getDocumentTypeGenerateReadiness(documentType) {
   if (!documentType?.has_published_flow) {
@@ -253,15 +253,9 @@ export async function getDocumentTypeGenerateReadiness(documentType) {
     }
   }
   const templates = await listOrgTemplates(documentType.id)
-  const completeTemplateIds = []
-  for (const template of templates) {
-    try {
-      const mappings = await listPlaceholderMappings(template.id)
-      if (mappings.is_complete) completeTemplateIds.push(template.id)
-    } catch {
-      /* treat as incomplete */
-    }
-  }
+  const completeTemplateIds = (templates || [])
+    .filter((template) => template.is_complete)
+    .map((template) => template.id)
   if (!completeTemplateIds.length) {
     return {
       ready: false,
@@ -282,6 +276,44 @@ export async function installPreset(presetKey) {
   return data
 }
 
+export async function listOptionLists() {
+  const { data } = await platformClient.get('/option-lists')
+  return data
+}
+
+export async function getOptionList(listId) {
+  const { data } = await platformClient.get(`/option-lists/${listId}`)
+  return data
+}
+
+export async function createOptionList(payload) {
+  const { data } = await platformClient.post('/option-lists', payload)
+  return data
+}
+
+export async function updateOptionList(listId, payload) {
+  const { data } = await platformClient.patch(`/option-lists/${listId}`, payload)
+  return data
+}
+
+export async function deleteOptionList(listId) {
+  await platformClient.delete(`/option-lists/${listId}`)
+}
+
+export async function addOptionListItem(listId, payload) {
+  const { data } = await platformClient.post(`/option-lists/${listId}/items`, payload)
+  return data
+}
+
+export async function updateOptionListItem(itemId, payload) {
+  const { data } = await platformClient.patch(`/option-list-items/${itemId}`, payload)
+  return data
+}
+
+export async function deleteOptionListItem(itemId) {
+  await platformClient.delete(`/option-list-items/${itemId}`)
+}
+
 export async function readPlatformErrorDetail(error) {
   const detail = error.response?.data?.detail
   if (typeof detail === 'string') return detail
@@ -290,6 +322,10 @@ export async function readPlatformErrorDetail(error) {
     const invalid = detail.invalid_field_keys
     if (Array.isArray(invalid) && invalid.length) {
       return `${message}: ${invalid.join(', ')}`
+    }
+    const fieldKeys = detail.field_keys
+    if (Array.isArray(fieldKeys) && fieldKeys.length) {
+      return `${message}: ${fieldKeys.join(', ')}`
     }
     return message
   }

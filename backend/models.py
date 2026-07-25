@@ -9,6 +9,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False, index=True)
+    # Optional contact email (platform invite). Legacy auth still uses username.
+    email = Column(String, nullable=True, index=True)
     full_name = Column(String, nullable=False, default="")
     password_hash = Column(String, nullable=False)
     role = Column(String, default="staff")
@@ -22,6 +24,7 @@ class Country(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     code = Column(String, unique=True, nullable=False)
+    is_platform_sentinel = Column(Boolean, default=False, nullable=False)
 
     trades = relationship("Trade", back_populates="country")
     companies = relationship("Company", back_populates="country")
@@ -34,6 +37,7 @@ class Trade(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     country_id = Column(Integer, ForeignKey("countries.id"), nullable=False)
+    is_platform_sentinel = Column(Boolean, default=False, nullable=False)
 
     country = relationship("Country", back_populates="trades")
     companies = relationship("Company", back_populates="trade")
@@ -46,6 +50,7 @@ class Company(Base):
     name = Column(String, nullable=False)
     trade_id = Column(Integer, ForeignKey("trades.id"), nullable=False)
     country_id = Column(Integer, ForeignKey("countries.id"), nullable=False)
+    is_platform_sentinel = Column(Boolean, default=False, nullable=False)
 
     trade = relationship("Trade", back_populates="companies")
     country = relationship("Country", back_populates="companies")
@@ -57,6 +62,7 @@ class DocumentType(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     slug = Column(String, unique=True, nullable=False)
+    is_platform_sentinel = Column(Boolean, default=False, nullable=False)
 
 
 class Template(Base):
@@ -173,6 +179,8 @@ from models_platform import (  # noqa: E402,F401
     FlowStepType,
     OrgDocumentType,
     Organization,
+    OrgOptionList,
+    OrgOptionListItem,
     OrgUser,
     OrgUserRole,
     PlaceholderMapping,

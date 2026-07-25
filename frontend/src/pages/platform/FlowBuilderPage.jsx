@@ -49,6 +49,7 @@ import {
   listFieldDefinitions,
   listFlowHistory,
   listFlowSteps,
+  listOptionLists,
   publishFlow,
   readPlatformErrorDetail,
   updateFieldDefinition,
@@ -145,20 +146,24 @@ function textToOptions(value) {
     .filter(Boolean)
 }
 
-function FieldModal({ open, field, onCancel, onSave, saving }) {
+function FieldModal({ open, field, optionLists, onCancel, onSave, saving }) {
   const [form] = Form.useForm()
   const fieldType = Form.useWatch('field_type', form)
+  const optionSource = Form.useWatch('option_source', form)
   // When adding: keep field_key in sync with label until the admin edits the key.
   const keyTouchedRef = useRef(false)
 
   useEffect(() => {
     if (!open) return
     keyTouchedRef.current = Boolean(field?.field_key)
+    const hasList = Boolean(field?.option_list_id)
     form.setFieldsValue({
       field_key: field?.field_key || '',
       field_label: field?.field_label || '',
       field_type: field?.field_type || 'text',
       is_required: field?.is_required || false,
+      option_source: hasList ? 'list' : 'inline',
+      option_list_id: field?.option_list_id || undefined,
       options: optionsToText(field?.options_json),
     })
   }, [field, form, open])
@@ -180,16 +185,22 @@ function FieldModal({ open, field, onCancel, onSave, saving }) {
         form={form}
         layout="vertical"
         requiredMark={false}
-        onFinish={(values) =>
+        onFinish={(values) => {
+          const isDropdown = values.field_type === 'dropdown'
+          const useList = isDropdown && values.option_source === 'list'
           onSave({
             field_key: values.field_key.trim(),
             field_label: values.field_label.trim(),
             field_type: values.field_type,
             is_required: !!values.is_required,
-            options_json:
-              values.field_type === 'dropdown' ? textToOptions(values.options) : null,
+            option_list_id: useList ? values.option_list_id || null : null,
+            options_json: isDropdown
+              ? useList
+                ? field?.options_json ?? null
+                : textToOptions(values.options)
+              : null,
           })
-        }
+        }}
       >
         <Form.Item
           name="field_label"
@@ -225,14 +236,40 @@ function FieldModal({ open, field, onCancel, onSave, saving }) {
           <Select options={FIELD_TYPES} />
         </Form.Item>
         {fieldType === 'dropdown' && (
-          <Form.Item
-            name="options"
-            label="Options"
-            extra="Comma-separated values"
-            rules={[{ required: true, message: 'Add at least one option' }]}
-          >
-            <Input placeholder="Permanent, Fixed term, Contractor" />
-          </Form.Item>
+          <>
+            <Form.Item name="option_source" label="Options source" initialValue="inline">
+              <Select
+                options={[
+                  { value: 'inline', label: 'Inline (comma-separated)' },
+                  { value: 'list', label: 'Shared option list' },
+                ]}
+              />
+            </Form.Item>
+            {optionSource === 'list' ? (
+              <Form.Item
+                name="option_list_id"
+                label="Option list"
+                rules={[{ required: true, message: 'Choose a list' }]}
+              >
+                <Select
+                  placeholder="Select a list"
+                  options={(optionLists || []).map((row) => ({
+                    value: row.id,
+                    label: `${row.name} (${row.slug})`,
+                  }))}
+                />
+              </Form.Item>
+            ) : (
+              <Form.Item
+                name="options"
+                label="Options"
+                extra="Comma-separated values"
+                rules={[{ required: true, message: 'Add at least one option' }]}
+              >
+                <Input placeholder="Permanent, Fixed term, Contractor" />
+              </Form.Item>
+            )}
+          </>
         )}
         <Form.Item name="is_required" valuePropName="checked">
           <Checkbox>Required</Checkbox>
@@ -250,6 +287,21 @@ function CustomFieldsPanel({ step, editable, onChanged }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingField, setEditingField] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [optionLists, setOptionLists] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    listOptionLists()
+      .then((rows) => {
+        if (!cancelled) setOptionLists(rows || [])
+      })
+      .catch(() => {
+        if (!cancelled) setOptionLists([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const openAdd = () => {
     setEditingField(null)
@@ -286,6 +338,10 @@ function CustomFieldsPanel({ step, editable, onChanged }) {
     }
   }
 
+  const listNameById = Object.fromEntries(
+    (optionLists || []).map((row) => [row.id, row.name])
+  )
+
   return (
     <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #f0e4e4' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -318,7 +374,9 @@ function CustomFieldsPanel({ step, editable, onChanged }) {
                 {field.field_type === 'dropdown' && (
                   <div style={{ marginTop: 4 }}>
                     <Text type="secondary">
-                      {optionsToText(field.options_json) || 'No options'}
+                      {field.option_list_id
+                        ? `List: ${listNameById[field.option_list_id] || `#${field.option_list_id}`}`
+                        : optionsToText(field.options_json) || 'No options'}
                     </Text>
                   </div>
                 )}
@@ -343,6 +401,7 @@ function CustomFieldsPanel({ step, editable, onChanged }) {
       <FieldModal
         open={modalOpen}
         field={editingField}
+        optionLists={optionLists}
         onCancel={() => setModalOpen(false)}
         onSave={saveField}
         saving={saving}

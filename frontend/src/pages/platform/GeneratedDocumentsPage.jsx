@@ -13,9 +13,7 @@ import {
 import { DownloadOutlined, FileWordOutlined } from '@ant-design/icons'
 import {
   downloadGeneratedDocument,
-  listDocumentTypes,
   listGeneratedDocuments,
-  listOrgTemplates,
   readPlatformErrorDetail,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
@@ -49,27 +47,12 @@ export default function GeneratedDocumentsPage() {
     setLoading(true)
     setLoadError(null)
     try {
-      const [docs, types] = await Promise.all([
-        listGeneratedDocuments(),
-        listDocumentTypes(),
-      ])
-      const templateToType = {}
-      await Promise.all(
-        (types || []).map(async (type) => {
-          try {
-            const templates = await listOrgTemplates(type.id)
-            for (const template of templates) {
-              templateToType[template.id] = type.name
-            }
-          } catch {
-            /* ignore */
-          }
-        })
-      )
+      const docs = await listGeneratedDocuments()
       setRows(
         (docs || []).map((doc) => ({
           ...doc,
-          document_type_name: templateToType[doc.template_id] || `Template #${doc.template_id}`,
+          document_type_name:
+            doc.document_type_name || `Template #${doc.template_id}`,
         }))
       )
     } catch (error) {

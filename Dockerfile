@@ -27,5 +27,5 @@ RUN mkdir -p output template_store uploads/logos
 # Expose port
 EXPOSE 8000
 
-# Start server (Render sets PORT at runtime)
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start server — apply migrations then serve (Render sets PORT at runtime)
+CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

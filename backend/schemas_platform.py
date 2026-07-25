@@ -86,7 +86,7 @@ class OrgUserRead(BaseModel):
 
 
 class OrgUserInviteRequest(BaseModel):
-    """email is used as User.username (no separate email column on users)."""
+    """Invite contact email (stored on User.email; username currently mirrors email)."""
 
     email: str
     role: str = "staff"  # staff | org_admin
@@ -238,6 +238,7 @@ class FieldDefinitionCreateRequest(BaseModel):
     field_type: str  # text | number | date | dropdown
     is_required: bool = False
     options_json: Optional[Any] = None
+    option_list_id: Optional[int] = None
 
 
 class FieldDefinitionCreate(BaseModel):
@@ -247,6 +248,7 @@ class FieldDefinitionCreate(BaseModel):
     field_type: str  # text | number | date | dropdown
     is_required: bool = False
     options_json: Optional[Any] = None
+    option_list_id: Optional[int] = None
 
 
 class FieldDefinitionUpdate(BaseModel):
@@ -255,6 +257,7 @@ class FieldDefinitionUpdate(BaseModel):
     field_type: Optional[str] = None
     is_required: Optional[bool] = None
     options_json: Optional[Any] = None
+    option_list_id: Optional[int] = None
 
 
 class FieldDefinitionRead(BaseModel):
@@ -267,6 +270,69 @@ class FieldDefinitionRead(BaseModel):
     field_type: str
     is_required: bool
     options_json: Optional[Any] = None
+    option_list_id: Optional[int] = None
+    # List-wins resolved options for generate / UI (None when not a dropdown).
+    effective_options: Optional[Any] = None
+
+
+# ---- Org option lists (Phase 12) ----
+
+
+class OrgOptionListCreate(BaseModel):
+    name: str
+    slug: str
+
+
+class OrgOptionListUpdate(BaseModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+
+
+class OrgOptionListItemCreate(BaseModel):
+    value: str
+    label: str
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class OrgOptionListItemUpdate(BaseModel):
+    value: Optional[str] = None
+    label: Optional[str] = None
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class OrgOptionListItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    list_id: int
+    value: str
+    label: str
+    sort_order: int
+    is_active: bool
+
+
+class OrgOptionListRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    org_id: str
+    name: str
+    slug: str
+    created_at: datetime
+    items: list[OrgOptionListItemRead] = []
+
+
+class OrgOptionListSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    org_id: str
+    name: str
+    slug: str
+    created_at: datetime
+    item_count: int = 0
 
 
 # ---- PlaceholderMapping ----

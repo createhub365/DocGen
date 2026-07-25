@@ -220,7 +220,18 @@ def list_generated_documents(
     db: Session = Depends(get_db),
 ):
     rows = (
-        db.query(models.GeneratedDocument)
+        db.query(
+            models.GeneratedDocument,
+            models.OrgDocumentType.name.label("document_type_name"),
+        )
+        .outerjoin(
+            models.Template,
+            models.Template.id == models.GeneratedDocument.template_id,
+        )
+        .outerjoin(
+            models.OrgDocumentType,
+            models.OrgDocumentType.id == models.Template.org_document_type_id,
+        )
         .filter(models.GeneratedDocument.org_id == current.org_id)
         .order_by(models.GeneratedDocument.id.desc())
         .all()
@@ -233,8 +244,9 @@ def list_generated_documents(
             "docx_filename": r.docx_filename,
             "pdf_filename": r.pdf_filename,
             "created_at": r.created_at,
+            "document_type_name": document_type_name,
         }
-        for r in rows
+        for r, document_type_name in rows
     ]
 
 

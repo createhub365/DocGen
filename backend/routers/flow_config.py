@@ -13,10 +13,12 @@ import models
 from auth import OrgUserContext, get_current_org_user, require_org_role
 from database import get_db
 from routers.platform_scope import (
+    field_definition_read,
     get_org_document_type,
     get_org_field_definition,
     get_org_flow_config,
     get_org_flow_step,
+    get_org_option_list,
     log_audit_event,
 )
 from schemas_platform import (
@@ -300,6 +302,7 @@ def create_flow_draft_from_published(
                     field_type=fd.field_type,
                     is_required=fd.is_required,
                     options_json=fd.options_json,
+                    option_list_id=fd.option_list_id,
                 )
             )
 
@@ -401,6 +404,10 @@ def add_field_definition(
             detail="field_key already exists on this step",
         )
 
+    option_list_id = body.option_list_id
+    if option_list_id is not None:
+        get_org_option_list(db, option_list_id, current.org_id)
+
     row = models.FieldDefinition(
         flow_step_id=step_id,
         field_key=field_key,
@@ -408,6 +415,7 @@ def add_field_definition(
         field_type=body.field_type,
         is_required=body.is_required,
         options_json=body.options_json,
+        option_list_id=option_list_id,
     )
     db.add(row)
     try:
@@ -419,7 +427,7 @@ def add_field_definition(
             status_code=status.HTTP_409_CONFLICT,
             detail="field_key already exists on this step",
         )
-    return row
+    return field_definition_read(db, row)
 
 
 @router.get("/steps/{step_id}/fields", response_model=List[FieldDefinitionRead])
@@ -429,12 +437,13 @@ def list_field_definitions(
     db: Session = Depends(get_db),
 ):
     get_org_flow_step(db, step_id, current.org_id)
-    return (
+    rows = (
         db.query(models.FieldDefinition)
         .filter(models.FieldDefinition.flow_step_id == step_id)
         .order_by(models.FieldDefinition.id.asc())
         .all()
     )
+    return [field_definition_read(db, row) for row in rows]
 
 
 @router.patch("/fields/{field_id}", response_model=FieldDefinitionRead)
@@ -448,6 +457,8 @@ def update_field_definition(
     data = body.model_dump(exclude_unset=True)
     if "field_key" in data and data["field_key"] is not None:
         data["field_key"] = data["field_key"].strip()
+    if "option_list_id" in data and data["option_list_id"] is not None:
+        get_org_option_list(db, data["option_list_id"], current.org_id)
     for key, value in data.items():
         setattr(row, key, value)
     try:
@@ -459,8 +470,7 @@ def update_field_definition(
             status_code=status.HTTP_409_CONFLICT,
             detail="field_key already exists on this step",
         )
-    return row
-
+    return field_definition_read(db, row)
 
 @router.delete("/fields/{field_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_field_definition(

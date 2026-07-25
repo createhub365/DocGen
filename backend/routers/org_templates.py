@@ -21,6 +21,8 @@ from services.logo_storage import resolve_template_local_path, save_template_doc
 from services.placeholder_extractor import extract_placeholders
 from utils.file_utils import safe_join, safe_join_relative, validate_docx_upload
 
+# Imported lazily inside list handler to avoid circular import with placeholder_mapping.
+
 router = APIRouter(tags=["platform-templates"])
 
 TEMPLATE_DIR = os.getenv("TEMPLATE_DIR", "./template_store")
@@ -114,6 +116,9 @@ def list_org_templates(
     current: OrgUserContext = Depends(get_current_org_user),
     db: Session = Depends(get_db),
 ):
+    """List active templates; include is_complete (server-side, no FE N+1)."""
+    from routers.placeholder_mapping import _mapping_completeness
+
     get_org_document_type(db, document_type_id, current.org_id)
     rows = (
         db.query(models.Template)
@@ -125,6 +130,15 @@ def list_org_templates(
         .order_by(models.Template.id.asc())
         .all()
     )
+    # Prefetch PlaceholderMapping rows for all templates in one query so
+    # completeness checks do not N+1 against mappings (DOCX detect still
+    # runs per template — placeholders are not stored as a count column).
+    template_ids = [t.id for t in rows]
+    if template_ids:
+        db.query(models.PlaceholderMapping).filter(
+            models.PlaceholderMapping.template_id.in_(template_ids)
+        ).all()
+
     return [
         {
             "id": t.id,
@@ -133,6 +147,7 @@ def list_org_templates(
             "docx_filename": t.docx_filename,
             "is_active": t.is_active,
             "created_at": t.created_at,
+            "is_complete": _mapping_completeness(db, t)[0],
         }
         for t in rows
     ]

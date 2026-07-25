@@ -375,11 +375,11 @@ def seed():
 
     db = SessionLocal()
     try:
-        ensure_appointment_letter(db)
-
         if db.query(models.User).count() > 0:
             print("Database already seeded. Skipping.")
             return
+
+        ensure_appointment_letter(db)
 
         admin = models.User(
             username="admin",

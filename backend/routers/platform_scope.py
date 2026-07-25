@@ -24,19 +24,27 @@ PLATFORM_LEGACY_COMPANY_NAME = "__platform__"
 
 
 def is_platform_sentinel_country(country: models.Country) -> bool:
-    return country.code == PLATFORM_LEGACY_COUNTRY_CODE
+    return bool(getattr(country, "is_platform_sentinel", False)) or (
+        country.code == PLATFORM_LEGACY_COUNTRY_CODE
+    )
 
 
 def is_platform_sentinel_trade(trade: models.Trade) -> bool:
-    return trade.name == PLATFORM_LEGACY_TRADE_NAME
+    return bool(getattr(trade, "is_platform_sentinel", False)) or (
+        trade.name == PLATFORM_LEGACY_TRADE_NAME
+    )
 
 
 def is_platform_sentinel_company(company: models.Company) -> bool:
-    return company.name == PLATFORM_LEGACY_COMPANY_NAME
+    return bool(getattr(company, "is_platform_sentinel", False)) or (
+        company.name == PLATFORM_LEGACY_COMPANY_NAME
+    )
 
 
 def is_platform_sentinel_document_type(doc_type: models.DocumentType) -> bool:
-    return doc_type.slug == PLATFORM_LEGACY_DOC_TYPE_SLUG
+    return bool(getattr(doc_type, "is_platform_sentinel", False)) or (
+        doc_type.slug == PLATFORM_LEGACY_DOC_TYPE_SLUG
+    )
 
 _SLUG_SAFE = re.compile(r"[^a-zA-Z0-9_-]+")
 
@@ -155,6 +163,86 @@ def get_org_field_definition(
     return row
 
 
+def get_org_option_list(
+    db: Session, list_id: int, org_id: str
+) -> models.OrgOptionList:
+    row = (
+        db.query(models.OrgOptionList)
+        .filter(
+            models.OrgOptionList.id == list_id,
+            models.OrgOptionList.org_id == org_id,
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return row
+
+
+def get_org_option_list_item(
+    db: Session, item_id: int, org_id: str
+) -> models.OrgOptionListItem:
+    row = (
+        db.query(models.OrgOptionListItem)
+        .join(
+            models.OrgOptionList,
+            models.OrgOptionListItem.list_id == models.OrgOptionList.id,
+        )
+        .filter(
+            models.OrgOptionListItem.id == item_id,
+            models.OrgOptionList.org_id == org_id,
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return row
+
+
+def resolve_field_effective_options(
+    db: Session, field: models.FieldDefinition
+) -> list | None:
+    """
+    List-wins: when option_list_id is set, return active list items;
+    otherwise return inline options_json (may be None).
+    """
+    if field.option_list_id:
+        items = (
+            db.query(models.OrgOptionListItem)
+            .filter(
+                models.OrgOptionListItem.list_id == field.option_list_id,
+                models.OrgOptionListItem.is_active.is_(True),
+            )
+            .order_by(
+                models.OrgOptionListItem.sort_order.asc(),
+                models.OrgOptionListItem.id.asc(),
+            )
+            .all()
+        )
+        return [{"value": i.value, "label": i.label} for i in items]
+    if field.options_json is None:
+        return None
+    return field.options_json
+
+
+def field_definition_read(
+    db: Session, field: models.FieldDefinition
+) -> "FieldDefinitionRead":
+    from schemas_platform import FieldDefinitionRead
+
+    return FieldDefinitionRead(
+        id=field.id,
+        flow_step_id=field.flow_step_id,
+        field_key=field.field_key,
+        field_label=field.field_label,
+        field_type=field.field_type,
+        is_required=field.is_required,
+        options_json=field.options_json,
+        option_list_id=field.option_list_id,
+        effective_options=resolve_field_effective_options(db, field),
+    )
+
+
 def get_org_template(db: Session, template_id: int, org_id: str) -> models.Template:
     row = (
         db.query(models.Template)
@@ -266,57 +354,106 @@ def ensure_platform_legacy_template_fks(db: Session) -> dict[str, int]:
     """
     country = (
         db.query(models.Country)
-        .filter(models.Country.code == PLATFORM_LEGACY_COUNTRY_CODE)
+        .filter(models.Country.is_platform_sentinel.is_(True))
         .first()
     )
     if not country:
-        country = models.Country(name="Platform Placeholder", code=PLATFORM_LEGACY_COUNTRY_CODE)
+        country = (
+            db.query(models.Country)
+            .filter(models.Country.code == PLATFORM_LEGACY_COUNTRY_CODE)
+            .first()
+        )
+    if not country:
+        country = models.Country(
+            name="Platform Placeholder",
+            code=PLATFORM_LEGACY_COUNTRY_CODE,
+            is_platform_sentinel=True,
+        )
         db.add(country)
         db.flush()
+    elif not getattr(country, "is_platform_sentinel", False):
+        country.is_platform_sentinel = True
 
     trade = (
         db.query(models.Trade)
         .filter(
-            models.Trade.name == PLATFORM_LEGACY_TRADE_NAME,
+            models.Trade.is_platform_sentinel.is_(True),
             models.Trade.country_id == country.id,
         )
         .first()
     )
     if not trade:
-        trade = models.Trade(name=PLATFORM_LEGACY_TRADE_NAME, country_id=country.id)
+        trade = (
+            db.query(models.Trade)
+            .filter(
+                models.Trade.name == PLATFORM_LEGACY_TRADE_NAME,
+                models.Trade.country_id == country.id,
+            )
+            .first()
+        )
+    if not trade:
+        trade = models.Trade(
+            name=PLATFORM_LEGACY_TRADE_NAME,
+            country_id=country.id,
+            is_platform_sentinel=True,
+        )
         db.add(trade)
         db.flush()
+    elif not getattr(trade, "is_platform_sentinel", False):
+        trade.is_platform_sentinel = True
 
     company = (
         db.query(models.Company)
         .filter(
-            models.Company.name == PLATFORM_LEGACY_COMPANY_NAME,
+            models.Company.is_platform_sentinel.is_(True),
             models.Company.trade_id == trade.id,
             models.Company.country_id == country.id,
         )
         .first()
     )
     if not company:
+        company = (
+            db.query(models.Company)
+            .filter(
+                models.Company.name == PLATFORM_LEGACY_COMPANY_NAME,
+                models.Company.trade_id == trade.id,
+                models.Company.country_id == country.id,
+            )
+            .first()
+        )
+    if not company:
         company = models.Company(
             name=PLATFORM_LEGACY_COMPANY_NAME,
             trade_id=trade.id,
             country_id=country.id,
+            is_platform_sentinel=True,
         )
         db.add(company)
         db.flush()
+    elif not getattr(company, "is_platform_sentinel", False):
+        company.is_platform_sentinel = True
 
     doc_type = (
         db.query(models.DocumentType)
-        .filter(models.DocumentType.slug == PLATFORM_LEGACY_DOC_TYPE_SLUG)
+        .filter(models.DocumentType.is_platform_sentinel.is_(True))
         .first()
     )
+    if not doc_type:
+        doc_type = (
+            db.query(models.DocumentType)
+            .filter(models.DocumentType.slug == PLATFORM_LEGACY_DOC_TYPE_SLUG)
+            .first()
+        )
     if not doc_type:
         doc_type = models.DocumentType(
             name="Platform Placeholder",
             slug=PLATFORM_LEGACY_DOC_TYPE_SLUG,
+            is_platform_sentinel=True,
         )
         db.add(doc_type)
         db.flush()
+    elif not getattr(doc_type, "is_platform_sentinel", False):
+        doc_type.is_platform_sentinel = True
 
     return {
         "document_type_id": doc_type.id,

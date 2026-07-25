@@ -78,7 +78,7 @@ function FieldInput({ field, disabled, value, onChange, ...rest }) {
     return (
       <Select
         allowClear
-        options={optionsFromJson(field.options_json)}
+        options={optionsFromJson(field.effective_options ?? field.options_json)}
         disabled={disabled}
         placeholder="Select"
         value={value}

@@ -18,7 +18,6 @@ import {
 } from '@ant-design/icons'
 import {
   listOrgTemplates,
-  listPlaceholderMappings,
   readPlatformErrorDetail,
   uploadOrgTemplate,
 } from '../../api/platformClient'
@@ -72,17 +71,11 @@ export default function TemplatesPanel({
     try {
       const rows = await listOrgTemplates(documentTypeId)
       setTemplates(rows)
-      const statuses = await Promise.all(
-        rows.map(async (row) => {
-          try {
-            const mappings = await listPlaceholderMappings(row.id)
-            return [row.id, !!mappings.is_complete]
-          } catch {
-            return [row.id, null]
-          }
-        })
+      setCompleteness(
+        Object.fromEntries(
+          (rows || []).map((row) => [row.id, !!row.is_complete])
+        )
       )
-      setCompleteness(Object.fromEntries(statuses))
     } catch (error) {
       setLoadError((await readPlatformErrorDetail(error)) || 'Could not load templates')
     } finally {
