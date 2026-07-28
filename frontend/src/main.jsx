@@ -33,3 +33,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </AntApp>
   </ConfigProvider>
 )
+
+// PWA: register only in production builds (avoids Vite HMR fighting the SW).
+// Minimal SW satisfies Chrome installability; API traffic is never cached.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('[pwa] service worker registration failed', err)
+    })
+  })
+}

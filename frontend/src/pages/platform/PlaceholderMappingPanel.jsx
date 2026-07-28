@@ -243,7 +243,7 @@ export default function PlaceholderMappingPanel({
         onClick={onBack}
         style={{ marginBottom: 12 }}
       >
-        Back to templates
+        Back to documents
       </Button>
 
       <Space align="center" style={{ marginBottom: 8 }} wrap>
@@ -253,9 +253,13 @@ export default function PlaceholderMappingPanel({
         <Tag color={isComplete ? 'green' : 'orange'}>
           {isComplete ? 'Complete' : 'Incomplete'}
         </Tag>
-        <Text type="secondary">{basename(template.docx_filename)}</Text>
       </Space>
-
+      <Text strong style={{ display: 'block' }}>
+        {String(template.display_name || '').trim() || basename(template.docx_filename)}
+      </Text>
+      <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+        {basename(template.docx_filename)}
+      </Text>
       <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
         {mappedCount} of {detected.length} placeholders mapped
         {unmapped.length ? ` · ${unmapped.length} still unmapped` : ''}

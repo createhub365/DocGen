@@ -12,7 +12,12 @@ import tempfile
 from pathlib import Path
 
 # Isolate before any app imports — must not point at docgen.db
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+# Prefer TEST_DATABASE_URL when set (staging Postgres); else in-memory SQLite.
+_TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", "").strip()
+if not _TEST_DB_URL or _TEST_DB_URL.startswith("sqlite"):
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+else:
+    os.environ["DATABASE_URL"] = _TEST_DB_URL
 os.environ["JWT_SECRET"] = (
     "test_jwt_secret_for_platform_isolation_tests_only_64chars_xx"
 )
@@ -45,20 +50,22 @@ from sqlalchemy.pool import StaticPool
 import database
 from database import Base, get_db
 
-# Replace the module engine with a shared in-memory DB (NOT docgen.db).
-_test_engine = create_engine(
-    "sqlite://",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+# Replace the module engine with a shared in-memory DB (NOT docgen.db),
+# or staging Postgres when TEST_DATABASE_URL is set.
+if os.environ["DATABASE_URL"].startswith("sqlite"):
+    _test_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
-
-@event.listens_for(_test_engine, "connect")
-def _fk_on(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
-
+    @event.listens_for(_test_engine, "connect")
+    def _fk_on(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+else:
+    _test_engine = create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
 
 database.engine = _test_engine
 database.SessionLocal = sessionmaker(
@@ -73,8 +80,8 @@ from models import Organization, OrgUser, User  # noqa: E402
 TestingSessionLocal = database.SessionLocal
 
 # Report helpers
-TEST_DATABASE_URL = "sqlite:///:memory: (StaticPool — NOT docgen.db)"
-TEST_DB_FILE = ":memory:"
+TEST_DATABASE_URL = os.environ["DATABASE_URL"]
+TEST_DB_FILE = ":memory:" if os.environ["DATABASE_URL"].startswith("sqlite") else "postgres-staging"
 TEST_TEMPLATE_DIR = str(_TEST_TEMPLATE_DIR)
 TEST_OUTPUT_DIR = str(_TEST_OUTPUT_DIR)
 

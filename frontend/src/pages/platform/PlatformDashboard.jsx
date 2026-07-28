@@ -11,18 +11,15 @@ import {
   Modal,
   Space,
   Tag,
-  Tooltip,
   Typography,
 } from 'antd'
 import {
   AppstoreAddOutlined,
   PlusOutlined,
   RocketOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons'
 import {
   createDocumentType,
-  getDocumentTypeGenerateReadiness,
   installPreset,
   listDocumentTypes,
   listPresets,
@@ -32,7 +29,10 @@ import {
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 
-const { Title, Paragraph } = Typography
+const { Title, Paragraph, Text } = Typography
+
+/** Square tile size for document-type cards (CSS Grid minmax). */
+const DOC_TYPE_TILE_PX = 240
 
 function flowStatus(item) {
   if (item.has_published_flow && item.has_draft_flow) {
@@ -48,7 +48,6 @@ export default function PlatformDashboard() {
   const message = useAppMessage()
   const [loading, setLoading] = useState(true)
   const [types, setTypes] = useState([])
-  const [readiness, setReadiness] = useState({})
   const [loadError, setLoadError] = useState(null)
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -65,31 +64,11 @@ export default function PlatformDashboard() {
     setLoadError(null)
     try {
       const data = await listDocumentTypes()
-      const rows = Array.isArray(data) ? data : []
-      setTypes(rows)
-      const statuses = await Promise.all(
-        rows.map(async (item) => {
-          try {
-            const status = await getDocumentTypeGenerateReadiness(item)
-            return [item.id, status]
-          } catch {
-            return [
-              item.id,
-              {
-                ready: false,
-                reason: 'Could not check template readiness',
-                completeTemplateIds: [],
-              },
-            ]
-          }
-        })
-      )
-      setReadiness(Object.fromEntries(statuses))
+      setTypes(Array.isArray(data) ? data : [])
     } catch (err) {
       const detail = await readPlatformErrorDetail(err)
       setLoadError(detail || 'Failed to load document types')
       setTypes([])
-      setReadiness({})
     } finally {
       setLoading(false)
     }
@@ -158,6 +137,20 @@ export default function PlatformDashboard() {
     }
   }
 
+  const draftName = Form.useWatch('name', createForm)
+  const nearDuplicateTypes = useMemo(() => {
+    const q = String(draftName || '').trim().toLowerCase()
+    if (!q || types.length === 0) return []
+    return types.filter((t) => String(t.name || '').trim().toLowerCase() === q)
+  }, [draftName, types])
+
+  const closeCreateAndBrowse = () => {
+    setCreateOpen(false)
+    createForm.resetFields()
+    // Soft nudge: stay on dashboard list so the user can Open an existing type
+    message.info('Open an existing type, then use its Templates tab to add another file.')
+  }
+
   const header = useMemo(
     () => (
       <>
@@ -216,64 +209,122 @@ export default function PlatformDashboard() {
           }
           style={{ borderRadius: 16 }}
         >
-          <List
-            dataSource={types}
-            renderItem={(item) => {
-              const status = readiness[item.id]
-              const canGenerate = !!status?.ready
-              const generateTip = canGenerate
-                ? 'Start the generation wizard'
-                : status?.reason || 'Not ready to generate'
-              return (
-                <List.Item
-                  actions={[
-                    <Tooltip key="generate" title={generateTip}>
-                      <span>
-                        <Button
-                          type="link"
-                          icon={<ThunderboltOutlined />}
-                          disabled={!canGenerate}
-                          onClick={() =>
-                            navigate(`/platform/document-types/${item.id}/generate`)
-                          }
-                        >
-                          Generate
-                        </Button>
-                      </span>
-                    </Tooltip>,
-                    <Button
-                      key="open"
-                      type="link"
-                      onClick={() => navigate(`/platform/document-types/${item.id}`)}
-                    >
-                      Open
-                    </Button>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={
-                      <Space>
-                        <span>{item.name}</span>
-                        <Tag>{item.slug}</Tag>
-                        {flowStatus(item)}
-                      </Space>
-                    }
-                    description={item.description || 'No description'}
-                  />
-                </List.Item>
-              )
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(auto-fill, minmax(${DOC_TYPE_TILE_PX}px, ${DOC_TYPE_TILE_PX}px))`,
+              gap: 16,
+              justifyContent: 'start',
             }}
-          />
+          >
+            {types.map((item) => (
+              <Card
+                key={item.id}
+                size="small"
+                hoverable
+                onClick={() => navigate(`/platform/document-types/${item.id}`)}
+                style={{
+                  width: DOC_TYPE_TILE_PX,
+                  height: DOC_TYPE_TILE_PX,
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                }}
+                styles={{
+                  body: {
+                    height: '100%',
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    padding: 16,
+                  },
+                }}
+              >
+                <Text
+                  strong
+                  style={{
+                    fontSize: 15,
+                    lineHeight: 1.35,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {item.name}
+                </Text>
+                <Space size={[4, 4]} wrap style={{ flexShrink: 0 }}>
+                  <Tag style={{ margin: 0 }}>{item.slug}</Tag>
+                  {flowStatus(item)}
+                </Space>
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: 12,
+                    lineHeight: 1.4,
+                    marginTop: 'auto',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {item.description || 'No description'}
+                </Text>
+              </Card>
+            ))}
+          </div>
         </Card>
       )}
 
       <Modal
         title="Create document type"
         open={createOpen}
-        onCancel={() => setCreateOpen(false)}
+        onCancel={() => {
+          setCreateOpen(false)
+          createForm.resetFields()
+        }}
         footer={null}
         destroyOnHidden
       >
+        {types.length > 0 && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="Already have a document type for this? Open it and add another template instead of creating a new type."
+            action={
+              <Button size="small" type="link" onClick={closeCreateAndBrowse}>
+                Browse existing types
+              </Button>
+            }
+          />
+        )}
+        {nearDuplicateTypes.length > 0 && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={`A document type named “${nearDuplicateTypes[0].name}” already exists.`}
+            description="If you only need another file variant, open that type and add a template — you can still create a new type if the fields must differ."
+            action={
+              <Button
+                size="small"
+                type="link"
+                onClick={() => {
+                  setCreateOpen(false)
+                  createForm.resetFields()
+                  navigate(`/platform/document-types/${nearDuplicateTypes[0].id}`)
+                }}
+              >
+                Open existing
+              </Button>
+            }
+          />
+        )}
         <Form form={createForm} layout="vertical" onFinish={onCreate} requiredMark={false}>
           <Form.Item
             name="name"

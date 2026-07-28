@@ -5,12 +5,14 @@ import {
   Button,
   Card,
   DatePicker,
+  Descriptions,
   Form,
   Input,
   InputNumber,
   Select,
   Space,
   Spin,
+  Steps,
   Typography,
 } from 'antd'
 import {
@@ -24,17 +26,50 @@ import {
   downloadGeneratedDocument,
   generateOrgDocument,
   getDocumentType,
-  getDocumentTypeGenerateReadiness,
   getPublishedFlow,
   listFieldDefinitions,
   listFlowSteps,
+  listOrgTemplates,
   readPlatformErrorDetail,
 } from '../../api/platformClient'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import {
+  findWorldCountry,
+  worldCountrySelectOptions,
+} from '../../data/worldCountries'
+
+/** flag-icons CSS sprite — works on Windows (emoji flags do not). */
+function WorldCountryFlag({ code, size = 18 }) {
+  const cls = String(code || '')
+    .trim()
+    .toLowerCase()
+  if (!/^[a-z]{2}$/.test(cls)) return null
+  const fontSize = Math.round(size / 1.333333)
+  return (
+    <span
+      className={`fi fi-${cls}`}
+      role="img"
+      aria-hidden
+      style={{
+        fontSize,
+        lineHeight: 1,
+        borderRadius: 2,
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        flexShrink: 0,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+        overflow: 'hidden',
+      }}
+    />
+  )
+}
 
 const { Title, Paragraph, Text } = Typography
 const { TextArea } = Input
+
+/** Review is always the last wizard page (even for a single enabled step). */
+const REVIEW_PAGE = 'review'
 
 function optionsFromJson(value) {
   if (!Array.isArray(value)) return []
@@ -93,7 +128,7 @@ function FieldInput({ field, disabled, value, onChange, ...rest }) {
   )
 }
 
-function collectFieldsPayload(values) {
+export function collectFieldsPayload(values) {
   const out = {}
   Object.entries(values || {}).forEach(([key, value]) => {
     if (value === undefined || value === null) return
@@ -107,9 +142,46 @@ function collectFieldsPayload(values) {
   return out
 }
 
+/** Field keys owned by a step (for per-page validation). */
+export function fieldKeysForStep(step) {
+  if (!step || step.step_type === 'file_upload') return []
+  if (step.step_type === 'country_selector') {
+    const keys = ['country.name']
+    if (step.config_json?.use_builtin_country_list) {
+      if (step.config_json?.include_country_code) keys.push('country.code')
+    } else {
+      keys.push('country.code')
+    }
+    return keys
+  }
+  if (step.step_type === 'party_selector') {
+    return ['party.name', 'party.email', 'party.address']
+  }
+  const fromDefs = (step.fields || [])
+    .filter((f) => f.is_required)
+    .map((f) => f.field_key)
+  if (fromDefs.length) return fromDefs
+  const configKey = step.config_json?.field_key
+  return configKey ? [configKey] : []
+}
+
+export function requiredKeysForStep(step) {
+  if (!step) return []
+  return (step.fields || [])
+    .filter((f) => f.is_required)
+    .map((f) => f.field_key)
+}
+
+function formatDisplayValue(value) {
+  if (value === undefined || value === null || value === '') return '—'
+  if (dayjs.isDayjs(value)) return value.format('YYYY-MM-DD')
+  return String(value)
+}
+
 export default function GenerateDocumentPage() {
-  const { id } = useParams()
+  const { id, templateId: templateIdParam } = useParams()
   const documentTypeId = Number(id)
+  const routeTemplateId = templateIdParam ? Number(templateIdParam) : null
   const navigate = useNavigate()
   const message = useAppMessage()
   const [form] = Form.useForm()
@@ -123,6 +195,10 @@ export default function GenerateDocumentPage() {
   const [missingFields, setMissingFields] = useState([])
   const [submitError, setSubmitError] = useState(null)
   const [result, setResult] = useState(null)
+  /** Index into `wizardPages` (steps + review). */
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageError, setPageError] = useState(null)
+  const watchedCountryName = Form.useWatch('country.name', form)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -130,28 +206,53 @@ export default function GenerateDocumentPage() {
     setResult(null)
     setSubmitError(null)
     setMissingFields([])
+    setPageIndex(0)
+    setPageError(null)
     try {
       const detail = await getDocumentType(documentTypeId)
-      const readiness = await getDocumentTypeGenerateReadiness({
-        ...detail,
-        has_published_flow: true,
-      })
-      // Prefer list flags when available from a fresh types list; fall back to published GET.
+      setDocumentType(detail)
+
       let published
       try {
         published = await getPublishedFlow(documentTypeId)
       } catch (error) {
         if (error.response?.status === 404) {
           setLoadError('Publish a flow first before generating.')
-          setDocumentType(detail)
           return
         }
         throw error
       }
 
-      if (!readiness.ready) {
-        setLoadError(readiness.reason || 'Not ready to generate')
-        setDocumentType(detail)
+      const templates = await listOrgTemplates(documentTypeId)
+      const complete = (templates || []).filter((t) => t.is_complete)
+
+      let resolvedId = null
+      if (routeTemplateId) {
+        const match = (templates || []).find((t) => t.id === routeTemplateId)
+        if (!match) {
+          setLoadError(
+            'That document was not found for this type. Pick one from the Documents tab.'
+          )
+          return
+        }
+        if (!match.is_complete) {
+          setLoadError(
+            'This document’s mapping is incomplete. Open it and finish mapping before generating.'
+          )
+          return
+        }
+        resolvedId = match.id
+      } else if (complete.length === 1) {
+        // Old bookmark without template id — only auto-resolve when unambiguous
+        resolvedId = complete[0].id
+      } else {
+        // Multiple or zero complete docs: send user to pick explicitly
+        navigate(`/platform/document-types/${documentTypeId}`, { replace: true })
+        message.info(
+          complete.length
+            ? 'Choose which document to generate from the Documents tab.'
+            : 'Upload and map a document before generating.'
+        )
         return
       }
 
@@ -167,13 +268,8 @@ export default function GenerateDocumentPage() {
         }))
       )
 
-      setDocumentType(detail)
       setSteps(hydrated)
-      const preferredTemplateId =
-        readiness.completeTemplateIds.at(-1) ||
-        readiness.completeTemplateIds[0] ||
-        null
-      setTemplateId(preferredTemplateId)
+      setTemplateId(resolvedId)
     } catch (error) {
       setLoadError(
         (await readPlatformErrorDetail(error)) || 'Could not load generation wizard'
@@ -181,11 +277,23 @@ export default function GenerateDocumentPage() {
     } finally {
       setLoading(false)
     }
-  }, [documentTypeId])
+  }, [documentTypeId, routeTemplateId, navigate]) // message toast is fire-and-forget
 
   useEffect(() => {
     load()
   }, [load])
+
+  const wizardPages = useMemo(() => {
+    const pages = steps
+      .filter((s) => s.step_type !== 'file_upload')
+      .map((step) => ({ kind: 'step', step }))
+    pages.push({ kind: REVIEW_PAGE })
+    return pages
+  }, [steps])
+
+  const currentPage = wizardPages[pageIndex] || null
+  const isReview = currentPage?.kind === REVIEW_PAGE
+  const totalSteps = Math.max(wizardPages.length - 1, 1)
 
   const requiredKeys = useMemo(() => {
     const keys = new Set()
@@ -197,6 +305,49 @@ export default function GenerateDocumentPage() {
     return keys
   }, [steps])
 
+  const findPageIndexForField = useCallback(
+    (fieldKey) => {
+      for (let i = 0; i < wizardPages.length; i += 1) {
+        const page = wizardPages[i]
+        if (page.kind !== 'step') continue
+        const keys = [
+          ...requiredKeysForStep(page.step),
+          ...fieldKeysForStep(page.step),
+          ...(page.step.fields || []).map((f) => f.field_key),
+        ]
+        if (keys.includes(fieldKey)) return i
+      }
+      return 0
+    },
+    [wizardPages]
+  )
+
+  const validateCurrentPage = async () => {
+    setPageError(null)
+    if (!currentPage || currentPage.kind !== 'step') return true
+    const step = currentPage.step
+    const req = requiredKeysForStep(step)
+    if (!req.length) return true
+    try {
+      await form.validateFields(req)
+      return true
+    } catch {
+      setPageError('Please fill required fields on this step before continuing.')
+      return false
+    }
+  }
+
+  const goNext = async () => {
+    const ok = await validateCurrentPage()
+    if (!ok) return
+    setPageIndex((i) => Math.min(i + 1, wizardPages.length - 1))
+  }
+
+  const goBack = () => {
+    setPageError(null)
+    setPageIndex((i) => Math.max(i - 1, 0))
+  }
+
   const onFinish = async (values) => {
     setSubmitting(true)
     setSubmitError(null)
@@ -204,6 +355,17 @@ export default function GenerateDocumentPage() {
     setResult(null)
     try {
       const fields = collectFieldsPayload(values)
+      // Builtin country list: drop country.code unless include_country_code
+      for (const step of steps) {
+        if (
+          step.step_type === 'country_selector' &&
+          step.config_json?.use_builtin_country_list &&
+          !step.config_json?.include_country_code
+        ) {
+          delete fields['country.code']
+        }
+      }
+
       const missingClient = [...requiredKeys].filter((key) => {
         const v = fields[key]
         return v === undefined || v === null || (typeof v === 'string' && !String(v).trim())
@@ -214,12 +376,13 @@ export default function GenerateDocumentPage() {
           form.setFields([{ name: key, errors: ['Required'] }])
         })
         setSubmitError(`Missing required fields: ${missingClient.join(', ')}`)
+        setPageIndex(findPageIndexForField(missingClient[0]))
         return
       }
 
       if (!templateId) {
         setSubmitError(
-          'No complete template selected. Open Templates, finish mapping, then return here.'
+          'No complete document selected. Open Documents, finish mapping, then generate from that document.'
         )
         return
       }
@@ -240,6 +403,7 @@ export default function GenerateDocumentPage() {
         setSubmitError(
           `Missing required fields: ${detail.missing_fields.join(', ')}`
         )
+        setPageIndex(findPageIndexForField(detail.missing_fields[0]))
       } else if (
         detail &&
         typeof detail === 'object' &&
@@ -260,32 +424,115 @@ export default function GenerateDocumentPage() {
     }
   }
 
-  const renderStep = (step) => {
-    if (step.step_type === 'file_upload') {
-      // Platform fill_template is placeholder-text only; no file inputs in this pipeline.
-      return null
-    }
+  const renderCountrySelector = (step) => {
+    const useBuiltin = !!step.config_json?.use_builtin_country_list
+    const includeCode = !!step.config_json?.include_country_code
 
-    if (step.step_type === 'country_selector') {
-      const options = optionsFromJson(step.config_json?.options)
+    if (useBuiltin) {
+      const selectOptions = worldCountrySelectOptions({ includeCode }).map((o) => ({
+        value: o.value,
+        code: o.code,
+        name: o.name,
+        // Plain text kept for filter; visual label uses CSS flag images
+        searchText: o.label,
+        label: (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <WorldCountryFlag code={o.code} size={18} />
+            <span>{o.label}</span>
+          </span>
+        ),
+      }))
       return (
         <Card key={step.id} title={step.label || 'Country'} style={{ borderRadius: 12 }}>
-          <Form.Item
-            name="country.name"
-            label="Country name"
-            rules={[{ required: false }]}
-          >
-            {options.length ? (
-              <Select allowClear options={options} placeholder="Select country" />
-            ) : (
-              <Input placeholder="e.g. New Zealand" />
-            )}
+          <Form.Item name="country.name" hidden>
+            <Input />
           </Form.Item>
-          <Form.Item name="country.code" label="Country code" extra="Maps to country.code">
-            <Input placeholder="e.g. NZ" />
+          {includeCode && (
+            <Form.Item name="country.code" hidden>
+              <Input />
+            </Form.Item>
+          )}
+          <Form.Item label="Country" required={false}>
+            <Select
+              showSearch
+              allowClear
+              placeholder="Search country"
+              optionFilterProp="searchText"
+              filterOption={(input, option) => {
+                const q = String(input || '').trim().toLowerCase()
+                if (!q) return true
+                return (
+                  String(option?.searchText || '')
+                    .toLowerCase()
+                    .includes(q) ||
+                  String(option?.name || '')
+                    .toLowerCase()
+                    .includes(q) ||
+                  String(option?.code || '')
+                    .toLowerCase()
+                    .includes(q)
+                )
+              }}
+              options={selectOptions}
+              value={findWorldCountry(watchedCountryName)?.code}
+              onChange={(code) => {
+                const found = findWorldCountry(code)
+                if (!found) {
+                  form.setFieldsValue({
+                    'country.name': undefined,
+                    ...(includeCode ? { 'country.code': undefined } : {}),
+                  })
+                  return
+                }
+                form.setFieldsValue({
+                  'country.name': found.name,
+                  ...(includeCode ? { 'country.code': found.code } : {}),
+                })
+              }}
+            />
           </Form.Item>
+          {!includeCode && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Submits country.name only (ISO code not included).
+            </Text>
+          )}
         </Card>
       )
+    }
+
+    // Backward-compatible free-text path (default)
+    const options = optionsFromJson(step.config_json?.options)
+    return (
+      <Card key={step.id} title={step.label || 'Country'} style={{ borderRadius: 12 }}>
+        <Form.Item
+          name="country.name"
+          label="Country name"
+          rules={[{ required: false }]}
+        >
+          {options.length ? (
+            <Select allowClear options={options} placeholder="Select country" />
+          ) : (
+            <Input placeholder="e.g. New Zealand" />
+          )}
+        </Form.Item>
+        <Form.Item name="country.code" label="Country code" extra="Maps to country.code">
+          <Input placeholder="e.g. NZ" />
+        </Form.Item>
+      </Card>
+    )
+  }
+
+  const renderStep = (step) => {
+    if (step.step_type === 'file_upload') return null
+
+    if (step.step_type === 'country_selector') {
+      return renderCountrySelector(step)
     }
 
     if (step.step_type === 'party_selector') {
@@ -314,7 +561,12 @@ export default function GenerateDocumentPage() {
               label={field.field_label || field.field_key}
               rules={
                 field.is_required
-                  ? [{ required: true, message: `${field.field_label || field.field_key} is required` }]
+                  ? [
+                      {
+                        required: true,
+                        message: `${field.field_label || field.field_key} is required`,
+                      },
+                    ]
                   : undefined
               }
               validateStatus={missingFields.includes(field.field_key) ? 'error' : undefined}
@@ -329,7 +581,6 @@ export default function GenerateDocumentPage() {
       )
     }
 
-    // text_field / number_field / date_field / dropdown / rich_text
     const fields = step.fields || []
     if (fields.length) {
       return (
@@ -358,10 +609,7 @@ export default function GenerateDocumentPage() {
     }
 
     const configKey = step.config_json?.field_key
-    if (!configKey) {
-      // No resolvable field_key — skip (backend mapping cannot use this step).
-      return null
-    }
+    if (!configKey) return null
 
     if (step.step_type === 'rich_text') {
       return (
@@ -404,6 +652,80 @@ export default function GenerateDocumentPage() {
     )
   }
 
+  const reviewItems = () => {
+    const values = form.getFieldsValue(true)
+    const items = []
+    for (const step of steps) {
+      if (step.step_type === 'file_upload') continue
+      const keys =
+        step.step_type === 'country_selector' || step.step_type === 'party_selector'
+          ? fieldKeysForStep(step)
+          : (step.fields || []).map((f) => f.field_key).concat(
+              step.config_json?.field_key ? [step.config_json.field_key] : []
+            )
+      const unique = [...new Set(keys)].filter(Boolean)
+      if (!unique.length) continue
+      items.push({
+        step,
+        rows: unique.map((key) => ({
+          key,
+          label:
+            (step.fields || []).find((f) => f.field_key === key)?.field_label || key,
+          value: formatDisplayValue(values[key]),
+        })),
+      })
+    }
+    return items
+  }
+
+  const headerTitle = useMemo(() => {
+    if (result) return `Generate — ${documentType?.name || 'Document'}`
+    if (isReview) return 'Review & generate'
+    return currentPage?.step?.label || documentType?.name || 'Generate'
+  }, [result, isReview, currentPage, documentType])
+
+  const headerSubtitle = useMemo(() => {
+    if (result) return 'Document ready to download.'
+    if (loadError) return null
+    if (isReview) return 'Confirm the values below, then generate.'
+    const n = Math.min(pageIndex + 1, totalSteps)
+    return `Step ${n} of ${totalSteps}`
+  }, [result, loadError, isReview, pageIndex, totalSteps])
+
+  const showWizardChrome = !loadError && !result
+
+  let footerActions = null
+  if (showWizardChrome) {
+    if (isReview) {
+      footerActions = (
+        <Space>
+          <Button size="large" onClick={goBack} disabled={submitting}>
+            Back
+          </Button>
+          <Button
+            type="primary"
+            size="large"
+            loading={submitting}
+            onClick={() => form.submit()}
+          >
+            Generate document
+          </Button>
+        </Space>
+      )
+    } else {
+      footerActions = (
+        <Space>
+          <Button size="large" onClick={goBack} disabled={pageIndex === 0 || submitting}>
+            Back
+          </Button>
+          <Button type="primary" size="large" onClick={goNext} disabled={submitting}>
+            Next
+          </Button>
+        </Space>
+      )
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'grid', placeItems: 'center', minHeight: 360 }}>
@@ -412,15 +734,27 @@ export default function GenerateDocumentPage() {
     )
   }
 
-  const showGenerateFooter = !loadError && !result
-
   return (
     <GenerateDocumentChrome
-      documentName={documentType?.name || 'Document'}
       onBack={() => navigate('/platform/document-types')}
-      showFooter={showGenerateFooter}
-      submitting={submitting}
-      onGenerate={() => form.submit()}
+      title={headerTitle}
+      subtitle={headerSubtitle}
+      progress={
+        showWizardChrome ? (
+          <Steps
+            size="small"
+            current={isReview ? totalSteps : pageIndex}
+            items={[
+              ...steps
+                .filter((s) => s.step_type !== 'file_upload')
+                .map((s) => ({ title: s.label || s.step_type })),
+              { title: 'Review' },
+            ]}
+            style={{ marginTop: 8, maxWidth: 720 }}
+          />
+        ) : null
+      }
+      footer={footerActions}
     >
       {loadError && <Alert type="error" showIcon message={loadError} />}
 
@@ -458,6 +792,9 @@ export default function GenerateDocumentPage() {
                 onClick={() => {
                   setResult(null)
                   form.resetFields()
+                  setPageIndex(0)
+                  setSubmitError(null)
+                  setMissingFields([])
                 }}
               >
                 Generate another
@@ -473,10 +810,15 @@ export default function GenerateDocumentPage() {
           layout="vertical"
           onFinish={onFinish}
           requiredMark={false}
+          preserve
           onValuesChange={(changed) => {
             const changedKeys = Object.keys(changed)
             if (!changedKeys.length) return
             setMissingFields((prev) => prev.filter((key) => !changedKeys.includes(key)))
+            // Keep Select controlled value in sync for builtin country
+            if ('country.name' in changed) {
+              // no-op — Form already holds value
+            }
           }}
         >
           {submitError && (
@@ -487,24 +829,61 @@ export default function GenerateDocumentPage() {
               style={{ marginBottom: 16 }}
             />
           )}
+          {pageError && (
+            <Alert
+              type="warning"
+              showIcon
+              message={pageError}
+              style={{ marginBottom: 16 }}
+            />
+          )}
 
+          {/* All steps stay mounted (display:none) so AntD Form preserves values across pages */}
           <Space direction="vertical" size={14} style={{ width: '100%' }}>
-            {steps.map((step) => renderStep(step))}
+            {steps.map((step) => {
+              const visible =
+                currentPage?.kind === 'step' && currentPage.step.id === step.id
+              return (
+                <div
+                  key={step.id}
+                  style={{ display: visible ? 'block' : 'none' }}
+                  aria-hidden={!visible}
+                >
+                  {renderStep(step)}
+                </div>
+              )
+            })}
           </Space>
+
+          {isReview && (
+            <Card title="Review" style={{ borderRadius: 12 }}>
+              {reviewItems().map(({ step, rows }) => (
+                <div key={step.id} style={{ marginBottom: 16 }}>
+                  <Text strong>{step.label || step.step_type}</Text>
+                  <Descriptions
+                    size="small"
+                    column={1}
+                    style={{ marginTop: 8 }}
+                    items={rows.map((r) => ({
+                      key: r.key,
+                      label: r.label,
+                      children: r.value,
+                    }))}
+                  />
+                </div>
+              ))}
+              {!reviewItems().length && (
+                <Text type="secondary">No values entered yet.</Text>
+              )}
+            </Card>
+          )}
         </Form>
       )}
     </GenerateDocumentChrome>
   )
 }
 
-function GenerateDocumentChrome({
-  documentName,
-  onBack,
-  showFooter,
-  submitting,
-  onGenerate,
-  children,
-}) {
+function GenerateDocumentChrome({ onBack, title, subtitle, progress, footer, children }) {
   const header = useMemo(
     () => (
       <>
@@ -517,26 +896,19 @@ function GenerateDocumentChrome({
           Document types
         </Button>
         <Title level={3} style={{ margin: 0 }}>
-          Generate — {documentName}
+          {title}
         </Title>
-        <Paragraph type="secondary" style={{ margin: 0 }}>
-          Fill the published flow steps. Disabled steps are hidden automatically.
-        </Paragraph>
+        {subtitle ? (
+          <Paragraph type="secondary" style={{ margin: 0 }}>
+            {subtitle}
+          </Paragraph>
+        ) : null}
+        {progress}
       </>
     ),
-    [documentName, onBack]
+    [onBack, title, subtitle, progress]
   )
 
-  const footer = useMemo(
-    () =>
-      showFooter ? (
-        <Button type="primary" size="large" loading={submitting} onClick={onGenerate}>
-          Generate document
-        </Button>
-      ) : null,
-    [onGenerate, showFooter, submitting]
-  )
-
-  usePlatformPageChrome({ header, footer })
+  usePlatformPageChrome({ header, footer: footer ?? null })
   return children
 }

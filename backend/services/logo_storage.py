@@ -233,6 +233,44 @@ def save_template_docx(content: bytes, filename: str, template_dir: str) -> str:
     return safe_name
 
 
+def delete_template_docx(stored_path: str | None, template_dir: str) -> None:
+    """Best-effort remove of a template .docx from local disk and Supabase."""
+    if not stored_path:
+        return
+    safe_name = os.path.basename(str(stored_path).replace("\\", "/"))
+    if not safe_name:
+        return
+
+    # Local org path (TEMPLATE_DIR/orgs/{org}/file.docx) or flat dir
+    try:
+        from utils.file_utils import safe_join_relative
+
+        rel = str(stored_path).replace("\\", "/")
+        if rel.startswith("orgs/"):
+            local = safe_join_relative(template_dir, rel)
+        else:
+            local = safe_join(template_dir, safe_name)
+        if os.path.exists(local):
+            os.unlink(local)
+    except Exception:
+        pass
+
+    cache_path = safe_join(os.path.join(template_dir, ".cache"), safe_name)
+    if os.path.exists(cache_path):
+        try:
+            os.unlink(cache_path)
+        except OSError:
+            pass
+
+    if storage_enabled():
+        try:
+            _request("DELETE", f"/storage/v1/object/{TEMPLATE_BUCKET}/{safe_name}")
+        except urllib.error.HTTPError:
+            pass
+        except Exception:
+            pass
+
+
 def resolve_template_local_path(filename: str | None, template_dir: str) -> str | None:
     if not filename:
         return None

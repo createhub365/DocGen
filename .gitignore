@@ -80,3 +80,6 @@ backend/tests/*.db-*
 backend/scripts/local_appointment_letter_e2e.py
 backend/scripts/seed_countries.sql
 
+
+backend/.last_live_dump
+

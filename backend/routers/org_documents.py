@@ -244,7 +244,12 @@ def list_generated_documents(
             "docx_filename": r.docx_filename,
             "pdf_filename": r.pdf_filename,
             "created_at": r.created_at,
-            "document_type_name": document_type_name,
+            "document_type_name": document_type_name
+            or (
+                f"Template #{r.template_id}"
+                if r.template_id
+                else "Deleted template"
+            ),
         }
         for r, document_type_name in rows
     ]

@@ -79,6 +79,8 @@ class Template(Base):
     trade_id = Column(Integer, ForeignKey("trades.id"), nullable=False)
     country_id = Column(Integer, ForeignKey("countries.id"), nullable=False)
     docx_filename = Column(String, nullable=False)
+    # Platform UI label; nullable so legacy/admin rows keep filename-only behavior.
+    display_name = Column(String, nullable=True)
     thumbnail_path = Column(String, nullable=True)
     label_overrides_json = Column(Text, nullable=True)
     category = Column(String, nullable=True)
@@ -156,7 +158,11 @@ class GeneratedDocument(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    template_id = Column(Integer, ForeignKey("templates.id"), nullable=False)
+    template_id = Column(
+        Integer,
+        ForeignKey("templates.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     form_data_json = Column(Text, nullable=False)
     docx_filename = Column(String, nullable=True)
     pdf_filename = Column(String, nullable=True)

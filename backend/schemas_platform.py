@@ -371,6 +371,12 @@ class TemplateOrgFieldsUpdate(BaseModel):
     org_document_type_id: Optional[int] = None
 
 
+class TemplateDisplayNameUpdate(BaseModel):
+    """Rename a platform template's user-facing display name."""
+
+    display_name: str
+
+
 class GeneratedDocumentOrgFieldsUpdate(BaseModel):
     org_id: Optional[str] = None
 

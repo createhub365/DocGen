@@ -176,12 +176,29 @@ export async function listOrgTemplates(documentTypeId) {
   return data
 }
 
-export async function uploadOrgTemplate(documentTypeId, file) {
+export async function uploadOrgTemplate(documentTypeId, file, displayName) {
   const form = new FormData()
   form.append('file', file)
+  if (displayName != null && String(displayName).trim()) {
+    form.append('display_name', String(displayName).trim())
+  }
   const { data } = await platformClient.post(`/${documentTypeId}/templates`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+  return data
+}
+
+export async function renameOrgTemplate(templateId, displayName) {
+  const { data } = await platformClient.patch(`/templates/${templateId}`, {
+    display_name: displayName,
+  })
+  return data
+}
+
+export async function deleteOrgTemplate(documentTypeId, templateId) {
+  const { data } = await platformClient.delete(
+    `/${documentTypeId}/templates/${templateId}`
+  )
   return data
 }
 

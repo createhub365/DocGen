@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import os
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import models
@@ -14,10 +15,17 @@ from database import get_db
 from routers.platform_scope import (
     ensure_platform_legacy_template_fks,
     get_org_document_type,
+    get_org_template,
+    log_audit_event,
     org_template_dir,
     unique_docx_name,
 )
-from services.logo_storage import resolve_template_local_path, save_template_docx
+from schemas_platform import TemplateDisplayNameUpdate
+from services.logo_storage import (
+    delete_template_docx,
+    resolve_template_local_path,
+    save_template_docx,
+)
 from services.placeholder_extractor import extract_placeholders
 from utils.file_utils import safe_join, safe_join_relative, validate_docx_upload
 
@@ -26,6 +34,20 @@ from utils.file_utils import safe_join, safe_join_relative, validate_docx_upload
 router = APIRouter(tags=["platform-templates"])
 
 TEMPLATE_DIR = os.getenv("TEMPLATE_DIR", "./template_store")
+
+
+def _basename(path: str | None) -> str:
+    if not path:
+        return "template.docx"
+    return os.path.basename(str(path).replace("\\", "/")) or "template.docx"
+
+
+def resolved_display_name(template: models.Template) -> str:
+    """Prefer display_name; fall back to stored filename basename."""
+    name = (getattr(template, "display_name", None) or "").strip()
+    if name:
+        return name
+    return _basename(template.docx_filename)
 
 
 def _resolve_stored_template_path(docx_filename: str) -> str | None:
@@ -58,10 +80,27 @@ def _resolve_stored_template_path(docx_filename: str) -> str | None:
     return resolve_template_local_path(basename, TEMPLATE_DIR)
 
 
+def _template_list_item(
+    t: models.Template, is_complete: bool, *, generated_document_count: int = 0
+) -> dict:
+    return {
+        "id": t.id,
+        "org_id": t.org_id,
+        "org_document_type_id": t.org_document_type_id,
+        "docx_filename": t.docx_filename,
+        "display_name": resolved_display_name(t),
+        "is_active": t.is_active,
+        "created_at": t.created_at,
+        "is_complete": is_complete,
+        "generated_document_count": generated_document_count,
+    }
+
+
 @router.post("/{document_type_id}/templates", status_code=status.HTTP_201_CREATED)
 async def upload_org_template(
     document_type_id: int,
     file: UploadFile = File(...),
+    display_name: Optional[str] = Form(None),
     current: OrgUserContext = Depends(require_org_role("org_admin")),
     db: Session = Depends(get_db),
 ):
@@ -86,12 +125,16 @@ async def upload_org_template(
 
     placeholders = extract_placeholders(file_path, {})
 
+    # Optional label; omit/blank → original upload filename (backward compatible).
+    label = (display_name or "").strip() or file.filename
+
     template = models.Template(
         document_type_id=legacy["document_type_id"],
         company_id=legacy["company_id"],
         trade_id=legacy["trade_id"],
         country_id=legacy["country_id"],
         docx_filename=relative_path,
+        display_name=label,
         org_id=current.org_id,
         org_document_type_id=org_doc_type.id,
         version=1,
@@ -106,6 +149,7 @@ async def upload_org_template(
         "org_id": template.org_id,
         "org_document_type_id": template.org_document_type_id,
         "docx_filename": template.docx_filename,
+        "display_name": resolved_display_name(template),
         "placeholders": placeholders,
     }
 
@@ -139,15 +183,130 @@ def list_org_templates(
             models.PlaceholderMapping.template_id.in_(template_ids)
         ).all()
 
+    gen_counts: dict[int, int] = {}
+    if template_ids:
+        for tid, cnt in (
+            db.query(
+                models.GeneratedDocument.template_id,
+                func.count(models.GeneratedDocument.id),
+            )
+            .filter(models.GeneratedDocument.template_id.in_(template_ids))
+            .group_by(models.GeneratedDocument.template_id)
+            .all()
+        ):
+            gen_counts[int(tid)] = int(cnt)
+
     return [
-        {
-            "id": t.id,
-            "org_id": t.org_id,
-            "org_document_type_id": t.org_document_type_id,
-            "docx_filename": t.docx_filename,
-            "is_active": t.is_active,
-            "created_at": t.created_at,
-            "is_complete": _mapping_completeness(db, t)[0],
-        }
+        _template_list_item(
+            t,
+            _mapping_completeness(db, t)[0],
+            generated_document_count=gen_counts.get(t.id, 0),
+        )
         for t in rows
     ]
+
+
+@router.delete(
+    "/{document_type_id}/templates/{template_id}",
+    status_code=status.HTTP_200_OK,
+)
+def delete_org_template(
+    document_type_id: int,
+    template_id: int,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Hard-delete an org template + mappings + stored file.
+
+    GeneratedDocument rows that referenced this template keep their files;
+    template_id is SET NULL via FK (historical downloads remain available).
+    """
+    get_org_document_type(db, document_type_id, current.org_id)
+    template = (
+        db.query(models.Template)
+        .filter(
+            models.Template.id == template_id,
+            models.Template.org_id == current.org_id,
+            models.Template.org_document_type_id == document_type_id,
+            models.Template.is_active.is_(True),
+        )
+        .first()
+    )
+    if not template:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    display = resolved_display_name(template)
+    stored_path = template.docx_filename
+
+    gen_count = (
+        db.query(func.count(models.GeneratedDocument.id))
+        .filter(models.GeneratedDocument.template_id == template.id)
+        .scalar()
+        or 0
+    )
+
+    # Mappings are meaningless without the template — delete explicitly
+    # (FK has no ON DELETE CASCADE in schema).
+    db.query(models.PlaceholderMapping).filter(
+        models.PlaceholderMapping.template_id == template.id
+    ).delete(synchronize_session=False)
+
+    # Clear FK before delete so SQLite (tests) and Postgres SET NULL both work;
+    # Postgres ON DELETE SET NULL would also handle this after migration.
+    db.query(models.GeneratedDocument).filter(
+        models.GeneratedDocument.template_id == template.id
+    ).update({models.GeneratedDocument.template_id: None}, synchronize_session=False)
+
+    db.delete(template)
+    db.commit()
+
+    # Best-effort file cleanup after DB commit
+    delete_template_docx(stored_path, TEMPLATE_DIR)
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "template.deleted",
+        "Template",
+        template_id,
+        {
+            "document_type_id": document_type_id,
+            "display_name": display,
+            "generated_documents_retained": int(gen_count),
+        },
+    )
+
+    return {
+        "deleted": True,
+        "id": template_id,
+        "display_name": display,
+        "generated_documents_retained": int(gen_count),
+    }
+
+
+@router.patch("/templates/{template_id}")
+def rename_org_template(
+    template_id: int,
+    body: TemplateDisplayNameUpdate,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    template = get_org_template(db, template_id, current.org_id)
+    name = (body.display_name or "").strip()
+    if not name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="display_name is required",
+        )
+    template.display_name = name
+    db.commit()
+    db.refresh(template)
+    return {
+        "id": template.id,
+        "org_id": template.org_id,
+        "org_document_type_id": template.org_document_type_id,
+        "docx_filename": template.docx_filename,
+        "display_name": resolved_display_name(template),
+    }

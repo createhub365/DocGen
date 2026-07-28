@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Alert,
   Button,
@@ -19,6 +19,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd'
+// Switch already imported above — country_selector Advanced uses it.
 import {
   ArrowDownOutlined,
   ArrowLeftOutlined,
@@ -535,6 +536,60 @@ function StepCard({
         </div>
       )}
 
+      {step.step_type === 'country_selector' && (
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #f0e4e4' }}>
+          <Text strong>Country selector</Text>
+          <Paragraph type="secondary" style={{ margin: '4px 0 10px', fontSize: 12 }}>
+            Off = free-text name/code (legacy-compatible). On = built-in world list with flags.
+          </Paragraph>
+          <Space direction="vertical" size={10} style={{ width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <Text>Use built-in world country list</Text>
+              <Switch
+                checked={!!step.config_json?.use_builtin_country_list}
+                disabled={!editable || busy}
+                onChange={(checked) =>
+                  onPatch(
+                    step.id,
+                    {
+                      config_json: {
+                        ...(step.config_json || {}),
+                        use_builtin_country_list: checked,
+                        ...(checked
+                          ? {}
+                          : { include_country_code: false }),
+                      },
+                    },
+                    true
+                  )
+                }
+              />
+            </div>
+            {!!step.config_json?.use_builtin_country_list && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                <Text>Also submit country code (ISO)</Text>
+                <Switch
+                  checked={!!step.config_json?.include_country_code}
+                  disabled={!editable || busy}
+                  onChange={(checked) =>
+                    onPatch(
+                      step.id,
+                      {
+                        config_json: {
+                          ...(step.config_json || {}),
+                          include_country_code: checked,
+                        },
+                      },
+                      true
+                    )
+                  }
+                />
+              </div>
+            )}
+          </Space>
+        </div>
+      )}
+
       {STEPS_WITH_FIELD_DEFINITIONS.has(step.step_type) && (
         <CustomFieldsPanel step={step} editable={editable} onChanged={onReload} />
       )}
@@ -545,6 +600,7 @@ function StepCard({
 export default function FlowBuilderPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const message = useAppMessage()
   const documentTypeId = Number(id)
 
@@ -557,7 +613,16 @@ export default function FlowBuilderPage() {
   const [loadError, setLoadError] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
   const [addForm] = Form.useForm()
-  const [activeTab, setActiveTab] = useState('flow')
+
+  // Documents is the primary tab; ?tab=flow opens the flow editor
+  const activeTab = searchParams.get('tab') === 'flow' ? 'flow' : 'documents'
+  const setActiveTab = (key) => {
+    if (key === 'flow') {
+      setSearchParams({ tab: 'flow' }, { replace: true })
+    } else {
+      setSearchParams({}, { replace: true })
+    }
+  }
 
   const hydrateSteps = useCallback(async (flowId) => {
     const rows = await listFlowSteps(flowId)
@@ -763,6 +828,20 @@ export default function FlowBuilderPage() {
         onChange={setActiveTab}
         items={[
           {
+            key: 'documents',
+            label: 'Documents',
+            children: (
+              <TemplatesPanel
+                documentTypeId={documentTypeId}
+                documentTypeName={documentType?.name || 'this document type'}
+                hasDraftFlow={!!documentType?.has_draft_flow}
+                hasPublishedFlow={!!documentType?.has_published_flow}
+                onGoToFlow={() => setActiveTab('flow')}
+                onDraftFieldsGenerated={loadBuilder}
+              />
+            ),
+          },
+          {
             key: 'flow',
             label: 'Flow',
             children: (
@@ -901,18 +980,6 @@ export default function FlowBuilderPage() {
               </div>
             ),
           },
-          {
-            key: 'templates',
-            label: 'Templates',
-            children: (
-              <TemplatesPanel
-                documentTypeId={documentTypeId}
-                hasDraftFlow={!!documentType?.has_draft_flow}
-                onGoToFlow={() => setActiveTab('flow')}
-                onDraftFieldsGenerated={loadBuilder}
-              />
-            ),
-          },
         ]}
       />
     </FlowBuilderChrome>
@@ -946,7 +1013,7 @@ function FlowBuilderChrome({
           <Tag color={status.color}>{status.text}</Tag>
         </Space>
         <Paragraph type="secondary" style={{ margin: 0 }}>
-          Configure the generation flow and Word templates for this type.
+          Manage documents (templates) and the generation flow for this type.
         </Paragraph>
       </>
     ),
