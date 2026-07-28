@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Navigate } from 'react-router-dom'
 import {
   Alert,
   Button,
@@ -42,10 +41,6 @@ export default function SettingsPage() {
     []
   )
   usePlatformPageChrome({ header })
-
-  if (!isAdmin) {
-    return <Navigate to="/platform" replace />
-  }
 
   const onRegenerate = async () => {
     setRunning(true)

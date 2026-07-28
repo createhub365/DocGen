@@ -26,10 +26,25 @@ import FullPageSpinner from './ui/FullPageSpinner'
 const NAV_ITEMS = [
   { key: '/platform', icon: DashboardOutlined, label: 'Dashboard', exact: true },
   { key: '/platform/document-types', icon: FileTextOutlined, label: 'Document Types' },
-  { key: '/platform/option-lists', icon: UnorderedListOutlined, label: 'Option Lists' },
   { key: '/platform/generated', icon: FileDoneOutlined, label: 'Generated' },
-  { key: '/platform/users', icon: TeamOutlined, label: 'Users' },
-  { key: '/platform/audit-log', icon: AuditOutlined, label: 'Audit Log' },
+  {
+    key: '/platform/option-lists',
+    icon: UnorderedListOutlined,
+    label: 'Option Lists',
+    adminOnly: true,
+  },
+  {
+    key: '/platform/users',
+    icon: TeamOutlined,
+    label: 'Users',
+    adminOnly: true,
+  },
+  {
+    key: '/platform/audit-log',
+    icon: AuditOutlined,
+    label: 'Audit Log',
+    adminOnly: true,
+  },
   {
     key: '/platform/settings',
     icon: SettingOutlined,
