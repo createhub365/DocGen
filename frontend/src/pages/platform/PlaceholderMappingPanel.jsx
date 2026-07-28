@@ -21,6 +21,7 @@ import {
   readPlatformErrorDetail,
   savePlaceholderMappings,
 } from '../../api/platformClient'
+import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import {
   buildInitialMappingSelections,
@@ -45,6 +46,9 @@ export default function PlaceholderMappingPanel({
   onDraftFieldsGenerated,
 }) {
   const message = useAppMessage()
+  const { isOrgAdmin } = usePlatformAuth()
+  /** POST /mappings and generate-fields require org_admin — staff view is read-only. */
+  const canEditMappings = isOrgAdmin
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [generatingFields, setGeneratingFields] = useState(false)
@@ -105,14 +109,30 @@ export default function PlaceholderMappingPanel({
       setIsComplete(!!mappings.is_complete)
       onCompletenessChangeRef.current?.(template.id, !!mappings.is_complete)
 
-      const { selections: next, suggestedKeys: suggested } =
-        buildInitialMappingSelections({
-          detected: mappings.detected_placeholders || [],
-          persistedMappings: mappings.mappings || [],
-          resolvableKeys: options.map((opt) => opt.value),
-        })
-      setSelections(next)
-      setSuggestedKeys(new Set(suggested))
+      const resolvableKeys = options.map((opt) => opt.value)
+      if (canEditMappings) {
+        const { selections: next, suggestedKeys: suggested } =
+          buildInitialMappingSelections({
+            detected: mappings.detected_placeholders || [],
+            persistedMappings: mappings.mappings || [],
+            resolvableKeys,
+          })
+        setSelections(next)
+        setSuggestedKeys(new Set(suggested))
+      } else {
+        // Read-only: show persisted mappings only (no unsaved auto-suggest).
+        const next = {}
+        for (const key of mappings.detected_placeholders || []) {
+          next[key] = ''
+        }
+        for (const row of mappings.mappings || []) {
+          if (row.is_mapped && row.placeholder_key && row.field_key) {
+            next[row.placeholder_key] = row.field_key
+          }
+        }
+        setSelections(next)
+        setSuggestedKeys(new Set())
+      }
     } catch (error) {
       setLoadError(
         (await readPlatformErrorDetail(error)) || 'Could not load placeholder mappings'
@@ -120,7 +140,7 @@ export default function PlaceholderMappingPanel({
     } finally {
       setLoading(false)
     }
-  }, [documentTypeId, template.id])
+  }, [canEditMappings, documentTypeId, template.id])
 
   useEffect(() => {
     load()
@@ -153,7 +173,7 @@ export default function PlaceholderMappingPanel({
   }
 
   const generateMissingFields = async () => {
-    if (!hasDraftFlow) return
+    if (!canEditMappings || !hasDraftFlow) return
     setGeneratingFields(true)
     setBulkSummary(null)
     try {
@@ -179,6 +199,7 @@ export default function PlaceholderMappingPanel({
   }
 
   const save = async () => {
+    if (!canEditMappings) return
     setSaving(true)
     setSaveError(null)
     setInvalidKeys([])
@@ -263,10 +284,20 @@ export default function PlaceholderMappingPanel({
       <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
         {mappedCount} of {detected.length} placeholders mapped
         {unmapped.length ? ` · ${unmapped.length} still unmapped` : ''}
-        {suggestedCount
+        {canEditMappings && suggestedCount
           ? ` · ${suggestedCount} suggested (unsaved — review and Save)`
           : ''}
       </Text>
+
+      {!canEditMappings && !loadError && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="View only"
+          description="Placeholder mapping can only be edited by organization admins. You can review the current mapping here."
+        />
+      )}
 
       {loadError && (
         <Alert type="error" showIcon message={loadError} style={{ marginBottom: 16 }} />
@@ -278,7 +309,11 @@ export default function PlaceholderMappingPanel({
           showIcon
           style={{ marginBottom: 16 }}
           message="Publish a flow first before mapping placeholders"
-          description="Mapping options come from the published flow’s field definitions and fixed step outputs (country.*, party.*). Create and publish a flow on the Flow tab, then return here."
+          description={
+            canEditMappings
+              ? 'Mapping options come from the published flow’s field definitions and fixed step outputs (country.*, party.*). Create and publish a flow on the Flow tab, then return here.'
+              : 'Mapping options come from the published flow. Ask an organization admin to publish a flow before mapping can be completed.'
+          }
         />
       )}
 
@@ -288,11 +323,15 @@ export default function PlaceholderMappingPanel({
           showIcon
           style={{ marginBottom: 16 }}
           message="Published flow has no mappable field keys"
-          description="On the Flow tab, click Edit (opens a draft). On each text/number/date/dropdown/rich-text/custom-fields step, use Add field and set a field_key (lowercase, e.g. company_name). Or add a Country / Party selector. Then Publish and return here."
+          description={
+            canEditMappings
+              ? 'On the Flow tab, click Edit (opens a draft). On each text/number/date/dropdown/rich-text/custom-fields step, use Add field and set a field_key (lowercase, e.g. company_name). Or add a Country / Party selector. Then Publish and return here.'
+              : 'Ask an organization admin to add field keys on the Flow tab and publish before mapping can be completed.'
+          }
         />
       )}
 
-      {!loadError && missingFieldPlaceholders.length > 0 && (
+      {canEditMappings && !loadError && missingFieldPlaceholders.length > 0 && (
         <Alert
           type="info"
           showIcon
@@ -334,7 +373,7 @@ export default function PlaceholderMappingPanel({
         />
       )}
 
-      {bulkSummary && (
+      {canEditMappings && bulkSummary && (
         <Alert
           type="success"
           showIcon
@@ -362,7 +401,7 @@ export default function PlaceholderMappingPanel({
         />
       )}
 
-      {suggestedCount > 0 && (
+      {canEditMappings && suggestedCount > 0 && (
         <Alert
           type="info"
           showIcon
@@ -438,8 +477,10 @@ export default function PlaceholderMappingPanel({
                         ? 'Select field key'
                         : 'No resolvable keys on published flow'
                   }
-                  disabled={publishGuard || !fieldOptions.length}
-                  allowClear
+                  disabled={
+                    !canEditMappings || publishGuard || !fieldOptions.length
+                  }
+                  allowClear={canEditMappings}
                   showSearch
                   optionFilterProp="label"
                   value={value || undefined}
@@ -452,16 +493,18 @@ export default function PlaceholderMappingPanel({
         })}
       </Space>
 
-      <Button
-        type="primary"
-        icon={<SaveOutlined />}
-        loading={saving}
-        disabled={publishGuard || !detected.length}
-        onClick={save}
-        style={{ marginTop: 16 }}
-      >
-        Save mappings
-      </Button>
+      {canEditMappings && (
+        <Button
+          type="primary"
+          icon={<SaveOutlined />}
+          loading={saving}
+          disabled={publishGuard || !detected.length}
+          onClick={save}
+          style={{ marginTop: 16 }}
+        >
+          Save mappings
+        </Button>
+      )}
     </div>
   )
 }

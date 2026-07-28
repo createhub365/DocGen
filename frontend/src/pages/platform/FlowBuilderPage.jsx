@@ -10,6 +10,7 @@ import {
   Input,
   Modal,
   Popconfirm,
+  Result,
   Select,
   Space,
   Spin,
@@ -654,10 +655,12 @@ export default function FlowBuilderPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [addForm] = Form.useForm()
 
-  // Documents is the primary tab; ?tab=flow opens the flow editor
-  const activeTab = searchParams.get('tab') === 'flow' ? 'flow' : 'documents'
+  // Documents is the primary tab; ?tab=flow opens the flow editor (org_admin only)
+  const requestedTab = searchParams.get('tab') === 'flow' ? 'flow' : 'documents'
+  const activeTab = isOrgAdmin ? requestedTab : 'documents'
+  const staffBlockedFromFlow = !isOrgAdmin && requestedTab === 'flow'
   const setActiveTab = (key) => {
-    if (key === 'flow') {
+    if (key === 'flow' && isOrgAdmin) {
       setSearchParams({ tab: 'flow' }, { replace: true })
     } else {
       setSearchParams({}, { replace: true })
@@ -995,6 +998,18 @@ export default function FlowBuilderPage() {
           </Form.Item>
         </Form>
       </Modal>
+      {staffBlockedFromFlow ? (
+        <Result
+          status="403"
+          title="Not available for your role"
+          subTitle="Flow setup is only available to organization admins."
+          extra={
+            <Button type="primary" onClick={() => setActiveTab('documents')}>
+              Back to Documents
+            </Button>
+          }
+        />
+      ) : (
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
@@ -1009,15 +1024,17 @@ export default function FlowBuilderPage() {
                 hasDraftFlow={!!documentType?.has_draft_flow}
                 hasPublishedFlow={!!documentType?.has_published_flow}
                 canManage={isOrgAdmin}
-                onGoToFlow={() => setActiveTab('flow')}
+                onGoToFlow={isOrgAdmin ? () => setActiveTab('flow') : undefined}
                 onDraftFieldsGenerated={loadBuilder}
               />
             ),
           },
-          {
-            key: 'flow',
-            label: 'Flow',
-            children: (
+          ...(isOrgAdmin
+            ? [
+                {
+                  key: 'flow',
+                  label: 'Flow',
+                  children: (
               <div>
                 <div
                   style={{
@@ -1033,8 +1050,7 @@ export default function FlowBuilderPage() {
                       ? `Flow version ${flow.version}`
                       : 'Define the steps users complete'}
                   </Paragraph>
-                  {isOrgAdmin &&
-                    documentType?.has_published_flow &&
+                  {documentType?.has_published_flow &&
                     !documentType?.has_draft_flow && (
                     <Button icon={<EditOutlined />} onClick={editPublished} loading={busy}>
                       Edit
@@ -1047,20 +1063,14 @@ export default function FlowBuilderPage() {
                 {!loadError && !flow && (
                   <Card style={{ borderRadius: 16 }}>
                     <Empty description="This document type has no flow yet.">
-                      {isOrgAdmin ? (
-                        <Button
-                          type="primary"
-                          icon={<PlusOutlined />}
-                          onClick={startFlow}
-                          loading={busy}
-                        >
-                          Create flow
-                        </Button>
-                      ) : (
-                        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                          Ask an organization admin to create a flow.
-                        </Paragraph>
-                      )}
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={startFlow}
+                        loading={busy}
+                      >
+                        Create flow
+                      </Button>
                     </Empty>
                   </Card>
                 )}
@@ -1083,11 +1093,7 @@ export default function FlowBuilderPage() {
                         type="success"
                         showIcon
                         style={{ marginBottom: 16 }}
-                        message={
-                          isOrgAdmin
-                            ? `Published v${flow.version} is live. Click Edit to create a separate draft.`
-                            : `Published v${flow.version} is live.`
-                        }
+                        message={`Published v${flow.version} is live. Click Edit to create a separate draft.`}
                       />
                     )}
 
@@ -1165,10 +1171,13 @@ export default function FlowBuilderPage() {
                   </Form>
                 </Modal>
               </div>
-            ),
-          },
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
+      )}
     </FlowBuilderChrome>
   )
 }
