@@ -18,6 +18,7 @@ import FlowBuilderPage from './pages/platform/FlowBuilderPage'
 import GenerateDocumentPage from './pages/platform/GenerateDocumentPage'
 import GeneratedDocumentsPage from './pages/platform/GeneratedDocumentsPage'
 import OptionListsPage from './pages/platform/OptionListsPage'
+import SettingsPage from './pages/platform/SettingsPage'
 import PlatformPlaceholderPage from './pages/platform/PlatformPlaceholderPage'
 
 function ProtectedRoute({ children }) {
@@ -96,6 +97,7 @@ function AppRoutes() {
         />
         <Route path="/platform/generated" element={<GeneratedDocumentsPage />} />
         <Route path="/platform/option-lists" element={<OptionListsPage />} />
+        <Route path="/platform/settings" element={<SettingsPage />} />
         <Route
           path="/platform/users"
           element={

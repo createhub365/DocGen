@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from typing import Optional
@@ -40,6 +41,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["platform-templates"])
 
 TEMPLATE_DIR = os.getenv("TEMPLATE_DIR", "./template_store")
+
+
+def hash_docx_bytes(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def hash_docx_file(path: str) -> str | None:
+    if not path or not os.path.exists(path):
+        return None
+    with open(path, "rb") as handle:
+        return hash_docx_bytes(handle.read())
 
 
 def _basename(path: str | None) -> str:
@@ -86,20 +98,25 @@ def _resolve_stored_template_path(docx_filename: str) -> str | None:
     return resolve_template_local_path(basename, TEMPLATE_DIR)
 
 
-def _apply_org_template_thumbnail(
-    template: models.Template, db: Session, docx_path: str | None
-) -> None:
+def apply_org_template_thumbnail(
+    template: models.Template,
+    db: Session,
+    docx_path: str | None,
+    *,
+    source_hash: str | None = None,
+) -> bool:
     """
-    Generate a page preview after org template upload.
+    Generate a page preview for an org template.
 
     Reuses generate_docx_thumbnail + persist_generated_thumbnail (same as admin).
-    Never raises — thumbnail is optional; upload must still succeed.
-    Stores local paths as orgs/{org_id}/thumbnails/thumb_{id}.png so they stay
-    org-scoped under TEMPLATE_DIR (parallel to docx layout).
+    Never raises — thumbnail is optional.
+    On success, stores org-scoped thumbnail_path and thumbnail_source_hash.
+    Returns True if a thumbnail was persisted.
     """
     if not template.org_id or not docx_path:
-        return
+        return False
     try:
+        file_hash = source_hash or hash_docx_file(docx_path)
         org_dir = org_template_dir(TEMPLATE_DIR, template.org_id)
         thumbnail_dir = os.path.join(org_dir, "thumbnails")
         thumb_rel = generate_docx_thumbnail(
@@ -108,7 +125,7 @@ def _apply_org_template_thumbnail(
             template_id=template.id,
         )
         if not thumb_rel:
-            return
+            return False
         persist_generated_thumbnail(template, db, thumb_rel, org_dir)
         # persist writes "thumbnails/…" or a remote storage URL; keep org scope locally.
         path = getattr(template, "thumbnail_path", None)
@@ -116,12 +133,20 @@ def _apply_org_template_thumbnail(
             normalized = path.replace("\\", "/")
             if normalized.startswith("thumbnails/"):
                 template.thumbnail_path = f"orgs/{template.org_id}/{normalized}"
-                db.commit()
-                db.refresh(template)
+        if file_hash:
+            template.thumbnail_source_hash = file_hash
+        db.commit()
+        db.refresh(template)
+        return bool(template.thumbnail_path)
     except Exception as exc:
         logger.warning(
             "Org template thumbnail skipped for template %s: %s", template.id, exc
         )
+        return False
+
+
+# Back-compat alias for older call sites / tests
+_apply_org_template_thumbnail = apply_org_template_thumbnail
 
 
 def _template_list_item(
@@ -189,7 +214,9 @@ async def upload_org_template(
     db.commit()
     db.refresh(template)
 
-    _apply_org_template_thumbnail(template, db, file_path)
+    apply_org_template_thumbnail(
+        template, db, file_path, source_hash=hash_docx_bytes(content)
+    )
 
     return {
         "id": template.id,

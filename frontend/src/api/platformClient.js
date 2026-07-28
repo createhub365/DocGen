@@ -217,6 +217,11 @@ export async function fetchOrgTemplateThumbnailUrl(documentTypeId, templateId) {
   }
 }
 
+export async function regenerateOrgThumbnails() {
+  const { data } = await platformClient.post('/settings/regenerate-thumbnails')
+  return data
+}
+
 export async function getPublishedFlow(documentTypeId) {
   const { data } = await platformClient.get(`/${documentTypeId}/flow/published`)
   return data

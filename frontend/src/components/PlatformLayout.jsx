@@ -14,6 +14,7 @@ import {
   FileTextOutlined,
   LogoutOutlined,
   MenuOutlined,
+  SettingOutlined,
   TeamOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons'
@@ -29,6 +30,12 @@ const NAV_ITEMS = [
   { key: '/platform/generated', icon: FileDoneOutlined, label: 'Generated' },
   { key: '/platform/users', icon: TeamOutlined, label: 'Users' },
   { key: '/platform/audit-log', icon: AuditOutlined, label: 'Audit Log' },
+  {
+    key: '/platform/settings',
+    icon: SettingOutlined,
+    label: 'Settings',
+    adminOnly: true,
+  },
 ]
 
 const RIGHT_RAIL_WIDTH = 52
@@ -132,6 +139,10 @@ function SidebarNavBody({ onNavigate }) {
     onNavigate?.()
   }
 
+  const visibleNav = NAV_ITEMS.filter(
+    (item) => !item.adminOnly || role === 'org_admin'
+  )
+
   return (
     <>
       <div style={{ padding: '16px 18px 8px', flexShrink: 0 }}>
@@ -172,7 +183,7 @@ function SidebarNavBody({ onNavigate }) {
           overflowY: 'auto',
         }}
       >
-        {NAV_ITEMS.map(({ key, icon: Icon, label, exact }) => {
+        {visibleNav.map(({ key, icon: Icon, label, exact }) => {
           const active = isSelected(location.pathname, { key, exact })
           return (
             <button

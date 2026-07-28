@@ -82,6 +82,8 @@ class Template(Base):
     # Platform UI label; nullable so legacy/admin rows keep filename-only behavior.
     display_name = Column(String, nullable=True)
     thumbnail_path = Column(String, nullable=True)
+    # SHA-256 hex of the docx bytes used to generate thumbnail_path (change detection).
+    thumbnail_source_hash = Column(String(64), nullable=True)
     label_overrides_json = Column(Text, nullable=True)
     category = Column(String, nullable=True)
     format_slug = Column(String, nullable=True)
