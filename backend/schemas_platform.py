@@ -83,6 +83,9 @@ class OrgUserRead(BaseModel):
     user_id: int
     role: str
     created_at: datetime
+    # Populated by list/invite/role handlers (joined from User); not ORM columns.
+    username: Optional[str] = None
+    email: Optional[str] = None
 
 
 class OrgUserInviteRequest(BaseModel):

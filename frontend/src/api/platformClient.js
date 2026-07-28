@@ -361,6 +361,25 @@ export async function deleteOptionListItem(itemId) {
   await platformClient.delete(`/option-list-items/${itemId}`)
 }
 
+export async function listOrgUsers() {
+  const { data } = await platformClient.get('/users')
+  return data
+}
+
+export async function inviteOrgUser(payload) {
+  const { data } = await platformClient.post('/users/invite', payload)
+  return data
+}
+
+export async function updateOrgUserRole(orgUserId, payload) {
+  const { data } = await platformClient.patch(`/users/${orgUserId}/role`, payload)
+  return data
+}
+
+export async function removeOrgUser(orgUserId) {
+  await platformClient.delete(`/users/${orgUserId}`)
+}
+
 export async function readPlatformErrorDetail(error) {
   const detail = error.response?.data?.detail
   if (typeof detail === 'string') return detail

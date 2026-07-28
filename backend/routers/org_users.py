@@ -27,6 +27,21 @@ router = APIRouter(tags=["platform-org-users"])
 _ALLOWED_ROLES = frozenset({"staff", "org_admin"})
 
 
+def _org_user_read(
+    membership: models.OrgUser, user: models.User | None = None
+) -> OrgUserRead:
+    """Serialize membership with optional User username/email for the UI."""
+    return OrgUserRead(
+        id=membership.id,
+        org_id=membership.org_id,
+        user_id=membership.user_id,
+        role=membership.role,
+        created_at=membership.created_at,
+        username=user.username if user is not None else None,
+        email=(getattr(user, "email", None) or (user.username if user else None)),
+    )
+
+
 def _guard_last_admin(db: Session, org_id: str, membership: models.OrgUser) -> None:
     if membership.role != "org_admin":
         return
@@ -141,7 +156,7 @@ def invite_org_user(
     )
 
     return OrgUserInviteResponse(
-        membership=OrgUserRead.model_validate(membership),
+        membership=_org_user_read(membership, user),
         username=user.username,
         temporary_password=temp_password,
     )
@@ -149,15 +164,18 @@ def invite_org_user(
 
 @router.get("/users", response_model=List[OrgUserRead])
 def list_org_users(
-    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    # staff + org_admin may list; mutations below stay org_admin-only
+    current: OrgUserContext = Depends(require_org_role("staff")),
     db: Session = Depends(get_db),
 ):
-    return (
-        db.query(models.OrgUser)
+    rows = (
+        db.query(models.OrgUser, models.User)
+        .join(models.User, models.User.id == models.OrgUser.user_id)
         .filter(models.OrgUser.org_id == current.org_id)
         .order_by(models.OrgUser.id.asc())
         .all()
     )
+    return [_org_user_read(membership, user) for membership, user in rows]
 
 
 @router.patch("/users/{org_user_id}/role", response_model=OrgUserRead)
@@ -182,6 +200,7 @@ def update_org_user_role(
     membership.role = new_role
     db.commit()
     db.refresh(membership)
+    user = db.query(models.User).filter(models.User.id == membership.user_id).first()
     log_audit_event(
         db,
         current.org_id,
@@ -191,7 +210,7 @@ def update_org_user_role(
         membership.id,
         metadata={"old_role": old_role, "new_role": new_role},
     )
-    return membership
+    return _org_user_read(membership, user)
 
 
 @router.delete("/users/{org_user_id}", status_code=status.HTTP_204_NO_CONTENT)
