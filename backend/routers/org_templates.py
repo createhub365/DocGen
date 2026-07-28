@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import os
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func
@@ -23,13 +24,18 @@ from routers.platform_scope import (
 from schemas_platform import TemplateDisplayNameUpdate
 from services.logo_storage import (
     delete_template_docx,
+    is_remote_path,
     resolve_template_local_path,
     save_template_docx,
 )
 from services.placeholder_extractor import extract_placeholders
+from services.thumbnail_gen import generate_docx_thumbnail
+from services.thumbnail_service import persist_generated_thumbnail, serve_template_thumbnail
 from utils.file_utils import safe_join, safe_join_relative, validate_docx_upload
 
 # Imported lazily inside list handler to avoid circular import with placeholder_mapping.
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["platform-templates"])
 
@@ -80,6 +86,44 @@ def _resolve_stored_template_path(docx_filename: str) -> str | None:
     return resolve_template_local_path(basename, TEMPLATE_DIR)
 
 
+def _apply_org_template_thumbnail(
+    template: models.Template, db: Session, docx_path: str | None
+) -> None:
+    """
+    Generate a page preview after org template upload.
+
+    Reuses generate_docx_thumbnail + persist_generated_thumbnail (same as admin).
+    Never raises — thumbnail is optional; upload must still succeed.
+    Stores local paths as orgs/{org_id}/thumbnails/thumb_{id}.png so they stay
+    org-scoped under TEMPLATE_DIR (parallel to docx layout).
+    """
+    if not template.org_id or not docx_path:
+        return
+    try:
+        org_dir = org_template_dir(TEMPLATE_DIR, template.org_id)
+        thumbnail_dir = os.path.join(org_dir, "thumbnails")
+        thumb_rel = generate_docx_thumbnail(
+            docx_path=docx_path,
+            thumbnail_dir=thumbnail_dir,
+            template_id=template.id,
+        )
+        if not thumb_rel:
+            return
+        persist_generated_thumbnail(template, db, thumb_rel, org_dir)
+        # persist writes "thumbnails/…" or a remote storage URL; keep org scope locally.
+        path = getattr(template, "thumbnail_path", None)
+        if path and not is_remote_path(path):
+            normalized = path.replace("\\", "/")
+            if normalized.startswith("thumbnails/"):
+                template.thumbnail_path = f"orgs/{template.org_id}/{normalized}"
+                db.commit()
+                db.refresh(template)
+    except Exception as exc:
+        logger.warning(
+            "Org template thumbnail skipped for template %s: %s", template.id, exc
+        )
+
+
 def _template_list_item(
     t: models.Template, is_complete: bool, *, generated_document_count: int = 0
 ) -> dict:
@@ -93,6 +137,7 @@ def _template_list_item(
         "created_at": t.created_at,
         "is_complete": is_complete,
         "generated_document_count": generated_document_count,
+        "has_thumbnail": bool(t.thumbnail_path),
     }
 
 
@@ -144,6 +189,8 @@ async def upload_org_template(
     db.commit()
     db.refresh(template)
 
+    _apply_org_template_thumbnail(template, db, file_path)
+
     return {
         "id": template.id,
         "org_id": template.org_id,
@@ -151,6 +198,7 @@ async def upload_org_template(
         "docx_filename": template.docx_filename,
         "display_name": resolved_display_name(template),
         "placeholders": placeholders,
+        "has_thumbnail": bool(template.thumbnail_path),
     }
 
 
@@ -310,3 +358,27 @@ def rename_org_template(
         "docx_filename": template.docx_filename,
         "display_name": resolved_display_name(template),
     }
+
+
+@router.get("/{document_type_id}/templates/{template_id}/thumbnail")
+def get_org_template_thumbnail(
+    document_type_id: int,
+    template_id: int,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    """Serve org template page-1 thumbnail PNG (404 if missing or cross-org)."""
+    get_org_document_type(db, document_type_id, current.org_id)
+    template = (
+        db.query(models.Template)
+        .filter(
+            models.Template.id == template_id,
+            models.Template.org_id == current.org_id,
+            models.Template.org_document_type_id == document_type_id,
+            models.Template.is_active.is_(True),
+        )
+        .first()
+    )
+    if not template:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return serve_template_thumbnail(template, TEMPLATE_DIR)

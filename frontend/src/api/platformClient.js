@@ -202,6 +202,21 @@ export async function deleteOrgTemplate(documentTypeId, templateId) {
   return data
 }
 
+/** Fetch template thumbnail PNG as a blob URL (revoke when done). Returns null if missing. */
+export async function fetchOrgTemplateThumbnailUrl(documentTypeId, templateId) {
+  try {
+    const { data } = await platformClient.get(
+      `/${documentTypeId}/templates/${templateId}/thumbnail`,
+      { responseType: 'blob' }
+    )
+    if (!data || !(data instanceof Blob) || data.size === 0) return null
+    if (data.type && !data.type.startsWith('image/')) return null
+    return URL.createObjectURL(data)
+  } catch {
+    return null
+  }
+}
+
 export async function getPublishedFlow(documentTypeId) {
   const { data } = await platformClient.get(`/${documentTypeId}/flow/published`)
   return data

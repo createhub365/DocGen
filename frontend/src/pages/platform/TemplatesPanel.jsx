@@ -26,6 +26,7 @@ import {
 } from '@ant-design/icons'
 import {
   deleteOrgTemplate,
+  fetchOrgTemplateThumbnailUrl,
   listOrgTemplates,
   readPlatformErrorDetail,
   renameOrgTemplate,
@@ -36,6 +37,9 @@ import PlaceholderMappingPanel from './PlaceholderMappingPanel'
 
 const { Text, Paragraph } = Typography
 const { Dragger } = Upload
+
+const THUMB_W = 72
+const THUMB_H = 96
 
 function basename(path) {
   if (!path) return 'template.docx'
@@ -63,6 +67,92 @@ function documentTitle(item) {
   const name = String(item?.display_name || '').trim()
   if (name) return name
   return basename(item?.docx_filename)
+}
+
+function DocumentThumbFallback() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: THUMB_W,
+        height: THUMB_H,
+        borderRadius: 8,
+        background: '#f5eded',
+        border: '1px solid #f0e4e4',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        color: '#8B1A1A',
+      }}
+    >
+      <FileWordOutlined style={{ fontSize: 22 }} />
+    </div>
+  )
+}
+
+function DocumentThumbPreview({ documentTypeId, templateId, hasThumbnail }) {
+  const [url, setUrl] = useState(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let objectUrl = null
+    let cancelled = false
+    setUrl(null)
+    setFailed(false)
+    if (!hasThumbnail) return undefined
+
+    ;(async () => {
+      const blobUrl = await fetchOrgTemplateThumbnailUrl(documentTypeId, templateId)
+      if (cancelled) {
+        if (blobUrl) URL.revokeObjectURL(blobUrl)
+        return
+      }
+      if (!blobUrl) {
+        setFailed(true)
+        return
+      }
+      objectUrl = blobUrl
+      setUrl(blobUrl)
+    })()
+
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [documentTypeId, templateId, hasThumbnail])
+
+  if (!hasThumbnail || failed || !url) {
+    return <DocumentThumbFallback />
+  }
+
+  return (
+    <div
+      style={{
+        width: THUMB_W,
+        height: THUMB_H,
+        borderRadius: 8,
+        overflow: 'hidden',
+        border: '1px solid #f0e4e4',
+        background: '#fff',
+        flexShrink: 0,
+        boxShadow: '0 1px 2px rgba(107, 15, 15, 0.06)',
+      }}
+    >
+      <img
+        src={url}
+        alt=""
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          objectPosition: 'top center',
+          display: 'block',
+        }}
+        onError={() => setFailed(true)}
+      />
+    </div>
+  )
 }
 
 export default function TemplatesPanel({
@@ -362,9 +452,13 @@ export default function TemplatesPanel({
                         gap: 12,
                       }}
                     >
-                      <Space align="start">
-                        <FileWordOutlined style={{ fontSize: 22, color: '#8B1A1A' }} />
-                        <div>
+                      <Space align="start" size={12} style={{ minWidth: 0, flex: 1 }}>
+                        <DocumentThumbPreview
+                          documentTypeId={documentTypeId}
+                          templateId={item.id}
+                          hasThumbnail={!!item.has_thumbnail}
+                        />
+                        <div style={{ minWidth: 0 }}>
                           <Space wrap size={4}>
                             <Text strong style={{ fontSize: 15 }}>
                               {title}
