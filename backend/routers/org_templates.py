@@ -8,6 +8,7 @@ import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -409,3 +410,41 @@ def get_org_template_thumbnail(
     if not template:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     return serve_template_thumbnail(template, TEMPLATE_DIR)
+
+
+@router.get("/{document_type_id}/templates/{template_id}/download")
+def download_org_template_docx(
+    document_type_id: int,
+    template_id: int,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    """Download org template .docx for in-browser preview (any org member)."""
+    get_org_document_type(db, document_type_id, current.org_id)
+    template = (
+        db.query(models.Template)
+        .filter(
+            models.Template.id == template_id,
+            models.Template.org_id == current.org_id,
+            models.Template.org_document_type_id == document_type_id,
+            models.Template.is_active.is_(True),
+        )
+        .first()
+    )
+    if not template:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    file_path = _resolve_stored_template_path(template.docx_filename)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Template file not found",
+        )
+
+    filename = _basename(template.docx_filename)
+    return FileResponse(
+        file_path,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename=filename,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

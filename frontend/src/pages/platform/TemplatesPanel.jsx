@@ -7,7 +7,6 @@ import {
   Empty,
   Form,
   Input,
-  List,
   Modal,
   Space,
   Spin,
@@ -33,14 +32,19 @@ import {
   uploadOrgTemplate,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
+import OrgDocumentPreviewModal from './OrgDocumentPreviewModal'
 import PlaceholderMappingPanel from './PlaceholderMappingPanel'
 
 const { Text, Paragraph } = Typography
 const { Dragger } = Upload
 
-const THUMB_W = 72
-const THUMB_H = 96
+/** Portrait document tile — matches Dashboard auto-fill card rhythm. */
+const DOC_CARD_MIN_PX = 180
+const DOC_CARD_MAX_PX = 220
+const THUMB_W = 200
+const THUMB_H = 268
 
 function basename(path) {
   if (!path) return 'template.docx'
@@ -70,29 +74,37 @@ function documentTitle(item) {
   return basename(item?.docx_filename)
 }
 
-function DocumentThumbFallback() {
+function DocumentThumbFallback({ onClick }) {
   return (
-    <div
-      aria-hidden
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Preview document"
       style={{
-        width: THUMB_W,
-        height: THUMB_H,
-        borderRadius: 8,
+        width: '100%',
+        aspectRatio: `${THUMB_W} / ${THUMB_H}`,
+        borderRadius: 10,
         background: '#f5eded',
         border: '1px solid #f0e4e4',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        flexShrink: 0,
         color: '#8B1A1A',
+        cursor: 'pointer',
+        padding: 0,
       }}
     >
-      <FileWordOutlined style={{ fontSize: 22 }} />
-    </div>
+      <FileWordOutlined style={{ fontSize: 40 }} />
+    </button>
   )
 }
 
-function DocumentThumbPreview({ documentTypeId, templateId, hasThumbnail }) {
+function DocumentThumbPreview({
+  documentTypeId,
+  templateId,
+  hasThumbnail,
+  onPreview,
+}) {
   const [url, setUrl] = useState(null)
   const [failed, setFailed] = useState(false)
 
@@ -124,20 +136,25 @@ function DocumentThumbPreview({ documentTypeId, templateId, hasThumbnail }) {
   }, [documentTypeId, templateId, hasThumbnail])
 
   if (!hasThumbnail || failed || !url) {
-    return <DocumentThumbFallback />
+    return <DocumentThumbFallback onClick={onPreview} />
   }
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onPreview}
+      aria-label="Preview document"
       style={{
-        width: THUMB_W,
-        height: THUMB_H,
-        borderRadius: 8,
+        width: '100%',
+        aspectRatio: `${THUMB_W} / ${THUMB_H}`,
+        borderRadius: 10,
         overflow: 'hidden',
         border: '1px solid #f0e4e4',
         background: '#fff',
-        flexShrink: 0,
-        boxShadow: '0 1px 2px rgba(107, 15, 15, 0.06)',
+        boxShadow: '0 1px 3px rgba(107, 15, 15, 0.08)',
+        padding: 0,
+        cursor: 'zoom-in',
+        display: 'block',
       }}
     >
       <img
@@ -152,7 +169,7 @@ function DocumentThumbPreview({ documentTypeId, templateId, hasThumbnail }) {
         }}
         onError={() => setFailed(true)}
       />
-    </div>
+    </button>
   )
 }
 
@@ -167,6 +184,7 @@ export default function TemplatesPanel({
 }) {
   const navigate = useNavigate()
   const message = useAppMessage()
+  const { isMobile } = useBreakpoint()
   const { isOrgAdmin } = usePlatformAuth()
   const canManage = canManageProp ?? isOrgAdmin
   const [loading, setLoading] = useState(true)
@@ -178,6 +196,7 @@ export default function TemplatesPanel({
   const [fileList, setFileList] = useState([])
   const [lastUpload, setLastUpload] = useState(null)
   const [mappingTemplate, setMappingTemplate] = useState(null)
+  const [previewTemplate, setPreviewTemplate] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
   const [addForm] = Form.useForm()
   const watchedName = Form.useWatch('display_name', addForm)
@@ -436,10 +455,18 @@ export default function TemplatesPanel({
             }
           />
         ) : (
-          <List
-            grid={{ gutter: 16, column: 1 }}
-            dataSource={templates}
-            renderItem={(item) => {
+          <div
+            className="platform-doc-card-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile
+                ? `repeat(auto-fill, minmax(min(100%, ${DOC_CARD_MIN_PX}px), 1fr))`
+                : `repeat(auto-fill, minmax(${DOC_CARD_MIN_PX}px, ${DOC_CARD_MAX_PX}px))`,
+              gap: 16,
+              justifyContent: 'start',
+            }}
+          >
+            {templates.map((item) => {
               const isComplete = completeness[item.id] === true
               const canGenerate = isComplete && hasPublishedFlow
               let generateTip = 'Generate this document'
@@ -452,107 +479,146 @@ export default function TemplatesPanel({
               }
               const title = documentTitle(item)
               const fileLabel = basename(item.docx_filename)
+              const statusTag = canManage ? (
+                isComplete ? (
+                  <Tag color="green" style={{ margin: 0 }}>
+                    Complete
+                  </Tag>
+                ) : (
+                  <Tag color="orange" style={{ margin: 0 }}>
+                    Incomplete
+                  </Tag>
+                )
+              ) : isComplete && hasPublishedFlow ? (
+                <Tag color="green" style={{ margin: 0 }}>
+                  Ready
+                </Tag>
+              ) : (
+                <Tag color="orange" style={{ margin: 0 }}>
+                  Not ready
+                </Tag>
+              )
 
               return (
-                <List.Item>
-                  <Card size="small" style={{ borderRadius: 12, width: '100%' }}>
+                <Card
+                  key={item.id}
+                  size="small"
+                  styles={{ body: { padding: 12 } }}
+                  style={{
+                    borderRadius: 14,
+                    width: '100%',
+                    maxWidth: isMobile ? undefined : DOC_CARD_MAX_PX,
+                  }}
+                >
+                  <div style={{ position: 'relative', marginBottom: 10 }}>
+                    <DocumentThumbPreview
+                      documentTypeId={documentTypeId}
+                      templateId={item.id}
+                      hasThumbnail={!!item.has_thumbnail}
+                      onPreview={() => setPreviewTemplate(item)}
+                    />
                     <div
                       style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 12,
+                        position: 'absolute',
+                        top: 8,
+                        left: 8,
+                        pointerEvents: 'none',
                       }}
                     >
-                      <Space align="start" size={12} style={{ minWidth: 0, flex: 1 }}>
-                        <DocumentThumbPreview
-                          documentTypeId={documentTypeId}
-                          templateId={item.id}
-                          hasThumbnail={!!item.has_thumbnail}
-                        />
-                        <div style={{ minWidth: 0 }}>
-                          <Space wrap size={4}>
-                            <Text strong style={{ fontSize: 15 }}>
-                              {title}
-                            </Text>
-                            {canManage ? (
-                              <Tooltip title="Rename">
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={<EditOutlined />}
-                                  aria-label="Rename document"
-                                  onClick={() => openRename(item)}
-                                />
-                              </Tooltip>
-                            ) : null}
-                            {canManage ? (
-                              isComplete ? (
-                                <Tag color="green">Complete</Tag>
-                              ) : (
-                                <Tag color="orange">Incomplete</Tag>
-                              )
-                            ) : isComplete && hasPublishedFlow ? (
-                              <Tag color="green">Ready</Tag>
-                            ) : (
-                              <Tag color="orange">Not ready</Tag>
-                            )}
-                          </Space>
-                          <div>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              {canManage
-                                ? `${fileLabel} · Uploaded ${formatDate(item.created_at)} · id ${item.id}`
-                                : fileLabel}
-                            </Text>
-                          </div>
-                        </div>
-                      </Space>
-                      <Space wrap className="platform-doc-card-actions">
-                        <Button
-                          className="platform-touch-target"
-                          icon={<LinkOutlined />}
-                          onClick={() => setMappingTemplate(item)}
-                        >
-                          Open
-                        </Button>
-                        <Tooltip title={generateTip}>
-                          <span>
-                            <Button
-                              type="primary"
-                              className="platform-touch-target"
-                              icon={<ThunderboltOutlined />}
-                              disabled={!canGenerate}
-                              onClick={() =>
-                                navigate(
-                                  `/platform/document-types/${documentTypeId}/generate/${item.id}`
-                                )
-                              }
-                            >
-                              Generate
-                            </Button>
-                          </span>
-                        </Tooltip>
-                        {canManage ? (
-                          <Tooltip title="Delete document">
-                            <Button
-                              type="text"
-                              danger
-                              icon={<DeleteOutlined />}
-                              aria-label="Delete document"
-                              onClick={() => confirmDelete(item)}
-                            />
-                          </Tooltip>
-                        ) : null}
-                      </Space>
+                      {statusTag}
                     </div>
-                  </Card>
-                </List.Item>
+                  </div>
+
+                  <div style={{ marginBottom: 10, minWidth: 0 }}>
+                    <Space wrap size={4} style={{ width: '100%' }}>
+                      <Text
+                        strong
+                        style={{
+                          fontSize: 14,
+                          display: 'block',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '100%',
+                        }}
+                        title={title}
+                      >
+                        {title}
+                      </Text>
+                      {canManage ? (
+                        <Tooltip title="Rename">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined />}
+                            aria-label="Rename document"
+                            onClick={() => openRename(item)}
+                          />
+                        </Tooltip>
+                      ) : null}
+                    </Space>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {canManage
+                        ? `${fileLabel} · ${formatDate(item.created_at)}`
+                        : fileLabel}
+                    </Text>
+                  </div>
+
+                  <Space wrap size={8} className="platform-doc-card-actions">
+                    <Button
+                      className="platform-touch-target"
+                      size="small"
+                      icon={<LinkOutlined />}
+                      onClick={() => setMappingTemplate(item)}
+                    >
+                      Open
+                    </Button>
+                    <Tooltip title={generateTip}>
+                      <span>
+                        <Button
+                          type="primary"
+                          size="small"
+                          className="platform-touch-target"
+                          icon={<ThunderboltOutlined />}
+                          disabled={!canGenerate}
+                          onClick={() =>
+                            navigate(
+                              `/platform/document-types/${documentTypeId}/generate/${item.id}`
+                            )
+                          }
+                        >
+                          Generate
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    {canManage ? (
+                      <Tooltip title="Delete document">
+                        <Button
+                          type="text"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          aria-label="Delete document"
+                          onClick={() => confirmDelete(item)}
+                        />
+                      </Tooltip>
+                    ) : null}
+                  </Space>
+                </Card>
               )
-            }}
-          />
+            })}
+          </div>
         )}
       </Card>
+
+      <OrgDocumentPreviewModal
+        open={!!previewTemplate}
+        documentTypeId={documentTypeId}
+        templateId={previewTemplate?.id}
+        title={previewTemplate ? documentTitle(previewTemplate) : ''}
+        hasThumbnail={!!previewTemplate?.has_thumbnail}
+        onClose={() => setPreviewTemplate(null)}
+      />
 
       <Modal
         title={addLabel}

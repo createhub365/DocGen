@@ -227,6 +227,30 @@ export async function fetchOrgTemplateThumbnailUrl(documentTypeId, templateId) {
   }
 }
 
+/** Fetch org template .docx as a Blob for docx-preview (throws on failure). */
+export async function fetchOrgTemplateDocxBlob(documentTypeId, templateId) {
+  const response = await platformClient.get(
+    `/${documentTypeId}/templates/${templateId}/download`,
+    { responseType: 'blob' }
+  )
+  const blob = response.data
+  if (blob.type?.includes('json') || blob.size < 100) {
+    const text = await blob.text()
+    try {
+      const err = JSON.parse(text)
+      throw new Error(err.detail || 'Template file not available')
+    } catch (parseErr) {
+      if (parseErr instanceof Error && parseErr.message !== 'Template file not available') {
+        throw parseErr
+      }
+      throw new Error('Template file is missing or invalid')
+    }
+  }
+  const mime =
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  return blob.type === mime ? blob : new Blob([blob], { type: mime })
+}
+
 export async function regenerateOrgThumbnails() {
   const { data } = await platformClient.post('/settings/regenerate-thumbnails')
   return data
