@@ -51,9 +51,11 @@ import {
   listFlowHistory,
   listFlowSteps,
   listOptionLists,
+  listOrgTemplates,
   publishFlow,
   readPlatformErrorDetail,
   updateDocumentType,
+  deleteDocumentType,
   updateFieldDefinition,
   updateFlowStep,
 } from '../../api/platformClient'
@@ -842,29 +844,104 @@ export default function FlowBuilderPage() {
     }
   }
 
-  const [iconModalOpen, setIconModalOpen] = useState(false)
-  const [iconDraft, setIconDraft] = useState(DEFAULT_DOC_TYPE_ICON)
-  const [iconSaving, setIconSaving] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editForm] = Form.useForm()
+  const [deleting, setDeleting] = useState(false)
 
-  const openIconEditor = () => {
-    setIconDraft(normalizeDocTypeIcon(documentType?.icon))
-    setIconModalOpen(true)
+  const openEdit = () => {
+    editForm.setFieldsValue({
+      name: documentType?.name || '',
+      description: documentType?.description || '',
+      icon: normalizeDocTypeIcon(documentType?.icon),
+    })
+    setEditOpen(true)
   }
 
-  const saveIcon = async () => {
-    setIconSaving(true)
+  const saveEdit = async () => {
     try {
+      const values = await editForm.validateFields()
+      setEditSaving(true)
       const updated = await updateDocumentType(documentTypeId, {
-        icon: normalizeDocTypeIcon(iconDraft),
+        name: String(values.name || '').trim(),
+        description: String(values.description || '').trim() || null,
+        icon: normalizeDocTypeIcon(values.icon),
       })
       setDocumentType((prev) => ({ ...prev, ...updated }))
-      setIconModalOpen(false)
-      message.success('Icon updated')
+      setEditOpen(false)
+      message.success('Document type updated')
     } catch (error) {
-      message.error((await readPlatformErrorDetail(error)) || 'Could not update icon')
+      if (error?.errorFields) return
+      message.error((await readPlatformErrorDetail(error)) || 'Could not update document type')
     } finally {
-      setIconSaving(false)
+      setEditSaving(false)
     }
+  }
+
+  const confirmDelete = async () => {
+    let templateCount = 0
+    let generatedCount = 0
+    try {
+      const templates = await listOrgTemplates(documentTypeId)
+      templateCount = (templates || []).length
+      generatedCount = (templates || []).reduce(
+        (sum, row) => sum + (Number(row.generated_document_count) || 0),
+        0
+      )
+    } catch {
+      /* summary is optional */
+    }
+
+    const summaryBits = []
+    if (templateCount) {
+      summaryBits.push(
+        `${templateCount} document${templateCount === 1 ? '' : 's'} (templates)`
+      )
+    }
+    if (generatedCount) {
+      summaryBits.push(
+        `${generatedCount} generated document${generatedCount === 1 ? '' : 's'}`
+      )
+    }
+
+    Modal.confirm({
+      title: 'Delete this document type?',
+      width: 480,
+      content: (
+        <div>
+          <p style={{ marginBottom: 8 }}>
+            This document type will be archived and hidden from your dashboard. You
+            won&apos;t be able to open its flow or templates for new work.
+          </p>
+          <p style={{ marginBottom: summaryBits.length ? 8 : 0 }}>
+            Previously generated documents remain available for download.
+          </p>
+          {summaryBits.length ? (
+            <p style={{ marginBottom: 0, color: 'rgba(0,0,0,0.55)' }}>
+              {summaryBits.join(', ')} will remain in history.
+            </p>
+          ) : null}
+        </div>
+      ),
+      okText: 'Delete document type',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        setDeleting(true)
+        try {
+          await deleteDocumentType(documentTypeId)
+          message.success('Document type archived')
+          navigate('/platform/document-types', { replace: true })
+        } catch (error) {
+          message.error(
+            (await readPlatformErrorDetail(error)) || 'Could not delete document type'
+          )
+          throw error
+        } finally {
+          setDeleting(false)
+        }
+      },
+    })
   }
 
   if (loading) {
@@ -881,21 +958,40 @@ export default function FlowBuilderPage() {
       iconKey={documentType?.icon}
       status={status}
       onBack={() => navigate('/platform/document-types')}
-      onEditIcon={openIconEditor}
+      onEdit={openEdit}
+      onDelete={confirmDelete}
+      deleting={deleting}
       editable={editable}
       busy={busy}
       onPublish={publish}
     >
       <Modal
-        title="Change icon"
-        open={iconModalOpen}
-        onCancel={() => setIconModalOpen(false)}
-        onOk={saveIcon}
-        confirmLoading={iconSaving}
+        title="Edit document type"
+        open={editOpen}
+        onCancel={() => setEditOpen(false)}
+        onOk={saveEdit}
+        confirmLoading={editSaving}
         okText="Save"
         destroyOnHidden
       >
-        <DocTypeIconPicker value={iconDraft} onChange={setIconDraft} />
+        <Form form={editForm} layout="vertical" requiredMark={false}>
+          <Form.Item name="icon" label="Icon">
+            <DocTypeIconPicker />
+          </Form.Item>
+          <Form.Item
+            name="name"
+            label="Name"
+            rules={[{ required: true, message: 'Name is required' }]}
+          >
+            <Input placeholder="Offer Letter" />
+          </Form.Item>
+          <Form.Item label="Slug">
+            <Input value={documentType?.slug || ''} disabled />
+          </Form.Item>
+          <Form.Item name="description" label="Description">
+            <Input.TextArea rows={2} placeholder="Optional" />
+          </Form.Item>
+        </Form>
       </Modal>
       <Tabs
         activeKey={activeTab}
@@ -1067,7 +1163,9 @@ function FlowBuilderChrome({
   iconKey,
   status,
   onBack,
-  onEditIcon,
+  onEdit,
+  onDelete,
+  deleting,
   editable,
   busy,
   onPublish,
@@ -1093,22 +1191,20 @@ function FlowBuilderChrome({
           {isMobile ? 'Back' : 'Document types'}
         </Button>
         <Space align="center" wrap style={{ maxWidth: '100%' }} size={10}>
-          <Tooltip title="Change icon">
-            <button
-              type="button"
-              onClick={onEditIcon}
-              aria-label="Change document type icon"
-              style={{
-                border: 'none',
-                background: 'transparent',
-                padding: 0,
-                cursor: 'pointer',
-                lineHeight: 0,
-              }}
-            >
-              <DocTypeIconGlyph iconKey={iconKey} size={40} iconSize={18} />
-            </button>
-          </Tooltip>
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label="Edit document type"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              padding: 0,
+              cursor: 'pointer',
+              lineHeight: 0,
+            }}
+          >
+            <DocTypeIconGlyph iconKey={iconKey} size={40} iconSize={18} />
+          </button>
           <Title
             level={isMobile ? 4 : 3}
             style={{
@@ -1116,11 +1212,19 @@ function FlowBuilderChrome({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              maxWidth: isMobile ? 'min(100%, 55vw)' : undefined,
+              maxWidth: isMobile ? 'min(100%, 45vw)' : undefined,
             }}
           >
             {documentName}
           </Title>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={onEdit}
+            aria-label="Edit document type"
+          >
+            {!isMobile ? 'Edit' : null}
+          </Button>
           <span
             style={{
               display: 'inline-flex',
@@ -1147,14 +1251,46 @@ function FlowBuilderChrome({
             </Text>
           </span>
         </Space>
-        {!isMobile && (
-          <Paragraph type="secondary" style={{ margin: 0 }}>
-            Manage documents (templates) and the generation flow for this type.
-          </Paragraph>
-        )}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          {!isMobile ? (
+            <Paragraph type="secondary" style={{ margin: 0 }}>
+              Manage documents (templates) and the generation flow for this type.
+            </Paragraph>
+          ) : (
+            <span />
+          )}
+          <Button
+            type="text"
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={onDelete}
+            loading={deleting}
+          >
+            Delete document type
+          </Button>
+        </div>
       </>
     ),
-    [documentName, iconKey, onBack, onEditIcon, status.dot, status.text, isMobile]
+    [
+      documentName,
+      iconKey,
+      onBack,
+      onEdit,
+      onDelete,
+      deleting,
+      status.dot,
+      status.text,
+      isMobile,
+    ]
   )
 
   const footer = useMemo(

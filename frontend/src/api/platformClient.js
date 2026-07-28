@@ -113,6 +113,11 @@ export async function updateDocumentType(documentTypeId, payload) {
   return data
 }
 
+export async function deleteDocumentType(documentTypeId) {
+  const { data } = await platformClient.delete(`/document-types/${documentTypeId}`)
+  return data
+}
+
 export async function getDocumentType(documentTypeId) {
   const { data } = await platformClient.get(`/document-types/${documentTypeId}`)
   return data
