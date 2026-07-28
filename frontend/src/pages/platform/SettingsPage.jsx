@@ -12,7 +12,6 @@ import {
   readPlatformErrorDetail,
   regenerateOrgThumbnails,
 } from '../../api/platformClient'
-import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 
@@ -20,8 +19,6 @@ const { Title, Paragraph, Text } = Typography
 
 export default function SettingsPage() {
   const message = useAppMessage()
-  const { isOrgAdmin } = usePlatformAuth()
-  const isAdmin = isOrgAdmin
 
   const [running, setRunning] = useState(false)
   const [summary, setSummary] = useState(null)
