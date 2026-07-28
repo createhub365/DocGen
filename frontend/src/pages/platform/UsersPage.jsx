@@ -30,16 +30,17 @@ import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
+import { ORG_ADMIN_ROLE } from '../../utils/platformRoles'
 
 const { Title, Paragraph, Text } = Typography
 
 const ROLE_OPTIONS = [
   { value: 'staff', label: 'Staff' },
-  { value: 'org_admin', label: 'Org admin' },
+  { value: ORG_ADMIN_ROLE, label: 'Org admin' },
 ]
 
 function roleLabel(role) {
-  if (role === 'org_admin') return 'Org admin'
+  if (role === ORG_ADMIN_ROLE) return 'Org admin'
   if (role === 'staff') return 'Staff'
   return role || '—'
 }
@@ -59,9 +60,9 @@ function formatJoined(value) {
 
 export default function UsersPage() {
   const message = useAppMessage()
-  const { role, currentUser } = usePlatformAuth()
+  const { isOrgAdmin, currentUser } = usePlatformAuth()
   const { isMobile } = useBreakpoint()
-  const isAdmin = role === 'org_admin'
+  const isAdmin = isOrgAdmin
   const myUserId = currentUser?.user_id
 
   const [loading, setLoading] = useState(true)
@@ -79,7 +80,7 @@ export default function UsersPage() {
   const [roleForm] = Form.useForm()
 
   const adminCount = useMemo(
-    () => rows.filter((r) => r.role === 'org_admin').length,
+    () => rows.filter((r) => r.role === ORG_ADMIN_ROLE).length,
     [rows]
   )
 
@@ -250,7 +251,7 @@ export default function UsersPage() {
         key: 'role',
         width: 130,
         render: (value) => (
-          <Tag color={value === 'org_admin' ? 'gold' : 'default'}>{roleLabel(value)}</Tag>
+          <Tag color={value === ORG_ADMIN_ROLE ? 'gold' : 'default'}>{roleLabel(value)}</Tag>
         ),
       },
       {
@@ -270,7 +271,7 @@ export default function UsersPage() {
         fixed: isMobile ? 'right' : undefined,
         render: (_, row) => {
           const isMe = row.user_id === myUserId
-          const isSoleAdmin = row.role === 'org_admin' && adminCount <= 1
+          const isSoleAdmin = row.role === ORG_ADMIN_ROLE && adminCount <= 1
           const hideDestructive = isMe && isSoleAdmin
 
           return (
@@ -278,7 +279,7 @@ export default function UsersPage() {
               <Button
                 type="link"
                 size="small"
-                disabled={hideDestructive && row.role === 'org_admin'}
+                disabled={hideDestructive && row.role === ORG_ADMIN_ROLE}
                 onClick={() => openRoleModal(row)}
               >
                 Change role

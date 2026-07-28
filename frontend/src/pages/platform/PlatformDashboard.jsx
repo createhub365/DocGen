@@ -29,6 +29,7 @@ import {
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
+import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import DocTypeIconPicker, { DocTypeIconGlyph } from './DocTypeIconPicker'
 import { DEFAULT_DOC_TYPE_ICON } from './docTypeIcons'
 
@@ -114,6 +115,7 @@ export default function PlatformDashboard() {
   const navigate = useNavigate()
   const message = useAppMessage()
   const { isMobile } = useBreakpoint()
+  const { isOrgAdmin } = usePlatformAuth()
   const [loading, setLoading] = useState(true)
   const [types, setTypes] = useState([])
   const [loadError, setLoadError] = useState(null)
@@ -289,16 +291,20 @@ export default function PlatformDashboard() {
             type="secondary"
             style={{ margin: '0 auto 18px', maxWidth: 360, fontSize: 13, lineHeight: 1.5 }}
           >
-            Start from scratch or install a starter kit to create your first type and flow.
+            {isOrgAdmin
+              ? 'Start from scratch or install a starter kit to create your first type and flow.'
+              : 'No document types yet. Ask an organization admin to create one.'}
           </Paragraph>
-          <Space wrap style={{ justifyContent: 'center' }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              Create from scratch
-            </Button>
-            <Button icon={<RocketOutlined />} onClick={openPresets}>
-              Install starter kit
-            </Button>
-          </Space>
+          {isOrgAdmin ? (
+            <Space wrap style={{ justifyContent: 'center' }}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                Create from scratch
+              </Button>
+              <Button icon={<RocketOutlined />} onClick={openPresets}>
+                Install starter kit
+              </Button>
+            </Space>
+          ) : null}
         </div>
       )}
 
@@ -311,14 +317,16 @@ export default function PlatformDashboard() {
               : undefined,
           }}
           extra={
-            <Space wrap size={[8, 8]} className="platform-dashboard-actions">
-              <Button icon={<AppstoreAddOutlined />} onClick={openPresets}>
-                Starter kit
-              </Button>
-              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                New type
-              </Button>
-            </Space>
+            isOrgAdmin ? (
+              <Space wrap size={[8, 8]} className="platform-dashboard-actions">
+                <Button icon={<AppstoreAddOutlined />} onClick={openPresets}>
+                  Starter kit
+                </Button>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                  New type
+                </Button>
+              </Space>
+            ) : null
           }
           style={{ borderRadius: 12, borderColor: BRAND.border }}
         >

@@ -33,6 +33,7 @@ import {
   uploadOrgTemplate,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import PlaceholderMappingPanel from './PlaceholderMappingPanel'
 
 const { Text, Paragraph } = Typography
@@ -160,11 +161,14 @@ export default function TemplatesPanel({
   documentTypeName = 'this document type',
   hasDraftFlow = false,
   hasPublishedFlow = false,
+  canManage: canManageProp,
   onGoToFlow,
   onDraftFieldsGenerated,
 }) {
   const navigate = useNavigate()
   const message = useAppMessage()
+  const { isOrgAdmin } = usePlatformAuth()
+  const canManage = canManageProp ?? isOrgAdmin
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [templates, setTemplates] = useState([])
@@ -393,12 +397,16 @@ export default function TemplatesPanel({
       )}
 
       <Card style={{ borderRadius: 16, marginBottom: 16 }}>
-        <Button type="primary" onClick={openAddModal}>
-          {addLabel}
-        </Button>
+        {canManage ? (
+          <Button type="primary" onClick={openAddModal}>
+            {addLabel}
+          </Button>
+        ) : (
+          <Text type="secondary">View and generate from existing documents.</Text>
+        )}
       </Card>
 
-      {lastUpload && (
+      {lastUpload && canManage && (
         <Alert
           type="success"
           showIcon
@@ -463,15 +471,17 @@ export default function TemplatesPanel({
                             <Text strong style={{ fontSize: 15 }}>
                               {title}
                             </Text>
-                            <Tooltip title="Rename">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<EditOutlined />}
-                                aria-label="Rename document"
-                                onClick={() => openRename(item)}
-                              />
-                            </Tooltip>
+                            {canManage ? (
+                              <Tooltip title="Rename">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<EditOutlined />}
+                                  aria-label="Rename document"
+                                  onClick={() => openRename(item)}
+                                />
+                              </Tooltip>
+                            ) : null}
                             {isComplete ? (
                               <Tag color="green">Complete</Tag>
                             ) : (
@@ -487,13 +497,15 @@ export default function TemplatesPanel({
                         </div>
                       </Space>
                       <Space wrap className="platform-doc-card-actions">
-                        <Button
-                          className="platform-touch-target"
-                          icon={<LinkOutlined />}
-                          onClick={() => setMappingTemplate(item)}
-                        >
-                          Open
-                        </Button>
+                        {canManage ? (
+                          <Button
+                            className="platform-touch-target"
+                            icon={<LinkOutlined />}
+                            onClick={() => setMappingTemplate(item)}
+                          >
+                            Open
+                          </Button>
+                        ) : null}
                         <Tooltip title={generateTip}>
                           <span>
                             <Button
@@ -511,15 +523,17 @@ export default function TemplatesPanel({
                             </Button>
                           </span>
                         </Tooltip>
-                        <Tooltip title="Delete document">
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            aria-label="Delete document"
-                            onClick={() => confirmDelete(item)}
-                          />
-                        </Tooltip>
+                        {canManage ? (
+                          <Tooltip title="Delete document">
+                            <Button
+                              type="text"
+                              danger
+                              icon={<DeleteOutlined />}
+                              aria-label="Delete document"
+                              onClick={() => confirmDelete(item)}
+                            />
+                          </Tooltip>
+                        ) : null}
                       </Space>
                     </div>
                   </Card>
