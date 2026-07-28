@@ -45,9 +45,9 @@ function slugify(value) {
 
 export default function OptionListsPage() {
   const message = useAppMessage()
-  const { role } = usePlatformAuth()
+  const { isOrgAdmin } = usePlatformAuth()
   const { isMobile } = useBreakpoint()
-  const isAdmin = role === 'org_admin'
+  const isAdmin = isOrgAdmin
 
   const [loading, setLoading] = useState(true)
   const [lists, setLists] = useState([])

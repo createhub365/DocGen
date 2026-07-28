@@ -8,6 +8,7 @@ import {
   platformSignup as apiSignup,
   storePlatformAuthToken,
 } from '../api/platformClient'
+import { isOrgAdmin as checkIsOrgAdmin } from '../utils/platformRoles'
 
 const PlatformAuthContext = createContext(null)
 
@@ -27,11 +28,13 @@ export function PlatformAuthProvider({ children }) {
       return
     }
     setCurrentOrg(res.organization || null)
-    setRole(res.role || res.membership?.role || null)
+    // GET /me returns top-level `role` (org membership) plus membership.role
+    const nextRole = res.role || res.membership?.role || null
+    setRole(nextRole)
     setCurrentUser({
       user_id: res.user_id,
       username: res.username,
-      role: res.role || res.membership?.role,
+      role: nextRole,
       membership: res.membership,
     })
   }, [])
@@ -88,6 +91,7 @@ export function PlatformAuthProvider({ children }) {
   }, [navigate])
 
   const authed = !!currentUser && !!currentOrg
+  const isOrgAdmin = checkIsOrgAdmin(role)
 
   return (
     <PlatformAuthContext.Provider
@@ -95,6 +99,7 @@ export function PlatformAuthProvider({ children }) {
         currentOrg,
         currentUser,
         role,
+        isOrgAdmin,
         isLoading,
         login,
         signup,

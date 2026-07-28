@@ -21,8 +21,8 @@ const { Title, Paragraph, Text } = Typography
 
 export default function SettingsPage() {
   const message = useAppMessage()
-  const { role } = usePlatformAuth()
-  const isAdmin = role === 'org_admin'
+  const { isOrgAdmin } = usePlatformAuth()
+  const isAdmin = isOrgAdmin
 
   const [running, setRunning] = useState(false)
   const [summary, setSummary] = useState(null)

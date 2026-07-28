@@ -61,6 +61,7 @@ import {
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
+import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import TemplatesPanel from './TemplatesPanel'
 import DocTypeIconPicker, { DocTypeIconGlyph } from './DocTypeIconPicker'
@@ -640,6 +641,7 @@ export default function FlowBuilderPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const message = useAppMessage()
+  const { isOrgAdmin } = usePlatformAuth()
   const documentTypeId = Number(id)
 
   const [documentType, setDocumentType] = useState(null)
@@ -697,7 +699,7 @@ export default function FlowBuilderPage() {
       const draft = drafts[0] || null
       const active = draft || published
       setFlow(active)
-      setEditable(!!draft)
+      setEditable(!!draft && isOrgAdmin)
       if (active) await hydrateSteps(active.id)
       else setSteps([])
     } catch (error) {
@@ -705,7 +707,7 @@ export default function FlowBuilderPage() {
     } finally {
       setLoading(false)
     }
-  }, [documentTypeId, hydrateSteps])
+  }, [documentTypeId, hydrateSteps, isOrgAdmin])
 
   useEffect(() => {
     loadBuilder()
@@ -958,12 +960,12 @@ export default function FlowBuilderPage() {
       iconKey={documentType?.icon}
       status={status}
       onBack={() => navigate('/platform/document-types')}
-      onEdit={openEdit}
-      onDelete={confirmDelete}
+      onEdit={isOrgAdmin ? openEdit : null}
+      onDelete={isOrgAdmin ? confirmDelete : null}
       deleting={deleting}
       editable={editable}
       busy={busy}
-      onPublish={publish}
+      onPublish={isOrgAdmin ? publish : null}
     >
       <Modal
         title="Edit document type"
@@ -1006,6 +1008,7 @@ export default function FlowBuilderPage() {
                 documentTypeName={documentType?.name || 'this document type'}
                 hasDraftFlow={!!documentType?.has_draft_flow}
                 hasPublishedFlow={!!documentType?.has_published_flow}
+                canManage={isOrgAdmin}
                 onGoToFlow={() => setActiveTab('flow')}
                 onDraftFieldsGenerated={loadBuilder}
               />
@@ -1030,7 +1033,9 @@ export default function FlowBuilderPage() {
                       ? `Flow version ${flow.version}`
                       : 'Define the steps users complete'}
                   </Paragraph>
-                  {documentType?.has_published_flow && !documentType?.has_draft_flow && (
+                  {isOrgAdmin &&
+                    documentType?.has_published_flow &&
+                    !documentType?.has_draft_flow && (
                     <Button icon={<EditOutlined />} onClick={editPublished} loading={busy}>
                       Edit
                     </Button>
@@ -1042,14 +1047,20 @@ export default function FlowBuilderPage() {
                 {!loadError && !flow && (
                   <Card style={{ borderRadius: 16 }}>
                     <Empty description="This document type has no flow yet.">
-                      <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={startFlow}
-                        loading={busy}
-                      >
-                        Create flow
-                      </Button>
+                      {isOrgAdmin ? (
+                        <Button
+                          type="primary"
+                          icon={<PlusOutlined />}
+                          onClick={startFlow}
+                          loading={busy}
+                        >
+                          Create flow
+                        </Button>
+                      ) : (
+                        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                          Ask an organization admin to create a flow.
+                        </Paragraph>
+                      )}
                     </Empty>
                   </Card>
                 )}
@@ -1072,7 +1083,11 @@ export default function FlowBuilderPage() {
                         type="success"
                         showIcon
                         style={{ marginBottom: 16 }}
-                        message={`Published v${flow.version} is live. Click Edit to create a separate draft.`}
+                        message={
+                          isOrgAdmin
+                            ? `Published v${flow.version} is live. Click Edit to create a separate draft.`
+                            : `Published v${flow.version} is live.`
+                        }
                       />
                     )}
 
@@ -1191,20 +1206,24 @@ function FlowBuilderChrome({
           {isMobile ? 'Back' : 'Document types'}
         </Button>
         <Space align="center" wrap style={{ maxWidth: '100%' }} size={10}>
-          <button
-            type="button"
-            onClick={onEdit}
-            aria-label="Edit document type"
-            style={{
-              border: 'none',
-              background: 'transparent',
-              padding: 0,
-              cursor: 'pointer',
-              lineHeight: 0,
-            }}
-          >
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label="Edit document type"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+                cursor: 'pointer',
+                lineHeight: 0,
+              }}
+            >
+              <DocTypeIconGlyph iconKey={iconKey} size={40} iconSize={18} />
+            </button>
+          ) : (
             <DocTypeIconGlyph iconKey={iconKey} size={40} iconSize={18} />
-          </button>
+          )}
           <Title
             level={isMobile ? 4 : 3}
             style={{
@@ -1217,14 +1236,16 @@ function FlowBuilderChrome({
           >
             {documentName}
           </Title>
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={onEdit}
-            aria-label="Edit document type"
-          >
-            {!isMobile ? 'Edit' : null}
-          </Button>
+          {onEdit ? (
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={onEdit}
+              aria-label="Edit document type"
+            >
+              {!isMobile ? 'Edit' : null}
+            </Button>
+          ) : null}
           <span
             style={{
               display: 'inline-flex',
@@ -1267,16 +1288,18 @@ function FlowBuilderChrome({
           ) : (
             <span />
           )}
-          <Button
-            type="text"
-            danger
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={onDelete}
-            loading={deleting}
-          >
-            Delete document type
-          </Button>
+          {onDelete ? (
+            <Button
+              type="text"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              onClick={onDelete}
+              loading={deleting}
+            >
+              Delete document type
+            </Button>
+          ) : null}
         </div>
       </>
     ),
@@ -1294,7 +1317,8 @@ function FlowBuilderChrome({
   )
 
   const footer = useMemo(
-    () => (
+    () =>
+      onPublish ? (
       <Tooltip title={!editable ? 'Create or open a draft before publishing' : ''}>
         <span style={{ display: isMobile ? 'block' : undefined, width: isMobile ? '100%' : undefined }}>
           <Button
@@ -1311,7 +1335,7 @@ function FlowBuilderChrome({
           </Button>
         </span>
       </Tooltip>
-    ),
+      ) : null,
     [busy, editable, onPublish, isMobile]
   )
 

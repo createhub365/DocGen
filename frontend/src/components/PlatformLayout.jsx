@@ -132,7 +132,7 @@ function SidebarBrand() {
 function SidebarNavBody({ onNavigate }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { currentOrg, currentUser, role, logout } = usePlatformAuth()
+  const { currentOrg, currentUser, role, isOrgAdmin, logout } = usePlatformAuth()
 
   const go = (key) => {
     navigate(key)
@@ -140,7 +140,7 @@ function SidebarNavBody({ onNavigate }) {
   }
 
   const visibleNav = NAV_ITEMS.filter(
-    (item) => !item.adminOnly || role === 'org_admin'
+    (item) => !item.adminOnly || isOrgAdmin
   )
 
   return (
