@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 # ---- Organization / signup ----
@@ -104,6 +104,34 @@ class OrgUserInviteResponse(BaseModel):
 
 # ---- OrgDocumentType (platform DocumentType) ----
 
+DEFAULT_DOC_TYPE_ICON = "file-text"
+ALLOWED_DOC_TYPE_ICONS = frozenset(
+    {
+        "file-text",
+        "file-word",
+        "file-done",
+        "form",
+        "profile",
+        "idcard",
+        "audit",
+        "solution",
+        "team",
+        "bank",
+        "schedule",
+        "safety",
+        "read",
+        "contacts",
+        "global",
+    }
+)
+
+
+def normalize_doc_type_icon(value: Optional[str]) -> str:
+    key = (value or "").strip().lower()
+    if key in ALLOWED_DOC_TYPE_ICONS:
+        return key
+    return DEFAULT_DOC_TYPE_ICON
+
 
 class OrgDocumentTypeCreateRequest(BaseModel):
     """API body: org_id is taken from the auth context, never from the client."""
@@ -111,6 +139,7 @@ class OrgDocumentTypeCreateRequest(BaseModel):
     name: str
     slug: str
     description: Optional[str] = None
+    icon: Optional[str] = None
 
 
 class OrgDocumentTypeCreate(BaseModel):
@@ -118,6 +147,7 @@ class OrgDocumentTypeCreate(BaseModel):
     name: str
     slug: str
     description: Optional[str] = None
+    icon: Optional[str] = None
     is_active: bool = True
     created_by: Optional[int] = None
 
@@ -126,6 +156,7 @@ class OrgDocumentTypeUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None
+    icon: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -137,9 +168,15 @@ class OrgDocumentTypeRead(BaseModel):
     name: str
     slug: str
     description: Optional[str] = None
+    icon: str = DEFAULT_DOC_TYPE_ICON
     is_active: bool
     created_at: datetime
     created_by: Optional[int] = None
+
+    @field_validator("icon", mode="before")
+    @classmethod
+    def _coerce_icon(cls, value):
+        return normalize_doc_type_icon(value)
 
 
 class OrgDocumentTypeListRead(OrgDocumentTypeRead):

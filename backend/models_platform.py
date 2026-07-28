@@ -109,6 +109,8 @@ class OrgDocumentType(Base):
     name = Column(String, nullable=False)
     slug = Column(String, nullable=False)
     description = Column(Text, nullable=True)
+    # Platform dashboard card icon key (Ant Design icon name set); nullable → default in API.
+    icon = Column(String(64), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)

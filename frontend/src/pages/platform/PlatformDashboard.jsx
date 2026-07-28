@@ -9,6 +9,7 @@ import {
   List,
   Modal,
   Space,
+  Tooltip,
   Typography,
 } from 'antd'
 import {
@@ -28,6 +29,8 @@ import {
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
+import DocTypeIconPicker, { DocTypeIconGlyph } from './DocTypeIconPicker'
+import { DEFAULT_DOC_TYPE_ICON } from './docTypeIcons'
 
 const { Title, Paragraph } = Typography
 
@@ -41,54 +44,16 @@ const BRAND = {
 }
 
 /** Grid min track; cards grow up to MAX then wrap. */
-const DOC_TYPE_MIN_PX = 200
-const DOC_TYPE_MAX_PX = 260
-
-function flowStatusMeta(item) {
-  if (item.has_published_flow && item.has_draft_flow) {
-    return { label: 'Draft pending', color: '#D48806' }
-  }
-  if (item.has_published_flow) {
-    return { label: 'Published', color: '#389e0a' }
-  }
-  if (item.has_draft_flow) {
-    return { label: 'Draft', color: '#D48806' }
-  }
-  return { label: 'No flow', color: '#8c8c8c' }
-}
-
-function FlowStatus({ item }) {
-  const { label, color } = flowStatusMeta(item)
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        fontSize: 12,
-        fontWeight: 500,
-        color: '#595959',
-        lineHeight: 1,
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: '50%',
-          background: color,
-          flexShrink: 0,
-        }}
-      />
-      {label}
-    </span>
-  )
-}
+const DOC_TYPE_MIN_PX = 180
+const DOC_TYPE_MAX_PX = 220
 
 function DocumentTypeCard({ item, onOpen }) {
-  const desc = String(item.description || '').trim()
-  return (
+  const tipParts = []
+  if (item.slug) tipParts.push(item.slug)
+  if (String(item.description || '').trim()) tipParts.push(String(item.description).trim())
+  const tip = tipParts.join(' — ') || undefined
+
+  const card = (
     <button
       type="button"
       className="platform-doc-type-tile"
@@ -98,7 +63,7 @@ function DocumentTypeCard({ item, onOpen }) {
         maxWidth: DOC_TYPE_MAX_PX,
         margin: 0,
         padding: 0,
-        textAlign: 'left',
+        textAlign: 'center',
         cursor: 'pointer',
         border: `1px solid ${BRAND.border}`,
         borderRadius: 12,
@@ -112,89 +77,37 @@ function DocumentTypeCard({ item, onOpen }) {
     >
       <div
         style={{
-          padding: '14px 14px 16px',
+          padding: '20px 14px 18px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 10,
+          alignItems: 'center',
+          gap: 12,
           boxSizing: 'border-box',
         }}
       >
+        <DocTypeIconGlyph iconKey={item.icon} size={56} iconSize={26} />
         <div
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: BRAND.softMaroonBg,
-            color: BRAND.maroon,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
+            fontSize: 15,
+            fontWeight: 700,
+            lineHeight: 1.3,
+            color: '#1f1f1f',
+            letterSpacing: '-0.01em',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            wordBreak: 'break-word',
+            maxWidth: '100%',
           }}
-          aria-hidden
         >
-          <FileTextOutlined style={{ fontSize: 17 }} />
+          {item.name}
         </div>
-
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              lineHeight: 1.3,
-              color: '#1f1f1f',
-              letterSpacing: '-0.01em',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              wordBreak: 'break-word',
-            }}
-          >
-            {item.name}
-          </div>
-          <code
-            style={{
-              display: 'inline-block',
-              marginTop: 6,
-              fontSize: 11,
-              lineHeight: 1.2,
-              color: 'rgba(0,0,0,0.45)',
-              background: BRAND.surface,
-              border: `1px solid ${BRAND.border}`,
-              borderRadius: 4,
-              padding: '2px 6px',
-              maxWidth: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {item.slug}
-          </code>
-        </div>
-
-        <FlowStatus item={item} />
-
-        {desc ? (
-          <div
-            style={{
-              fontSize: 12,
-              lineHeight: 1.45,
-              color: 'rgba(0,0,0,0.45)',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              wordBreak: 'break-word',
-            }}
-          >
-            {desc}
-          </div>
-        ) : null}
       </div>
     </button>
   )
+
+  return tip ? <Tooltip title={tip}>{card}</Tooltip> : card
 }
 
 export default function PlatformDashboard() {
@@ -232,6 +145,11 @@ export default function PlatformDashboard() {
   useEffect(() => {
     refreshTypes()
   }, [refreshTypes])
+
+  const openCreate = () => {
+    createForm.setFieldsValue({ icon: DEFAULT_DOC_TYPE_ICON })
+    setCreateOpen(true)
+  }
 
   const openPresets = async () => {
     setPresetOpen(true)
@@ -279,6 +197,7 @@ export default function PlatformDashboard() {
         name: values.name.trim(),
         slug,
         description: values.description?.trim() || undefined,
+        icon: values.icon || DEFAULT_DOC_TYPE_ICON,
       })
       message.success('Document type created')
       setCreateOpen(false)
@@ -302,7 +221,6 @@ export default function PlatformDashboard() {
   const closeCreateAndBrowse = () => {
     setCreateOpen(false)
     createForm.resetFields()
-    // Soft nudge: stay on dashboard list so the user can Open an existing type
     message.info('Open an existing type, then use its Templates tab to add another file.')
   }
 
@@ -374,7 +292,7 @@ export default function PlatformDashboard() {
             Start from scratch or install a starter kit to create your first type and flow.
           </Paragraph>
           <Space wrap style={{ justifyContent: 'center' }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
               Create from scratch
             </Button>
             <Button icon={<RocketOutlined />} onClick={openPresets}>
@@ -397,7 +315,7 @@ export default function PlatformDashboard() {
               <Button icon={<AppstoreAddOutlined />} onClick={openPresets}>
                 Starter kit
               </Button>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                 New type
               </Button>
             </Space>
@@ -471,7 +389,16 @@ export default function PlatformDashboard() {
             }
           />
         )}
-        <Form form={createForm} layout="vertical" onFinish={onCreate} requiredMark={false}>
+        <Form
+          form={createForm}
+          layout="vertical"
+          onFinish={onCreate}
+          requiredMark={false}
+          initialValues={{ icon: DEFAULT_DOC_TYPE_ICON }}
+        >
+          <Form.Item name="icon" label="Icon">
+            <DocTypeIconPicker />
+          </Form.Item>
           <Form.Item
             name="name"
             label="Name"
@@ -518,10 +445,7 @@ export default function PlatformDashboard() {
                 </Button>,
               ]}
             >
-              <List.Item.Meta
-                title={p.name}
-                description={p.description}
-              />
+              <List.Item.Meta title={p.name} description={p.description} />
             </List.Item>
           )}
         />

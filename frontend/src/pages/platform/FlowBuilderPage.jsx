@@ -53,6 +53,7 @@ import {
   listOptionLists,
   publishFlow,
   readPlatformErrorDetail,
+  updateDocumentType,
   updateFieldDefinition,
   updateFlowStep,
 } from '../../api/platformClient'
@@ -60,6 +61,8 @@ import { useAppMessage } from '../../hooks/useAppMessage'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import TemplatesPanel from './TemplatesPanel'
+import DocTypeIconPicker, { DocTypeIconGlyph } from './DocTypeIconPicker'
+import { DEFAULT_DOC_TYPE_ICON, normalizeDocTypeIcon } from './docTypeIcons'
 
 const { Title, Paragraph, Text } = Typography
 
@@ -127,11 +130,11 @@ const STEP_META = {
 
 function statusFor(type) {
   if (type?.has_published_flow && type?.has_draft_flow) {
-    return { text: 'Draft changes pending', color: 'orange' }
+    return { text: 'Draft changes pending', color: 'orange', dot: '#D48806' }
   }
-  if (type?.has_published_flow) return { text: 'Published', color: 'green' }
-  if (type?.has_draft_flow) return { text: 'Draft', color: 'blue' }
-  return { text: 'No flow', color: 'default' }
+  if (type?.has_published_flow) return { text: 'Published', color: 'green', dot: '#389e0a' }
+  if (type?.has_draft_flow) return { text: 'Draft', color: 'blue', dot: '#1677ff' }
+  return { text: 'No flow', color: 'default', dot: '#8c8c8c' }
 }
 
 function optionsToText(options) {
@@ -839,6 +842,31 @@ export default function FlowBuilderPage() {
     }
   }
 
+  const [iconModalOpen, setIconModalOpen] = useState(false)
+  const [iconDraft, setIconDraft] = useState(DEFAULT_DOC_TYPE_ICON)
+  const [iconSaving, setIconSaving] = useState(false)
+
+  const openIconEditor = () => {
+    setIconDraft(normalizeDocTypeIcon(documentType?.icon))
+    setIconModalOpen(true)
+  }
+
+  const saveIcon = async () => {
+    setIconSaving(true)
+    try {
+      const updated = await updateDocumentType(documentTypeId, {
+        icon: normalizeDocTypeIcon(iconDraft),
+      })
+      setDocumentType((prev) => ({ ...prev, ...updated }))
+      setIconModalOpen(false)
+      message.success('Icon updated')
+    } catch (error) {
+      message.error((await readPlatformErrorDetail(error)) || 'Could not update icon')
+    } finally {
+      setIconSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'grid', placeItems: 'center', minHeight: 360 }}>
@@ -850,12 +878,25 @@ export default function FlowBuilderPage() {
   return (
     <FlowBuilderChrome
       documentName={documentType?.name || 'Document type'}
+      iconKey={documentType?.icon}
       status={status}
       onBack={() => navigate('/platform/document-types')}
+      onEditIcon={openIconEditor}
       editable={editable}
       busy={busy}
       onPublish={publish}
     >
+      <Modal
+        title="Change icon"
+        open={iconModalOpen}
+        onCancel={() => setIconModalOpen(false)}
+        onOk={saveIcon}
+        confirmLoading={iconSaving}
+        okText="Save"
+        destroyOnHidden
+      >
+        <DocTypeIconPicker value={iconDraft} onChange={setIconDraft} />
+      </Modal>
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
@@ -1023,8 +1064,10 @@ export default function FlowBuilderPage() {
 
 function FlowBuilderChrome({
   documentName,
+  iconKey,
   status,
   onBack,
+  onEditIcon,
   editable,
   busy,
   onPublish,
@@ -1049,7 +1092,23 @@ function FlowBuilderChrome({
         >
           {isMobile ? 'Back' : 'Document types'}
         </Button>
-        <Space align="center" wrap style={{ maxWidth: '100%' }}>
+        <Space align="center" wrap style={{ maxWidth: '100%' }} size={10}>
+          <Tooltip title="Change icon">
+            <button
+              type="button"
+              onClick={onEditIcon}
+              aria-label="Change document type icon"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+                cursor: 'pointer',
+                lineHeight: 0,
+              }}
+            >
+              <DocTypeIconGlyph iconKey={iconKey} size={40} iconSize={18} />
+            </button>
+          </Tooltip>
           <Title
             level={isMobile ? 4 : 3}
             style={{
@@ -1057,12 +1116,36 @@ function FlowBuilderChrome({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              maxWidth: isMobile ? 'min(100%, 70vw)' : undefined,
+              maxWidth: isMobile ? 'min(100%, 55vw)' : undefined,
             }}
           >
             {documentName}
           </Title>
-          <Tag color={status.color}>{status.text}</Tag>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '4px 10px',
+              borderRadius: 999,
+              background: '#faf3f3',
+              border: '1px solid #f0e4e4',
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: status.dot || '#8c8c8c',
+                flexShrink: 0,
+              }}
+            />
+            <Text style={{ fontSize: 13, fontWeight: 600, color: '#434343' }}>
+              Flow: {status.text}
+            </Text>
+          </span>
         </Space>
         {!isMobile && (
           <Paragraph type="secondary" style={{ margin: 0 }}>
@@ -1071,7 +1154,7 @@ function FlowBuilderChrome({
         )}
       </>
     ),
-    [documentName, onBack, status.color, status.text, isMobile]
+    [documentName, iconKey, onBack, onEditIcon, status.dot, status.text, isMobile]
   )
 
   const footer = useMemo(

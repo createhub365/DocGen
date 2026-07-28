@@ -108,6 +108,11 @@ export async function createDocumentType(payload) {
   return data
 }
 
+export async function updateDocumentType(documentTypeId, payload) {
+  const { data } = await platformClient.patch(`/document-types/${documentTypeId}`, payload)
+  return data
+}
+
 export async function getDocumentType(documentTypeId) {
   const { data } = await platformClient.get(`/document-types/${documentTypeId}`)
   return data

@@ -18,6 +18,7 @@ from schemas_platform import (
     OrgDocumentTypeListRead,
     OrgDocumentTypeRead,
     OrgDocumentTypeUpdate,
+    normalize_doc_type_icon,
 )
 
 router = APIRouter(tags=["platform-document-types"])
@@ -39,6 +40,7 @@ def create_document_type(
         name=body.name.strip(),
         slug=body.slug.strip().lower(),
         description=body.description,
+        icon=normalize_doc_type_icon(body.icon),
         is_active=True,
         created_by=current.user_id,
     )
@@ -154,6 +156,8 @@ def update_document_type(
         data["slug"] = data["slug"].strip().lower()
     if "name" in data and data["name"] is not None:
         data["name"] = data["name"].strip()
+    if "icon" in data:
+        data["icon"] = normalize_doc_type_icon(data.get("icon"))
     for key, value in data.items():
         setattr(row, key, value)
 
