@@ -392,8 +392,9 @@ export default function TemplatesPanel({
                           </div>
                         </div>
                       </Space>
-                      <Space wrap>
+                      <Space wrap className="platform-doc-card-actions">
                         <Button
+                          className="platform-touch-target"
                           icon={<LinkOutlined />}
                           onClick={() => setMappingTemplate(item)}
                         >
@@ -403,6 +404,7 @@ export default function TemplatesPanel({
                           <span>
                             <Button
                               type="primary"
+                              className="platform-touch-target"
                               icon={<ThunderboltOutlined />}
                               disabled={!canGenerate}
                               onClick={() =>

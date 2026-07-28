@@ -2281,3 +2281,72 @@ body.mobile-app {
     overflow-x: auto;
   }
 }
+
+/* ===== Platform (/platform) mobile responsiveness ? desktop defaults unchanged ===== */
+.platform-shell .platform-touch-target.ant-btn {
+  min-height: 32px;
+}
+.platform-shell .platform-back-btn.ant-btn {
+  line-height: 1.2;
+}
+
+@media (max-width: 767px) {
+  .platform-shell .platform-touch-target.ant-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .platform-shell .platform-back-btn.ant-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .platform-shell .platform-footer-actions {
+    width: 100%;
+  }
+
+  .platform-shell .platform-footer-actions > .ant-space,
+  .platform-shell .platform-footer-actions .platform-wizard-footer {
+    width: 100% !important;
+    display: flex !important;
+  }
+
+  .platform-shell .platform-footer-actions > .ant-space {
+    width: 100%;
+  }
+
+  .platform-shell .platform-footer-actions .ant-space-item {
+    flex: 1 1 auto;
+  }
+
+  .platform-shell .platform-footer-actions .ant-btn,
+  .platform-shell .platform-wizard-footer .ant-btn {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .platform-shell .platform-shell-header .ant-typography,
+  .platform-shell .platform-shell-header h3,
+  .platform-shell .platform-shell-header h4 {
+    max-width: 100%;
+  }
+
+  .platform-shell .ant-card-extra {
+    margin-inline-start: 0 !important;
+  }
+
+  .platform-shell .platform-generated-list-item.ant-list-item {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .platform-shell .platform-generated-list-item .ant-list-item-action {
+    margin-inline-start: 0;
+  }
+
+  /* Keep platform modals within the viewport (scoped; does not change legacy pages) */
+  .platform-shell ~ .ant-modal-root .ant-modal,
+  body:has(.platform-shell) .ant-modal {
+    max-width: calc(100vw - 24px) !important;
+  }
+}

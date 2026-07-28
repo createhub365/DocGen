@@ -57,6 +57,7 @@ import {
   updateFlowStep,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import TemplatesPanel from './TemplatesPanel'
 
@@ -384,15 +385,25 @@ function CustomFieldsPanel({ step, editable, onChanged }) {
                 )}
               </div>
               {editable && (
-                <>
-                  <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(field)} />
+                <Space size={4} wrap>
+                  <Button
+                    className="platform-touch-target"
+                    icon={<EditOutlined />}
+                    onClick={() => openEdit(field)}
+                    aria-label="Edit field"
+                  />
                   <Popconfirm
                     title="Delete this field?"
                     onConfirm={() => removeField(field.id)}
                   >
-                    <Button size="small" danger icon={<DeleteOutlined />} />
+                    <Button
+                      className="platform-touch-target"
+                      danger
+                      icon={<DeleteOutlined />}
+                      aria-label="Delete field"
+                    />
                   </Popconfirm>
-                </>
+                </Space>
               )}
             </div>
           ))}
@@ -423,6 +434,7 @@ function StepCard({
   onMove,
   onReload,
 }) {
+  const { isMobile } = useBreakpoint()
   const meta = STEP_META[step.step_type] || {
     label: step.step_type,
     icon: FileTextOutlined,
@@ -445,7 +457,14 @@ function StepCard({
         borderColor: editable ? '#e8d8d8' : '#e5e5e5',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
         <div
           style={{
             width: 36,
@@ -461,7 +480,14 @@ function StepCard({
         >
           <Icon />
         </div>
-        <div style={{ width: 140, flexShrink: 0 }}>
+        <div
+          style={{
+            width: isMobile ? 'auto' : 140,
+            minWidth: isMobile ? 0 : 140,
+            flex: isMobile ? '1 1 120px' : '0 0 auto',
+            flexShrink: 0,
+          }}
+        >
           <div style={{ fontWeight: 600 }}>{meta.label}</div>
           <Text type="secondary">Step {index + 1}</Text>
         </div>
@@ -469,6 +495,7 @@ function StepCard({
           value={step.label}
           disabled={!editable || busy}
           aria-label={`Label for step ${index + 1}`}
+          style={{ flex: '1 1 160px', minWidth: 0 }}
           onChange={(event) => onPatch(step.id, { label: event.target.value }, false)}
           onBlur={() => onPatch(step.id, { label: step.label.trim() || meta.label }, true)}
         />
@@ -480,23 +507,29 @@ function StepCard({
           />
         </Tooltip>
         {editable && (
-          <Space size={4}>
+          <Space size={4} wrap>
             <Button
-              size="small"
+              className="platform-touch-target"
               icon={<ArrowUpOutlined />}
               disabled={busy || index === 0}
               onClick={() => onMove(index, -1)}
               aria-label="Move step up"
             />
             <Button
-              size="small"
+              className="platform-touch-target"
               icon={<ArrowDownOutlined />}
               disabled={busy || index === count - 1}
               onClick={() => onMove(index, 1)}
               aria-label="Move step down"
             />
             <Popconfirm title="Delete this step and its fields?" onConfirm={() => onDelete(step.id)}>
-              <Button size="small" danger icon={<DeleteOutlined />} disabled={busy} />
+              <Button
+                className="platform-touch-target"
+                danger
+                icon={<DeleteOutlined />}
+                disabled={busy}
+                aria-label="Delete step"
+              />
             </Popconfirm>
           </Space>
         )}
@@ -935,10 +968,12 @@ export default function FlowBuilderPage() {
 
                     {editable && (
                       <Button
+                        className="platform-touch-target"
                         icon={<PlusOutlined />}
                         onClick={() => setAddOpen(true)}
                         style={{ marginTop: 16 }}
                         disabled={busy}
+                        block
                       >
                         Add step
                       </Button>
@@ -995,35 +1030,54 @@ function FlowBuilderChrome({
   onPublish,
   children,
 }) {
+  const { isMobile } = useBreakpoint()
   const header = useMemo(
     () => (
       <>
         <Button
           type="text"
+          className="platform-back-btn"
           icon={<ArrowLeftOutlined />}
           onClick={onBack}
-          style={{ alignSelf: 'flex-start', marginLeft: -8, height: 28, paddingInline: 8 }}
+          style={{
+            alignSelf: 'flex-start',
+            marginLeft: -8,
+            height: isMobile ? 44 : 28,
+            minWidth: isMobile ? 44 : undefined,
+            paddingInline: 8,
+          }}
         >
-          Document types
+          {isMobile ? 'Back' : 'Document types'}
         </Button>
-        <Space align="center" wrap>
-          <Title level={3} style={{ margin: 0 }}>
+        <Space align="center" wrap style={{ maxWidth: '100%' }}>
+          <Title
+            level={isMobile ? 4 : 3}
+            style={{
+              margin: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              maxWidth: isMobile ? 'min(100%, 70vw)' : undefined,
+            }}
+          >
             {documentName}
           </Title>
           <Tag color={status.color}>{status.text}</Tag>
         </Space>
-        <Paragraph type="secondary" style={{ margin: 0 }}>
-          Manage documents (templates) and the generation flow for this type.
-        </Paragraph>
+        {!isMobile && (
+          <Paragraph type="secondary" style={{ margin: 0 }}>
+            Manage documents (templates) and the generation flow for this type.
+          </Paragraph>
+        )}
       </>
     ),
-    [documentName, onBack, status.color, status.text]
+    [documentName, onBack, status.color, status.text, isMobile]
   )
 
   const footer = useMemo(
     () => (
       <Tooltip title={!editable ? 'Create or open a draft before publishing' : ''}>
-        <span>
+        <span style={{ display: isMobile ? 'block' : undefined, width: isMobile ? '100%' : undefined }}>
           <Button
             type="primary"
             icon={<SendOutlined />}
@@ -1031,13 +1085,15 @@ function FlowBuilderChrome({
             loading={busy}
             onClick={onPublish}
             size="large"
+            className="platform-touch-target"
+            block={isMobile}
           >
             Publish
           </Button>
         </span>
       </Tooltip>
     ),
-    [busy, editable, onPublish]
+    [busy, editable, onPublish, isMobile]
   )
 
   usePlatformPageChrome({ header, footer })

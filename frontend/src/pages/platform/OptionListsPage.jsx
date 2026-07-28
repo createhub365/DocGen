@@ -29,6 +29,7 @@ import {
 } from '../../api/platformClient'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 
 const { Title, Paragraph, Text } = Typography
@@ -45,6 +46,7 @@ function slugify(value) {
 export default function OptionListsPage() {
   const message = useAppMessage()
   const { role } = usePlatformAuth()
+  const { isMobile } = useBreakpoint()
   const isAdmin = role === 'org_admin'
 
   const [loading, setLoading] = useState(true)
@@ -248,7 +250,13 @@ export default function OptionListsPage() {
         <Alert type="error" showIcon message={loadError} style={{ marginBottom: 16 }} />
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) 1fr', gap: 16 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'minmax(260px, 340px) 1fr',
+          gap: 16,
+        }}
+      >
         <Card title="Lists" styles={{ body: { padding: 0 } }}>
           {lists.length ? (
             <div>
@@ -259,6 +267,7 @@ export default function OptionListsPage() {
                     key={row.id}
                     type="button"
                     onClick={() => setSelectedId(row.id)}
+                    className="platform-touch-target"
                     style={{
                       width: '100%',
                       textAlign: 'left',
@@ -266,6 +275,7 @@ export default function OptionListsPage() {
                       borderBottom: '1px solid #f0e4e4',
                       background: active ? '#faf3f3' : 'transparent',
                       padding: '12px 14px',
+                      minHeight: 44,
                       cursor: 'pointer',
                     }}
                   >
@@ -286,7 +296,7 @@ export default function OptionListsPage() {
           title={detail?.name || 'Select a list'}
           extra={
             detail && isAdmin ? (
-              <Space>
+              <Space wrap size={[4, 8]}>
                 <Button size="small" icon={<EditOutlined />} onClick={() => openEditList(detail)}>
                   Edit
                 </Button>
@@ -313,6 +323,7 @@ export default function OptionListsPage() {
               size="small"
               rowKey="id"
               pagination={false}
+              scroll={isMobile ? { x: 560 } : undefined}
               dataSource={detail.items || []}
               columns={[
                 { title: 'Label', dataIndex: 'label' },
@@ -330,18 +341,25 @@ export default function OptionListsPage() {
                         title: '',
                         key: 'actions',
                         width: 100,
+                        fixed: isMobile ? 'right' : undefined,
                         render: (_, item) => (
                           <Space>
                             <Button
-                              size="small"
+                              className="platform-touch-target"
                               icon={<EditOutlined />}
                               onClick={() => openEditItem(item)}
+                              aria-label="Edit item"
                             />
                             <Popconfirm
                               title="Delete this item?"
                               onConfirm={() => removeItem(item.id)}
                             >
-                              <Button size="small" danger icon={<DeleteOutlined />} />
+                              <Button
+                                className="platform-touch-target"
+                                danger
+                                icon={<DeleteOutlined />}
+                                aria-label="Delete item"
+                              />
                             </Popconfirm>
                           </Space>
                         ),

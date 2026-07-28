@@ -411,8 +411,8 @@ export default function PlaceholderMappingPanel({
                   flexWrap: 'wrap',
                 }}
               >
-                <div style={{ minWidth: 180, flex: '0 1 220px' }}>
-                  <Text code>{`{{${placeholderKey}}}`}</Text>
+                <div style={{ minWidth: 0, flex: '1 1 160px' }}>
+                  <Text code style={{ wordBreak: 'break-all' }}>{`{{${placeholderKey}}}`}</Text>
                   <div>
                     {stillOpen ? (
                       <Tag color="orange" style={{ marginTop: 6 }}>
@@ -430,7 +430,7 @@ export default function PlaceholderMappingPanel({
                   </div>
                 </div>
                 <Select
-                  style={{ flex: 1, minWidth: 240 }}
+                  style={{ flex: '1 1 200px', minWidth: 0, width: '100%' }}
                   placeholder={
                     publishGuard
                       ? 'Publish a flow first'

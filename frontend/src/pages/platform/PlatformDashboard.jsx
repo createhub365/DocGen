@@ -27,11 +27,12 @@ import {
   slugifyOrgName,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 
 const { Title, Paragraph, Text } = Typography
 
-/** Square tile size for document-type cards (CSS Grid minmax). */
+/** Square tile size for document-type cards on desktop (CSS Grid minmax). */
 const DOC_TYPE_TILE_PX = 240
 
 function flowStatus(item) {
@@ -46,6 +47,7 @@ function flowStatus(item) {
 export default function PlatformDashboard() {
   const navigate = useNavigate()
   const message = useAppMessage()
+  const { isMobile } = useBreakpoint()
   const [loading, setLoading] = useState(true)
   const [types, setTypes] = useState([])
   const [loadError, setLoadError] = useState(null)
@@ -197,8 +199,13 @@ export default function PlatformDashboard() {
       {!loading && types.length > 0 && (
         <Card
           title="Document types"
+          styles={{
+            header: isMobile
+              ? { flexWrap: 'wrap', gap: 8, rowGap: 10, alignItems: 'flex-start' }
+              : undefined,
+          }}
           extra={
-            <Space>
+            <Space wrap size={[8, 8]} className="platform-dashboard-actions">
               <Button icon={<AppstoreAddOutlined />} onClick={openPresets}>
                 Starter kit
               </Button>
@@ -210,9 +217,12 @@ export default function PlatformDashboard() {
           style={{ borderRadius: 16 }}
         >
           <div
+            className="platform-doc-type-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: `repeat(auto-fill, minmax(${DOC_TYPE_TILE_PX}px, ${DOC_TYPE_TILE_PX}px))`,
+              gridTemplateColumns: isMobile
+                ? 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))'
+                : `repeat(auto-fill, minmax(${DOC_TYPE_TILE_PX}px, ${DOC_TYPE_TILE_PX}px))`,
               gap: 16,
               justifyContent: 'start',
             }}
@@ -222,10 +232,12 @@ export default function PlatformDashboard() {
                 key={item.id}
                 size="small"
                 hoverable
+                className="platform-doc-type-tile"
                 onClick={() => navigate(`/platform/document-types/${item.id}`)}
                 style={{
-                  width: DOC_TYPE_TILE_PX,
-                  height: DOC_TYPE_TILE_PX,
+                  width: isMobile ? '100%' : DOC_TYPE_TILE_PX,
+                  height: isMobile ? undefined : DOC_TYPE_TILE_PX,
+                  aspectRatio: isMobile ? '1' : undefined,
                   borderRadius: 12,
                   cursor: 'pointer',
                   overflow: 'hidden',

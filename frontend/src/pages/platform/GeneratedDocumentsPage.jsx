@@ -121,10 +121,12 @@ export default function GeneratedDocumentsPage() {
             dataSource={rows}
             renderItem={(item) => (
               <List.Item
+                className="platform-generated-list-item"
                 actions={[
                   <Button
                     key="dl"
                     type="link"
+                    className="platform-touch-target"
                     icon={<DownloadOutlined />}
                     loading={downloadingId === item.id}
                     onClick={() => onDownload(item.id)}

@@ -34,6 +34,7 @@ import {
 } from '../../api/platformClient'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 import {
   findWorldCountry,
   worldCountrySelectOptions,
@@ -698,13 +699,14 @@ export default function GenerateDocumentPage() {
   if (showWizardChrome) {
     if (isReview) {
       footerActions = (
-        <Space>
-          <Button size="large" onClick={goBack} disabled={submitting}>
+        <Space className="platform-wizard-footer" wrap style={{ width: '100%' }}>
+          <Button size="large" className="platform-touch-target" onClick={goBack} disabled={submitting}>
             Back
           </Button>
           <Button
             type="primary"
             size="large"
+            className="platform-touch-target"
             loading={submitting}
             onClick={() => form.submit()}
           >
@@ -714,11 +716,22 @@ export default function GenerateDocumentPage() {
       )
     } else {
       footerActions = (
-        <Space>
-          <Button size="large" onClick={goBack} disabled={pageIndex === 0 || submitting}>
+        <Space className="platform-wizard-footer" wrap style={{ width: '100%' }}>
+          <Button
+            size="large"
+            className="platform-touch-target"
+            onClick={goBack}
+            disabled={pageIndex === 0 || submitting}
+          >
             Back
           </Button>
-          <Button type="primary" size="large" onClick={goNext} disabled={submitting}>
+          <Button
+            type="primary"
+            size="large"
+            className="platform-touch-target"
+            onClick={goNext}
+            disabled={submitting}
+          >
             Next
           </Button>
         </Space>
@@ -741,16 +754,11 @@ export default function GenerateDocumentPage() {
       subtitle={headerSubtitle}
       progress={
         showWizardChrome ? (
-          <Steps
-            size="small"
-            current={isReview ? totalSteps : pageIndex}
-            items={[
-              ...steps
-                .filter((s) => s.step_type !== 'file_upload')
-                .map((s) => ({ title: s.label || s.step_type })),
-              { title: 'Review' },
-            ]}
-            style={{ marginTop: 8, maxWidth: 720 }}
+          <WizardStepsProgress
+            steps={steps}
+            pageIndex={pageIndex}
+            isReview={isReview}
+            totalSteps={totalSteps}
           />
         ) : null
       }
@@ -883,19 +891,85 @@ export default function GenerateDocumentPage() {
   )
 }
 
+function WizardStepsProgress({ steps, pageIndex, isReview, totalSteps }) {
+  const { isMobile } = useBreakpoint()
+  const visibleSteps = steps.filter((s) => s.step_type !== 'file_upload')
+  const current = isReview ? visibleSteps.length : pageIndex
+
+  if (isMobile) {
+    const label = isReview
+      ? 'Review'
+      : visibleSteps[pageIndex]?.label || `Step ${pageIndex + 1}`
+    return (
+      <div style={{ marginTop: 8, width: '100%' }}>
+        <div
+          style={{
+            height: 6,
+            borderRadius: 4,
+            background: '#f0e4e4',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              width: `${Math.min(100, Math.max(8, ((current + 1) / Math.max(totalSteps, 1)) * 100))}%`,
+              height: '100%',
+              background: '#8B1A1A',
+              borderRadius: 4,
+              transition: 'width 200ms ease',
+            }}
+          />
+        </div>
+        <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+          {label}
+        </Typography.Text>
+      </div>
+    )
+  }
+
+  return (
+    <Steps
+      size="small"
+      current={isReview ? visibleSteps.length : pageIndex}
+      items={[
+        ...visibleSteps.map((s) => ({ title: s.label || s.step_type })),
+        { title: 'Review' },
+      ]}
+      style={{ marginTop: 8, maxWidth: 720, width: '100%' }}
+    />
+  )
+}
+
 function GenerateDocumentChrome({ onBack, title, subtitle, progress, footer, children }) {
+  const { isMobile } = useBreakpoint()
   const header = useMemo(
     () => (
       <>
         <Button
           type="text"
+          className="platform-back-btn"
           icon={<ArrowLeftOutlined />}
           onClick={onBack}
-          style={{ alignSelf: 'flex-start', marginLeft: -8, height: 28, paddingInline: 8 }}
+          style={{
+            alignSelf: 'flex-start',
+            marginLeft: -8,
+            height: isMobile ? 44 : 28,
+            minWidth: isMobile ? 44 : undefined,
+            paddingInline: 8,
+          }}
         >
-          Document types
+          {isMobile ? 'Back' : 'Document types'}
         </Button>
-        <Title level={3} style={{ margin: 0 }}>
+        <Title
+          level={isMobile ? 4 : 3}
+          style={{
+            margin: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: '100%',
+          }}
+        >
           {title}
         </Title>
         {subtitle ? (
@@ -906,7 +980,7 @@ function GenerateDocumentChrome({ onBack, title, subtitle, progress, footer, chi
         {progress}
       </>
     ),
-    [onBack, title, subtitle, progress]
+    [onBack, title, subtitle, progress, isMobile]
   )
 
   usePlatformPageChrome({ header, footer: footer ?? null })
