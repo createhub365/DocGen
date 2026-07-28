@@ -4,17 +4,16 @@ import {
   Alert,
   Button,
   Card,
-  Empty,
   Form,
   Input,
   List,
   Modal,
   Space,
-  Tag,
   Typography,
 } from 'antd'
 import {
   AppstoreAddOutlined,
+  FileTextOutlined,
   PlusOutlined,
   RocketOutlined,
 } from '@ant-design/icons'
@@ -30,18 +29,172 @@ import { useAppMessage } from '../../hooks/useAppMessage'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 
-const { Title, Paragraph, Text } = Typography
+const { Title, Paragraph } = Typography
 
-/** Square tile size for document-type cards on desktop (CSS Grid minmax). */
-const DOC_TYPE_TILE_PX = 240
+/** Brand palette (same as PlatformLayout / design tokens). */
+const BRAND = {
+  maroon: '#8B1A1A',
+  gold: '#D4A017',
+  softMaroonBg: '#f5eded',
+  border: '#f0e4e4',
+  surface: '#FDF7F7',
+}
 
-function flowStatus(item) {
+/** Grid min track; cards grow up to MAX then wrap. */
+const DOC_TYPE_MIN_PX = 200
+const DOC_TYPE_MAX_PX = 260
+
+function flowStatusMeta(item) {
   if (item.has_published_flow && item.has_draft_flow) {
-    return <Tag color="orange">Draft changes pending</Tag>
+    return { label: 'Draft pending', color: '#D48806' }
   }
-  if (item.has_published_flow) return <Tag color="green">Published</Tag>
-  if (item.has_draft_flow) return <Tag color="blue">Draft</Tag>
-  return <Tag>No flow</Tag>
+  if (item.has_published_flow) {
+    return { label: 'Published', color: '#389e0a' }
+  }
+  if (item.has_draft_flow) {
+    return { label: 'Draft', color: '#D48806' }
+  }
+  return { label: 'No flow', color: '#8c8c8c' }
+}
+
+function FlowStatus({ item }) {
+  const { label, color } = flowStatusMeta(item)
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        fontSize: 12,
+        fontWeight: 500,
+        color: '#595959',
+        lineHeight: 1,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: '50%',
+          background: color,
+          flexShrink: 0,
+        }}
+      />
+      {label}
+    </span>
+  )
+}
+
+function DocumentTypeCard({ item, onOpen }) {
+  const desc = String(item.description || '').trim()
+  return (
+    <button
+      type="button"
+      className="platform-doc-type-tile"
+      onClick={onOpen}
+      style={{
+        width: '100%',
+        maxWidth: DOC_TYPE_MAX_PX,
+        margin: 0,
+        padding: 0,
+        textAlign: 'left',
+        cursor: 'pointer',
+        border: `1px solid ${BRAND.border}`,
+        borderRadius: 12,
+        background: '#fff',
+        boxShadow: '0 1px 2px rgba(107, 15, 15, 0.04)',
+        transition: 'border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease',
+        font: 'inherit',
+        color: 'inherit',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          padding: '14px 14px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          boxSizing: 'border-box',
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: BRAND.softMaroonBg,
+            color: BRAND.maroon,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+          aria-hidden
+        >
+          <FileTextOutlined style={{ fontSize: 17 }} />
+        </div>
+
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              lineHeight: 1.3,
+              color: '#1f1f1f',
+              letterSpacing: '-0.01em',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'break-word',
+            }}
+          >
+            {item.name}
+          </div>
+          <code
+            style={{
+              display: 'inline-block',
+              marginTop: 6,
+              fontSize: 11,
+              lineHeight: 1.2,
+              color: 'rgba(0,0,0,0.45)',
+              background: BRAND.surface,
+              border: `1px solid ${BRAND.border}`,
+              borderRadius: 4,
+              padding: '2px 6px',
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {item.slug}
+          </code>
+        </div>
+
+        <FlowStatus item={item} />
+
+        {desc ? (
+          <div
+            style={{
+              fontSize: 12,
+              lineHeight: 1.45,
+              color: 'rgba(0,0,0,0.45)',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'break-word',
+            }}
+          >
+            {desc}
+          </div>
+        ) : null}
+      </div>
+    </button>
+  )
 }
 
 export default function PlatformDashboard() {
@@ -175,25 +328,60 @@ export default function PlatformDashboard() {
       )}
 
       {!loading && types.length === 0 && !loadError && (
-        <Card style={{ borderRadius: 16 }}>
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={
-              <span>
-                No document types yet. Start from scratch or install a starter kit.
-              </span>
-            }
+        <div
+          className="platform-doc-type-empty"
+          style={{
+            border: `1px solid ${BRAND.border}`,
+            borderRadius: 12,
+            background: '#fff',
+            boxShadow: '0 1px 2px rgba(107, 15, 15, 0.04)',
+            padding: isMobile ? '28px 20px' : '36px 28px',
+            textAlign: 'center',
+            maxWidth: 520,
+          }}
+        >
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              background: BRAND.softMaroonBg,
+              color: BRAND.maroon,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 14,
+            }}
+            aria-hidden
           >
-            <Space wrap>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
-                Create a document type from scratch
-              </Button>
-              <Button icon={<RocketOutlined />} onClick={openPresets}>
-                Install a starter kit
-              </Button>
-            </Space>
-          </Empty>
-        </Card>
+            <FileTextOutlined style={{ fontSize: 20 }} />
+          </div>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              color: '#1f1f1f',
+              letterSpacing: '-0.01em',
+              marginBottom: 6,
+            }}
+          >
+            No document types yet
+          </div>
+          <Paragraph
+            type="secondary"
+            style={{ margin: '0 auto 18px', maxWidth: 360, fontSize: 13, lineHeight: 1.5 }}
+          >
+            Start from scratch or install a starter kit to create your first type and flow.
+          </Paragraph>
+          <Space wrap style={{ justifyContent: 'center' }}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+              Create from scratch
+            </Button>
+            <Button icon={<RocketOutlined />} onClick={openPresets}>
+              Install starter kit
+            </Button>
+          </Space>
+        </div>
       )}
 
       {!loading && types.length > 0 && (
@@ -214,79 +402,25 @@ export default function PlatformDashboard() {
               </Button>
             </Space>
           }
-          style={{ borderRadius: 16 }}
+          style={{ borderRadius: 12, borderColor: BRAND.border }}
         >
           <div
             className="platform-doc-type-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: isMobile
-                ? 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))'
-                : `repeat(auto-fill, minmax(${DOC_TYPE_TILE_PX}px, ${DOC_TYPE_TILE_PX}px))`,
-              gap: 16,
+                ? `repeat(auto-fill, minmax(min(100%, ${DOC_TYPE_MIN_PX}px), 1fr))`
+                : `repeat(auto-fill, minmax(${DOC_TYPE_MIN_PX}px, ${DOC_TYPE_MAX_PX}px))`,
+              gap: 14,
               justifyContent: 'start',
             }}
           >
             {types.map((item) => (
-              <Card
+              <DocumentTypeCard
                 key={item.id}
-                size="small"
-                hoverable
-                className="platform-doc-type-tile"
-                onClick={() => navigate(`/platform/document-types/${item.id}`)}
-                style={{
-                  width: isMobile ? '100%' : DOC_TYPE_TILE_PX,
-                  height: isMobile ? undefined : DOC_TYPE_TILE_PX,
-                  aspectRatio: isMobile ? '1' : undefined,
-                  borderRadius: 12,
-                  cursor: 'pointer',
-                  overflow: 'hidden',
-                }}
-                styles={{
-                  body: {
-                    height: '100%',
-                    boxSizing: 'border-box',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                    padding: 16,
-                  },
-                }}
-              >
-                <Text
-                  strong
-                  style={{
-                    fontSize: 15,
-                    lineHeight: 1.35,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {item.name}
-                </Text>
-                <Space size={[4, 4]} wrap style={{ flexShrink: 0 }}>
-                  <Tag style={{ margin: 0 }}>{item.slug}</Tag>
-                  {flowStatus(item)}
-                </Space>
-                <Text
-                  type="secondary"
-                  style={{
-                    fontSize: 12,
-                    lineHeight: 1.4,
-                    marginTop: 'auto',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {item.description || 'No description'}
-                </Text>
-              </Card>
+                item={item}
+                onOpen={() => navigate(`/platform/document-types/${item.id}`)}
+              />
             ))}
           </div>
         </Card>
