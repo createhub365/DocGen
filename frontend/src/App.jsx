@@ -20,6 +20,7 @@ import GeneratedDocumentsPage from './pages/platform/GeneratedDocumentsPage'
 import OptionListsPage from './pages/platform/OptionListsPage'
 import SettingsPage from './pages/platform/SettingsPage'
 import PlatformPlaceholderPage from './pages/platform/PlatformPlaceholderPage'
+import UsersPage from './pages/platform/UsersPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -98,15 +99,7 @@ function AppRoutes() {
         <Route path="/platform/generated" element={<GeneratedDocumentsPage />} />
         <Route path="/platform/option-lists" element={<OptionListsPage />} />
         <Route path="/platform/settings" element={<SettingsPage />} />
-        <Route
-          path="/platform/users"
-          element={
-            <PlatformPlaceholderPage
-              title="Users"
-              blurb="Org user management UI coming in a later phase."
-            />
-          }
-        />
+        <Route path="/platform/users" element={<UsersPage />} />
         <Route
           path="/platform/audit-log"
           element={
