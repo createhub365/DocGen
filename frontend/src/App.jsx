@@ -8,6 +8,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import AdminPanel from './components/AdminPanel'
 import AppLayout from './components/AppLayout'
 import PlatformLayout, { ProtectedPlatformRoute } from './components/PlatformLayout'
+import RequireOrgAdmin from './components/RequireOrgAdmin'
 import FullPageSpinner from './components/ui/FullPageSpinner'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { PlatformAuthProvider, usePlatformAuth } from './context/PlatformAuthContext'
@@ -97,16 +98,39 @@ function AppRoutes() {
           element={<GenerateDocumentPage />}
         />
         <Route path="/platform/generated" element={<GeneratedDocumentsPage />} />
-        <Route path="/platform/option-lists" element={<OptionListsPage />} />
-        <Route path="/platform/settings" element={<SettingsPage />} />
-        <Route path="/platform/users" element={<UsersPage />} />
+        <Route
+          path="/platform/option-lists"
+          element={
+            <RequireOrgAdmin>
+              <OptionListsPage />
+            </RequireOrgAdmin>
+          }
+        />
+        <Route
+          path="/platform/settings"
+          element={
+            <RequireOrgAdmin>
+              <SettingsPage />
+            </RequireOrgAdmin>
+          }
+        />
+        <Route
+          path="/platform/users"
+          element={
+            <RequireOrgAdmin>
+              <UsersPage />
+            </RequireOrgAdmin>
+          }
+        />
         <Route
           path="/platform/audit-log"
           element={
-            <PlatformPlaceholderPage
-              title="Audit log"
-              blurb="Audit log viewer coming in a later phase."
-            />
+            <RequireOrgAdmin>
+              <PlatformPlaceholderPage
+                title="Audit log"
+                blurb="Audit log viewer coming in a later phase."
+              />
+            </RequireOrgAdmin>
           }
         />
       </Route>

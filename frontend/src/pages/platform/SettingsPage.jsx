@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Navigate } from 'react-router-dom'
 import {
   Alert,
   Button,
@@ -13,7 +12,6 @@ import {
   readPlatformErrorDetail,
   regenerateOrgThumbnails,
 } from '../../api/platformClient'
-import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 
@@ -21,8 +19,6 @@ const { Title, Paragraph, Text } = Typography
 
 export default function SettingsPage() {
   const message = useAppMessage()
-  const { isOrgAdmin } = usePlatformAuth()
-  const isAdmin = isOrgAdmin
 
   const [running, setRunning] = useState(false)
   const [summary, setSummary] = useState(null)
@@ -42,10 +38,6 @@ export default function SettingsPage() {
     []
   )
   usePlatformPageChrome({ header })
-
-  if (!isAdmin) {
-    return <Navigate to="/platform" replace />
-  }
 
   const onRegenerate = async () => {
     setRunning(true)
