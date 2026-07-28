@@ -379,11 +379,12 @@ export default function TemplatesPanel({
   return (
     <div>
       <Paragraph type="secondary" style={{ marginTop: 0 }}>
-        Each uploaded Word file is a document under this type. Map its placeholders, then
-        generate from that specific document.
+        {canManage
+          ? 'Each uploaded Word file is a document under this type. Map its placeholders, then generate from that specific document.'
+          : 'Each file here is a document you can generate from. Pick one and click Generate.'}
       </Paragraph>
 
-      {templates.length >= 1 && (
+      {canManage && templates.length >= 1 && (
         <Alert
           type="info"
           showIcon
@@ -396,15 +397,13 @@ export default function TemplatesPanel({
         <Alert type="error" showIcon message={loadError} style={{ marginBottom: 16 }} />
       )}
 
-      <Card style={{ borderRadius: 16, marginBottom: 16 }}>
-        {canManage ? (
+      {canManage ? (
+        <Card style={{ borderRadius: 16, marginBottom: 16 }}>
           <Button type="primary" onClick={openAddModal}>
             {addLabel}
           </Button>
-        ) : (
-          <Text type="secondary">View and generate from existing documents.</Text>
-        )}
-      </Card>
+        </Card>
+      ) : null}
 
       {lastUpload && canManage && (
         <Alert
@@ -431,7 +430,11 @@ export default function TemplatesPanel({
 
       <Card title="Documents" style={{ borderRadius: 16 }}>
         {!templates.length ? (
-          <Empty description="No documents uploaded yet." />
+          <Empty
+            description={
+              canManage ? 'No documents uploaded yet.' : 'No documents available yet.'
+            }
+          />
         ) : (
           <List
             grid={{ gutter: 16, column: 1 }}
@@ -440,10 +443,12 @@ export default function TemplatesPanel({
               const isComplete = completeness[item.id] === true
               const canGenerate = isComplete && hasPublishedFlow
               let generateTip = 'Generate this document'
-              if (!hasPublishedFlow) {
-                generateTip = 'Publish a flow first, then generate'
-              } else if (!isComplete) {
-                generateTip = 'Open this document and finish mapping before generating'
+              if (!canGenerate) {
+                generateTip = canManage
+                  ? !hasPublishedFlow
+                    ? 'Publish a flow first, then generate'
+                    : 'Open this document and finish mapping before generating'
+                  : 'This document isn’t ready to generate yet'
               }
               const title = documentTitle(item)
               const fileLabel = basename(item.docx_filename)
@@ -482,30 +487,35 @@ export default function TemplatesPanel({
                                 />
                               </Tooltip>
                             ) : null}
-                            {isComplete ? (
-                              <Tag color="green">Complete</Tag>
+                            {canManage ? (
+                              isComplete ? (
+                                <Tag color="green">Complete</Tag>
+                              ) : (
+                                <Tag color="orange">Incomplete</Tag>
+                              )
+                            ) : isComplete && hasPublishedFlow ? (
+                              <Tag color="green">Ready</Tag>
                             ) : (
-                              <Tag color="orange">Incomplete</Tag>
+                              <Tag color="orange">Not ready</Tag>
                             )}
                           </Space>
                           <div>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                              {fileLabel} · Uploaded {formatDate(item.created_at)} · id{' '}
-                              {item.id}
+                              {canManage
+                                ? `${fileLabel} · Uploaded ${formatDate(item.created_at)} · id ${item.id}`
+                                : fileLabel}
                             </Text>
                           </div>
                         </div>
                       </Space>
                       <Space wrap className="platform-doc-card-actions">
-                        {canManage ? (
-                          <Button
-                            className="platform-touch-target"
-                            icon={<LinkOutlined />}
-                            onClick={() => setMappingTemplate(item)}
-                          >
-                            Open
-                          </Button>
-                        ) : null}
+                        <Button
+                          className="platform-touch-target"
+                          icon={<LinkOutlined />}
+                          onClick={() => setMappingTemplate(item)}
+                        >
+                          Open
+                        </Button>
                         <Tooltip title={generateTip}>
                           <span>
                             <Button

@@ -269,10 +269,16 @@ export default function PlaceholderMappingPanel({
 
       <Space align="center" style={{ marginBottom: 8 }} wrap>
         <Title level={4} style={{ margin: 0 }}>
-          Map placeholders
+          {canEditMappings ? 'Map placeholders' : 'Document'}
         </Title>
         <Tag color={isComplete ? 'green' : 'orange'}>
-          {isComplete ? 'Complete' : 'Incomplete'}
+          {canEditMappings
+            ? isComplete
+              ? 'Complete'
+              : 'Incomplete'
+            : isComplete
+              ? 'Ready'
+              : 'Not ready'}
         </Tag>
       </Space>
       <Text strong style={{ display: 'block' }}>
@@ -282,11 +288,17 @@ export default function PlaceholderMappingPanel({
         {basename(template.docx_filename)}
       </Text>
       <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-        {mappedCount} of {detected.length} placeholders mapped
-        {unmapped.length ? ` · ${unmapped.length} still unmapped` : ''}
-        {canEditMappings && suggestedCount
-          ? ` · ${suggestedCount} suggested (unsaved — review and Save)`
-          : ''}
+        {canEditMappings
+          ? `${mappedCount} of ${detected.length} placeholders mapped${
+              unmapped.length ? ` · ${unmapped.length} still unmapped` : ''
+            }${
+              suggestedCount
+                ? ` · ${suggestedCount} suggested (unsaved — review and Save)`
+                : ''
+            }`
+          : isComplete
+            ? 'This document is ready to generate.'
+            : 'This document isn’t ready to generate yet.'}
       </Text>
 
       {!canEditMappings && !loadError && (
@@ -295,7 +307,7 @@ export default function PlaceholderMappingPanel({
           showIcon
           style={{ marginBottom: 16 }}
           message="View only"
-          description="Placeholder mapping can only be edited by organization admins. You can review the current mapping here."
+          description="Ask an organization admin if something looks wrong or isn’t ready."
         />
       )}
 

@@ -1196,6 +1196,7 @@ function FlowBuilderChrome({
   children,
 }) {
   const { isMobile } = useBreakpoint()
+  const { isOrgAdmin } = usePlatformAuth()
   const header = useMemo(
     () => (
       <>
@@ -1255,31 +1256,33 @@ function FlowBuilderChrome({
               {!isMobile ? 'Edit' : null}
             </Button>
           ) : null}
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '4px 10px',
-              borderRadius: 999,
-              background: '#faf3f3',
-              border: '1px solid #f0e4e4',
-            }}
-          >
+          {isOrgAdmin ? (
             <span
-              aria-hidden
               style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: status.dot || '#8c8c8c',
-                flexShrink: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '4px 10px',
+                borderRadius: 999,
+                background: '#faf3f3',
+                border: '1px solid #f0e4e4',
               }}
-            />
-            <Text style={{ fontSize: 13, fontWeight: 600, color: '#434343' }}>
-              Flow: {status.text}
-            </Text>
-          </span>
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: status.dot || '#8c8c8c',
+                  flexShrink: 0,
+                }}
+              />
+              <Text style={{ fontSize: 13, fontWeight: 600, color: '#434343' }}>
+                Flow: {status.text}
+              </Text>
+            </span>
+          ) : null}
         </Space>
         <div
           style={{
@@ -1292,7 +1295,9 @@ function FlowBuilderChrome({
         >
           {!isMobile ? (
             <Paragraph type="secondary" style={{ margin: 0 }}>
-              Manage documents (templates) and the generation flow for this type.
+              {isOrgAdmin
+                ? 'Manage documents (templates) and the generation flow for this type.'
+                : 'View and generate documents for this type.'}
             </Paragraph>
           ) : (
             <span />
@@ -1322,6 +1327,7 @@ function FlowBuilderChrome({
       status.dot,
       status.text,
       isMobile,
+      isOrgAdmin,
     ]
   )
 
