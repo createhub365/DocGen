@@ -11,7 +11,11 @@ const { Text } = Typography
 
 /**
  * Full-size document preview for platform org templates.
- * Prefers live docx-preview (shared util with legacy); falls back to page-1 thumbnail PNG.
+ *
+ * Prefers the LibreOffice/PDF page-1 thumbnail (same path as card thumbs) so
+ * floating/anchored logos and letterheads match Word. docx-preview is only a
+ * fallback when no thumbnail exists — it does not handle wrapSquare anchors
+ * (logo can overlap header text).
  */
 export default function OrgDocumentPreviewModal({
   documentTypeId,
@@ -22,7 +26,7 @@ export default function OrgDocumentPreviewModal({
   onClose,
 }) {
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState('idle') // idle | docx | thumbnail | error
+  const [mode, setMode] = useState('idle') // idle | thumbnail | docx | error
   const [thumbUrl, setThumbUrl] = useState(null)
   const [docxBlob, setDocxBlob] = useState(null)
   const docxHostRef = useRef(null)
@@ -43,30 +47,38 @@ export default function OrgDocumentPreviewModal({
     setLoading(true)
     setMode('idle')
     setDocxBlob(null)
+    setThumbUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
 
     async function load() {
+      // 1) Prefer PDF-faithful page-1 thumbnail when available
+      if (hasThumbnail) {
+        const url = await fetchOrgTemplateThumbnailUrl(documentTypeId, templateId)
+        if (cancelled) {
+          if (url) URL.revokeObjectURL(url)
+          return
+        }
+        if (url) {
+          setThumbUrl(url)
+          setMode('thumbnail')
+          setLoading(false)
+          return
+        }
+      }
+
+      // 2) Fallback: HTML docx-preview (known gaps for floating images)
       try {
         const blob = await fetchOrgTemplateDocxBlob(documentTypeId, templateId)
         if (cancelled) return
         setDocxBlob(blob)
         setMode('docx')
       } catch {
-        if (cancelled) return
-        if (hasThumbnail) {
-          const url = await fetchOrgTemplateThumbnailUrl(documentTypeId, templateId)
-          if (cancelled) {
-            if (url) URL.revokeObjectURL(url)
-            return
-          }
-          if (url) {
-            setThumbUrl(url)
-            setMode('thumbnail')
-            setLoading(false)
-            return
-          }
+        if (!cancelled) {
+          setMode('error')
+          setLoading(false)
         }
-        setMode('error')
-        setLoading(false)
       }
     }
 
@@ -89,22 +101,10 @@ export default function OrgDocumentPreviewModal({
         await renderDocxToContainer(docxHostRef.current, docxBlob, { pageWidth: 794 })
         if (!cancelled) setLoading(false)
       } catch {
-        if (cancelled) return
-        if (hasThumbnail) {
-          const url = await fetchOrgTemplateThumbnailUrl(documentTypeId, templateId)
-          if (cancelled) {
-            if (url) URL.revokeObjectURL(url)
-            return
-          }
-          if (url) {
-            setThumbUrl(url)
-            setMode('thumbnail')
-            setLoading(false)
-            return
-          }
+        if (!cancelled) {
+          setMode('error')
+          setLoading(false)
         }
-        setMode('error')
-        setLoading(false)
       }
     }
 
@@ -113,7 +113,7 @@ export default function OrgDocumentPreviewModal({
       cancelled = true
       if (docxHostRef.current) docxHostRef.current.innerHTML = ''
     }
-  }, [open, mode, docxBlob, documentTypeId, templateId, hasThumbnail])
+  }, [open, mode, docxBlob])
 
   useEffect(() => {
     return () => {
@@ -170,6 +170,12 @@ export default function OrgDocumentPreviewModal({
             alt=""
             style={{ width: '100%', height: 'auto', display: 'block' }}
           />
+          <Text
+            type="secondary"
+            style={{ display: 'block', textAlign: 'center', padding: '8px 12px' }}
+          >
+            Page 1 preview (matches Word/PDF layout)
+          </Text>
         </div>
       )}
       {mode === 'docx' && (

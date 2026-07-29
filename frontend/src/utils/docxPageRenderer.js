@@ -14,6 +14,9 @@ const DEFAULT_RENDER_OPTIONS = {
   ignoreFonts: false,
   renderHeaders: true,
   renderFooters: true,
+  // Note: docx-preview does not apply wrapSquare/wrapTight for wp:anchor
+  // drawings — floating logos often overlap text. Prefer PDF thumbnails
+  // for user-facing preview when available (see OrgDocumentPreviewModal).
 }
 
 async function getDocxPreview() {
