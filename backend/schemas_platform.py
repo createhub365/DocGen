@@ -417,6 +417,31 @@ class TemplateDisplayNameUpdate(BaseModel):
     display_name: str
 
 
+class TemplatePatch(BaseModel):
+    """Partial update: rename and/or move between folders (folder_id null clears)."""
+
+    display_name: Optional[str] = None
+    folder_id: Optional[int] = None
+
+
+class TemplateFolderCreate(BaseModel):
+    name: str
+
+
+class TemplateFolderUpdate(BaseModel):
+    name: str
+
+
+class TemplateFolderRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    org_id: str
+    org_document_type_id: int
+    name: str
+    created_at: datetime
+
+
 class GeneratedDocumentOrgFieldsUpdate(BaseModel):
     org_id: Optional[str] = None
 

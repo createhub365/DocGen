@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Alert,
   Button,
   Card,
+  Dropdown,
   Empty,
   Form,
   Input,
   Modal,
+  Select,
   Space,
   Spin,
   Tag,
@@ -16,19 +18,29 @@ import {
   Upload,
 } from 'antd'
 import {
+  ArrowLeftOutlined,
   DeleteOutlined,
   EditOutlined,
   FileWordOutlined,
+  FolderAddOutlined,
+  FolderOpenOutlined,
+  FolderOutlined,
   InboxOutlined,
   LinkOutlined,
+  MoreOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons'
 import {
+  createTemplateFolder,
   deleteOrgTemplate,
+  deleteTemplateFolder,
   fetchOrgTemplateThumbnailUrl,
   listOrgTemplates,
+  listTemplateFolders,
+  moveOrgTemplate,
   readPlatformErrorDetail,
   renameOrgTemplate,
+  renameTemplateFolder,
   uploadOrgTemplate,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
@@ -217,6 +229,8 @@ export default function TemplatesPanel({
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [templates, setTemplates] = useState([])
+  const [folders, setFolders] = useState([])
+  const [activeFolderId, setActiveFolderId] = useState(null) // null = root
   const [completeness, setCompleteness] = useState({})
   const [loadError, setLoadError] = useState(null)
   const [uploadError, setUploadError] = useState(null)
@@ -231,13 +245,26 @@ export default function TemplatesPanel({
   const [renameTarget, setRenameTarget] = useState(null)
   const [renameLoading, setRenameLoading] = useState(false)
   const [renameForm] = Form.useForm()
+  const [folderModalOpen, setFolderModalOpen] = useState(false)
+  const [folderModalMode, setFolderModalMode] = useState('create') // create | rename
+  const [folderTarget, setFolderTarget] = useState(null)
+  const [folderSaving, setFolderSaving] = useState(false)
+  const [folderForm] = Form.useForm()
+  const [moveOpen, setMoveOpen] = useState(false)
+  const [moveTarget, setMoveTarget] = useState(null)
+  const [moveFolderId, setMoveFolderId] = useState(null)
+  const [moveLoading, setMoveLoading] = useState(false)
 
   const loadTemplates = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
     try {
-      const rows = await listOrgTemplates(documentTypeId)
-      setTemplates(rows)
+      const [rows, folderRows] = await Promise.all([
+        listOrgTemplates(documentTypeId),
+        listTemplateFolders(documentTypeId),
+      ])
+      setTemplates(rows || [])
+      setFolders(folderRows || [])
       setCompleteness(
         Object.fromEntries(
           (rows || []).map((row) => [row.id, !!row.is_complete])
@@ -251,8 +278,33 @@ export default function TemplatesPanel({
   }, [documentTypeId])
 
   useEffect(() => {
+    setActiveFolderId(null)
     loadTemplates()
   }, [loadTemplates])
+
+  const activeFolder = useMemo(
+    () => folders.find((f) => f.id === activeFolderId) || null,
+    [folders, activeFolderId]
+  )
+
+  const rootTemplates = useMemo(
+    () => templates.filter((t) => t.folder_id == null),
+    [templates]
+  )
+
+  const folderTemplates = useMemo(() => {
+    if (activeFolderId == null) return []
+    return templates.filter((t) => t.folder_id === activeFolderId)
+  }, [templates, activeFolderId])
+
+  const folderCounts = useMemo(() => {
+    const counts = {}
+    for (const f of folders) counts[f.id] = 0
+    for (const t of templates) {
+      if (t.folder_id != null) counts[t.folder_id] = (counts[t.folder_id] || 0) + 1
+    }
+    return counts
+  }, [folders, templates])
 
   const closeAddModal = () => {
     setAddOpen(false)
@@ -265,6 +317,9 @@ export default function TemplatesPanel({
     setUploadError(null)
     setFileList([])
     addForm.resetFields()
+    if (activeFolderId != null) {
+      addForm.setFieldsValue({ folder_id: activeFolderId })
+    }
     setAddOpen(true)
   }
 
@@ -300,7 +355,13 @@ export default function TemplatesPanel({
     setUploadError(null)
     setLastUpload(null)
     try {
-      const result = await uploadOrgTemplate(documentTypeId, file, displayName)
+      const folderId = values.folder_id ?? null
+      const result = await uploadOrgTemplate(
+        documentTypeId,
+        file,
+        displayName,
+        folderId
+      )
       const ids = placeholderIds(result.placeholders)
       setLastUpload({
         id: result.id,
@@ -318,6 +379,92 @@ export default function TemplatesPanel({
       )
     } finally {
       setUploading(false)
+    }
+  }
+
+  const openCreateFolder = () => {
+    setFolderModalMode('create')
+    setFolderTarget(null)
+    folderForm.resetFields()
+    setFolderModalOpen(true)
+  }
+
+  const openRenameFolder = (folder) => {
+    setFolderModalMode('rename')
+    setFolderTarget(folder)
+    folderForm.setFieldsValue({ name: folder.name })
+    setFolderModalOpen(true)
+  }
+
+  const onFolderSave = async (values) => {
+    const name = String(values.name || '').trim()
+    if (!name) return
+    setFolderSaving(true)
+    try {
+      if (folderModalMode === 'create') {
+        await createTemplateFolder(documentTypeId, name)
+        message.success('Folder created')
+      } else if (folderTarget) {
+        await renameTemplateFolder(folderTarget.id, name)
+        message.success('Folder renamed')
+      }
+      setFolderModalOpen(false)
+      setFolderTarget(null)
+      folderForm.resetFields()
+      await loadTemplates()
+    } catch (error) {
+      message.error((await readPlatformErrorDetail(error)) || 'Could not save folder')
+    } finally {
+      setFolderSaving(false)
+    }
+  }
+
+  const confirmDeleteFolder = (folder) => {
+    const count = folderCounts[folder.id] || 0
+    Modal.confirm({
+      title: `Delete folder “${folder.name}”?`,
+      content:
+        count > 0
+          ? `${count} document${count === 1 ? '' : 's'} inside will move to Uncategorized — they will not be deleted.`
+          : 'This folder is empty.',
+      okText: 'Delete folder',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await deleteTemplateFolder(folder.id)
+          message.success(`Deleted folder “${folder.name}”`)
+          if (activeFolderId === folder.id) setActiveFolderId(null)
+          await loadTemplates()
+        } catch (error) {
+          message.error(
+            (await readPlatformErrorDetail(error)) || 'Could not delete folder'
+          )
+          throw error
+        }
+      },
+    })
+  }
+
+  const openMove = (item) => {
+    setMoveTarget(item)
+    setMoveFolderId(item.folder_id ?? null)
+    setMoveOpen(true)
+  }
+
+  const onMoveSave = async () => {
+    if (!moveTarget) return
+    setMoveLoading(true)
+    try {
+      await moveOrgTemplate(moveTarget.id, moveFolderId)
+      message.success('Document moved')
+      setMoveOpen(false)
+      setMoveTarget(null)
+      await loadTemplates()
+    } catch (error) {
+      message.error((await readPlatformErrorDetail(error)) || 'Could not move document')
+    } finally {
+      setMoveLoading(false)
     }
   }
 
@@ -389,6 +536,179 @@ export default function TemplatesPanel({
     })
   }, [])
 
+  const renderDocGrid = (items) => (
+    <div
+      className="platform-doc-card-grid"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile
+          ? `repeat(auto-fill, minmax(min(100%, ${DOC_CARD_MIN_PX}px), 1fr))`
+          : `repeat(auto-fill, minmax(${DOC_CARD_MIN_PX}px, ${DOC_CARD_MAX_PX}px))`,
+        gap: 16,
+        justifyContent: 'start',
+      }}
+    >
+      {items.map((item) => {
+        const isComplete = completeness[item.id] === true
+        const canGenerate = isComplete && hasPublishedFlow
+        let generateTip = 'Generate this document'
+        if (!canGenerate) {
+          generateTip = canManage
+            ? !hasPublishedFlow
+              ? 'Publish a flow first, then generate'
+              : 'Open this document and finish mapping before generating'
+            : 'This document isn’t ready to generate yet'
+        }
+        const title = documentTitle(item)
+        const fileLabel = basename(item.docx_filename)
+        const statusTag = canManage ? (
+          isComplete ? (
+            <Tag color="green" style={{ margin: 0 }}>
+              Complete
+            </Tag>
+          ) : (
+            <Tag color="orange" style={{ margin: 0 }}>
+              Incomplete
+            </Tag>
+          )
+        ) : isComplete && hasPublishedFlow ? (
+          <Tag color="green" style={{ margin: 0 }}>
+            Ready
+          </Tag>
+        ) : (
+          <Tag color="orange" style={{ margin: 0 }}>
+            Not ready
+          </Tag>
+        )
+
+        return (
+          <Card
+            key={item.id}
+            size="small"
+            styles={{ body: { padding: 12 } }}
+            style={{
+              borderRadius: 14,
+              width: '100%',
+              maxWidth: isMobile ? undefined : DOC_CARD_MAX_PX,
+            }}
+          >
+            <div style={{ position: 'relative', marginBottom: 10 }}>
+              <DocumentThumbPreview
+                documentTypeId={documentTypeId}
+                templateId={item.id}
+                hasThumbnail={!!item.has_thumbnail}
+                onPreview={() => setPreviewTemplate(item)}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  left: 8,
+                  pointerEvents: 'none',
+                }}
+              >
+                {statusTag}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 10, minWidth: 0 }}>
+              <Space wrap size={4} style={{ width: '100%' }}>
+                <Text
+                  strong
+                  style={{
+                    fontSize: 14,
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '100%',
+                  }}
+                  title={title}
+                >
+                  {title}
+                </Text>
+                {canManage ? (
+                  <Tooltip title="Rename">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<EditOutlined />}
+                      aria-label="Rename document"
+                      onClick={() => openRename(item)}
+                    />
+                  </Tooltip>
+                ) : null}
+              </Space>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {canManage
+                  ? `${fileLabel} · ${formatDate(item.created_at)}`
+                  : fileLabel}
+              </Text>
+            </div>
+
+            <Space wrap size={8} className="platform-doc-card-actions">
+              <Button
+                className="platform-touch-target"
+                size="small"
+                icon={<LinkOutlined />}
+                onClick={() => setMappingTemplate(item)}
+              >
+                Open
+              </Button>
+              <Tooltip title={generateTip}>
+                <span>
+                  <Button
+                    type="primary"
+                    size="small"
+                    className="platform-touch-target"
+                    icon={<ThunderboltOutlined />}
+                    disabled={!canGenerate}
+                    onClick={() =>
+                      navigate(
+                        `/platform/document-types/${documentTypeId}/generate/${item.id}`
+                      )
+                    }
+                  >
+                    Generate
+                  </Button>
+                </span>
+              </Tooltip>
+              {canManage ? (
+                <Dropdown
+                  menu={{
+                    items: [
+                      {
+                        key: 'move',
+                        label: 'Move to folder',
+                        icon: <FolderOutlined />,
+                        onClick: () => openMove(item),
+                      },
+                      {
+                        key: 'delete',
+                        label: 'Delete',
+                        danger: true,
+                        icon: <DeleteOutlined />,
+                        onClick: () => confirmDelete(item),
+                      },
+                    ],
+                  }}
+                  trigger={['click']}
+                >
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<MoreOutlined />}
+                    aria-label="More document actions"
+                  />
+                </Dropdown>
+              ) : null}
+            </Space>
+          </Card>
+        )
+      })}
+    </div>
+  )
+
   if (mappingTemplate) {
     return (
       <PlaceholderMappingPanel
@@ -445,9 +765,14 @@ export default function TemplatesPanel({
 
       {canManage ? (
         <Card style={{ borderRadius: 16, marginBottom: 16 }}>
-          <Button type="primary" onClick={openAddModal}>
-            {addLabel}
-          </Button>
+          <Space wrap>
+            <Button type="primary" onClick={openAddModal}>
+              {addLabel}
+            </Button>
+            <Button icon={<FolderAddOutlined />} onClick={openCreateFolder}>
+              New folder
+            </Button>
+          </Space>
         </Card>
       ) : null}
 
@@ -474,167 +799,145 @@ export default function TemplatesPanel({
         />
       )}
 
-      <Card title="Documents" style={{ borderRadius: 16 }}>
-        {!templates.length ? (
+      <Card
+        title={
+          activeFolder ? (
+            <Space>
+              <Button
+                type="text"
+                size="small"
+                icon={<ArrowLeftOutlined />}
+                onClick={() => setActiveFolderId(null)}
+                aria-label="Back to all documents"
+              />
+              <FolderOpenOutlined />
+              <span>{activeFolder.name}</span>
+            </Space>
+          ) : (
+            'Documents'
+          )
+        }
+        style={{ borderRadius: 16 }}
+      >
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 32 }}>
+            <Spin />
+          </div>
+        ) : !templates.length && !folders.length ? (
           <Empty
             description={
               canManage ? 'No documents uploaded yet.' : 'No documents available yet.'
             }
           />
-        ) : (
-          <div
-            className="platform-doc-card-grid"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile
-                ? `repeat(auto-fill, minmax(min(100%, ${DOC_CARD_MIN_PX}px), 1fr))`
-                : `repeat(auto-fill, minmax(${DOC_CARD_MIN_PX}px, ${DOC_CARD_MAX_PX}px))`,
-              gap: 16,
-              justifyContent: 'start',
-            }}
-          >
-            {templates.map((item) => {
-              const isComplete = completeness[item.id] === true
-              const canGenerate = isComplete && hasPublishedFlow
-              let generateTip = 'Generate this document'
-              if (!canGenerate) {
-                generateTip = canManage
-                  ? !hasPublishedFlow
-                    ? 'Publish a flow first, then generate'
-                    : 'Open this document and finish mapping before generating'
-                  : 'This document isn’t ready to generate yet'
-              }
-              const title = documentTitle(item)
-              const fileLabel = basename(item.docx_filename)
-              const statusTag = canManage ? (
-                isComplete ? (
-                  <Tag color="green" style={{ margin: 0 }}>
-                    Complete
-                  </Tag>
-                ) : (
-                  <Tag color="orange" style={{ margin: 0 }}>
-                    Incomplete
-                  </Tag>
-                )
-              ) : isComplete && hasPublishedFlow ? (
-                <Tag color="green" style={{ margin: 0 }}>
-                  Ready
-                </Tag>
-              ) : (
-                <Tag color="orange" style={{ margin: 0 }}>
-                  Not ready
-                </Tag>
-              )
-
-              return (
-                <Card
-                  key={item.id}
-                  size="small"
-                  styles={{ body: { padding: 12 } }}
-                  style={{
-                    borderRadius: 14,
-                    width: '100%',
-                    maxWidth: isMobile ? undefined : DOC_CARD_MAX_PX,
-                  }}
-                >
-                  <div style={{ position: 'relative', marginBottom: 10 }}>
-                    <DocumentThumbPreview
-                      documentTypeId={documentTypeId}
-                      templateId={item.id}
-                      hasThumbnail={!!item.has_thumbnail}
-                      onPreview={() => setPreviewTemplate(item)}
-                    />
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 8,
-                        left: 8,
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      {statusTag}
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: 10, minWidth: 0 }}>
-                    <Space wrap size={4} style={{ width: '100%' }}>
-                      <Text
-                        strong
-                        style={{
-                          fontSize: 14,
-                          display: 'block',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          maxWidth: '100%',
-                        }}
-                        title={title}
-                      >
-                        {title}
+        ) : activeFolderId == null ? (
+          <>
+            {folders.length > 0 && (
+              <div
+                className="platform-doc-card-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile
+                    ? `repeat(auto-fill, minmax(min(100%, ${DOC_CARD_MIN_PX}px), 1fr))`
+                    : `repeat(auto-fill, minmax(${DOC_CARD_MIN_PX}px, ${DOC_CARD_MAX_PX}px))`,
+                  gap: 16,
+                  justifyContent: 'start',
+                  marginBottom: rootTemplates.length ? 24 : 0,
+                }}
+              >
+                {folders.map((folder) => (
+                  <Card
+                    key={`folder-${folder.id}`}
+                    size="small"
+                    hoverable
+                    styles={{ body: { padding: 16 } }}
+                    style={{ borderRadius: 14, cursor: 'pointer' }}
+                    onClick={() => setActiveFolderId(folder.id)}
+                  >
+                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <FolderOutlined style={{ fontSize: 28, color: '#8B1A1A' }} />
+                        {canManage ? (
+                          <Dropdown
+                            menu={{
+                              items: [
+                                {
+                                  key: 'rename',
+                                  label: 'Rename',
+                                  icon: <EditOutlined />,
+                                  onClick: ({ domEvent }) => {
+                                    domEvent.stopPropagation()
+                                    openRenameFolder(folder)
+                                  },
+                                },
+                                {
+                                  key: 'delete',
+                                  label: 'Delete',
+                                  danger: true,
+                                  icon: <DeleteOutlined />,
+                                  onClick: ({ domEvent }) => {
+                                    domEvent.stopPropagation()
+                                    confirmDeleteFolder(folder)
+                                  },
+                                },
+                              ],
+                            }}
+                            trigger={['click']}
+                          >
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<MoreOutlined />}
+                              aria-label="Folder actions"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </Dropdown>
+                        ) : null}
+                      </Space>
+                      <Text strong ellipsis style={{ maxWidth: '100%' }} title={folder.name}>
+                        {folder.name}
                       </Text>
-                      {canManage ? (
-                        <Tooltip title="Rename">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<EditOutlined />}
-                            aria-label="Rename document"
-                            onClick={() => openRename(item)}
-                          />
-                        </Tooltip>
-                      ) : null}
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {folderCounts[folder.id] || 0} document
+                        {(folderCounts[folder.id] || 0) === 1 ? '' : 's'}
+                      </Text>
                     </Space>
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                      {canManage
-                        ? `${fileLabel} · ${formatDate(item.created_at)}`
-                        : fileLabel}
-                    </Text>
-                  </div>
+                  </Card>
+                ))}
+              </div>
+            )}
 
-                  <Space wrap size={8} className="platform-doc-card-actions">
-                    <Button
-                      className="platform-touch-target"
-                      size="small"
-                      icon={<LinkOutlined />}
-                      onClick={() => setMappingTemplate(item)}
-                    >
-                      Open
-                    </Button>
-                    <Tooltip title={generateTip}>
-                      <span>
-                        <Button
-                          type="primary"
-                          size="small"
-                          className="platform-touch-target"
-                          icon={<ThunderboltOutlined />}
-                          disabled={!canGenerate}
-                          onClick={() =>
-                            navigate(
-                              `/platform/document-types/${documentTypeId}/generate/${item.id}`
-                            )
-                          }
-                        >
-                          Generate
-                        </Button>
-                      </span>
-                    </Tooltip>
-                    {canManage ? (
-                      <Tooltip title="Delete document">
-                        <Button
-                          type="text"
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
-                          aria-label="Delete document"
-                          onClick={() => confirmDelete(item)}
-                        />
-                      </Tooltip>
-                    ) : null}
-                  </Space>
-                </Card>
-              )
-            })}
-          </div>
+            {rootTemplates.length > 0 && (
+              <>
+                {folders.length > 0 && (
+                  <Text
+                    type="secondary"
+                    style={{ display: 'block', marginBottom: 12, fontSize: 12 }}
+                  >
+                    Uncategorized
+                  </Text>
+                )}
+                {renderDocGrid(rootTemplates)}
+              </>
+            )}
+
+            {!folders.length && !rootTemplates.length && (
+              <Empty description="Nothing here yet." />
+            )}
+          </>
+        ) : (
+          <>
+            {!folderTemplates.length ? (
+              <Empty
+                description={
+                  canManage
+                    ? 'This folder is empty — upload a document or move one here.'
+                    : 'This folder is empty.'
+                }
+              />
+            ) : (
+              renderDocGrid(folderTemplates)
+            )}
+          </>
         )}
       </Card>
 
@@ -668,6 +971,17 @@ export default function TemplatesPanel({
           >
             <Input placeholder="e.g. Standard Offer Letter" disabled={uploading} />
           </Form.Item>
+
+          {folders.length > 0 && (
+            <Form.Item name="folder_id" label="Folder (optional)">
+              <Select
+                allowClear
+                placeholder="Uncategorized"
+                disabled={uploading}
+                options={folders.map((f) => ({ value: f.id, label: f.name }))}
+              />
+            </Form.Item>
+          )}
 
           <Form.Item label="Word file (.docx)" required>
             <Dragger
@@ -729,6 +1043,56 @@ export default function TemplatesPanel({
             Save name
           </Button>
         </Form>
+      </Modal>
+
+      <Modal
+        title={folderModalMode === 'create' ? 'New folder' : 'Rename folder'}
+        open={folderModalOpen}
+        onCancel={() => {
+          setFolderModalOpen(false)
+          setFolderTarget(null)
+          folderForm.resetFields()
+        }}
+        footer={null}
+        destroyOnHidden
+      >
+        <Form form={folderForm} layout="vertical" onFinish={onFolderSave} requiredMark={false}>
+          <Form.Item
+            name="name"
+            label="Folder name"
+            rules={[{ required: true, message: 'Folder name is required' }]}
+          >
+            <Input placeholder="e.g. New Zealand" />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" loading={folderSaving} block>
+            {folderModalMode === 'create' ? 'Create folder' : 'Save name'}
+          </Button>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Move to folder"
+        open={moveOpen}
+        onCancel={() => {
+          setMoveOpen(false)
+          setMoveTarget(null)
+        }}
+        onOk={onMoveSave}
+        confirmLoading={moveLoading}
+        okText="Move"
+        destroyOnHidden
+      >
+        <Paragraph type="secondary" style={{ marginTop: 0 }}>
+          {moveTarget ? `Move “${documentTitle(moveTarget)}”` : ''}
+        </Paragraph>
+        <Select
+          style={{ width: '100%' }}
+          value={moveFolderId ?? undefined}
+          onChange={(v) => setMoveFolderId(v ?? null)}
+          allowClear
+          placeholder="Uncategorized"
+          options={folders.map((f) => ({ value: f.id, label: f.name }))}
+        />
       </Modal>
     </div>
   )

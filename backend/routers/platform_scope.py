@@ -179,6 +179,25 @@ def get_org_option_list(
     return row
 
 
+def get_org_template_folder(
+    db: Session,
+    folder_id: int,
+    org_id: str,
+    *,
+    document_type_id: int | None = None,
+) -> models.TemplateFolder:
+    q = db.query(models.TemplateFolder).filter(
+        models.TemplateFolder.id == folder_id,
+        models.TemplateFolder.org_id == org_id,
+    )
+    if document_type_id is not None:
+        q = q.filter(models.TemplateFolder.org_document_type_id == document_type_id)
+    row = q.first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return row
+
+
 def get_org_option_list_item(
     db: Session, item_id: int, org_id: str
 ) -> models.OrgOptionListItem:

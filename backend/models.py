@@ -70,6 +70,7 @@ class Template(Base):
     __table_args__ = (
         Index("ix_templates_org_id", "org_id"),
         Index("ix_templates_org_document_type_id", "org_document_type_id"),
+        Index("ix_templates_folder_id", "folder_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -99,6 +100,10 @@ class Template(Base):
     org_document_type_id = Column(
         Integer, ForeignKey("org_document_types.id"), nullable=True
     )
+    # Platform folder within the org document type (nullable = uncategorized).
+    folder_id = Column(
+        Integer, ForeignKey("template_folders.id", ondelete="SET NULL"), nullable=True
+    )
 
     document_type = relationship("DocumentType")
     company = relationship("Company")
@@ -106,6 +111,7 @@ class Template(Base):
     country = relationship("Country")
     organization = relationship("Organization")
     org_document_type = relationship("OrgDocumentType")
+    folder = relationship("TemplateFolder", back_populates="templates")
     placeholder_mappings = relationship(
         "PlaceholderMapping",
         back_populates="template",
@@ -194,4 +200,5 @@ from models_platform import (  # noqa: E402,F401
     OrgUser,
     OrgUserRole,
     PlaceholderMapping,
+    TemplateFolder,
 )

@@ -26,6 +26,7 @@ from routers import (
     presets,
     org_option_lists,
     org_settings,
+    template_folders,
 )
 from limiter import limiter
 
@@ -111,6 +112,7 @@ app.include_router(presets.router, prefix="/api/platform")
 app.include_router(org_document_types.router, prefix="/api/platform/document-types")
 app.include_router(flow_config.router, prefix="/api/platform")
 app.include_router(org_templates.router, prefix="/api/platform")
+app.include_router(template_folders.router, prefix="/api/platform")
 app.include_router(placeholder_mapping.router, prefix="/api/platform")
 app.include_router(org_documents.router, prefix="/api/platform")
 app.include_router(org_option_lists.router, prefix="/api/platform")

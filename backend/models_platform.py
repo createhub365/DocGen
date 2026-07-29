@@ -237,6 +237,33 @@ class OrgOptionList(Base):
     )
 
 
+class TemplateFolder(Base):
+    """Org-scoped folder for grouping templates within a document type."""
+
+    __tablename__ = "template_folders"
+    __table_args__ = (
+        UniqueConstraint(
+            "org_document_type_id",
+            "name",
+            name="uq_template_folders_type_name",
+        ),
+        Index("ix_template_folders_org_id", "org_id"),
+        Index("ix_template_folders_org_document_type_id", "org_document_type_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
+    org_document_type_id = Column(
+        Integer, ForeignKey("org_document_types.id"), nullable=False
+    )
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    organization = relationship("Organization")
+    document_type = relationship("OrgDocumentType")
+    templates = relationship("Template", back_populates="folder")
+
+
 class OrgOptionListItem(Base):
     __tablename__ = "org_option_list_items"
     __table_args__ = (

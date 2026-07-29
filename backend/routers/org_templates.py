@@ -19,11 +19,12 @@ from routers.platform_scope import (
     ensure_platform_legacy_template_fks,
     get_org_document_type,
     get_org_template,
+    get_org_template_folder,
     log_audit_event,
     org_template_dir,
     unique_docx_name,
 )
-from schemas_platform import TemplateDisplayNameUpdate
+from schemas_platform import TemplatePatch
 from services.logo_storage import (
     delete_template_docx,
     is_remote_path,
@@ -255,6 +256,7 @@ def _template_list_item(
         "id": t.id,
         "org_id": t.org_id,
         "org_document_type_id": t.org_document_type_id,
+        "folder_id": t.folder_id,
         "docx_filename": t.docx_filename,
         "display_name": resolved_display_name(t),
         "is_active": t.is_active,
@@ -265,16 +267,38 @@ def _template_list_item(
     }
 
 
+def _resolve_upload_folder_id(
+    db: Session,
+    *,
+    folder_id: int | None,
+    org_id: str,
+    document_type_id: int,
+) -> int | None:
+    if folder_id is None:
+        return None
+    get_org_template_folder(
+        db, folder_id, org_id, document_type_id=document_type_id
+    )
+    return folder_id
+
+
 @router.post("/{document_type_id}/templates", status_code=status.HTTP_201_CREATED)
 async def upload_org_template(
     document_type_id: int,
     file: UploadFile = File(...),
     display_name: Optional[str] = Form(None),
+    folder_id: Optional[int] = Form(None),
     current: OrgUserContext = Depends(require_org_role("org_admin")),
     db: Session = Depends(get_db),
 ):
     # Ownership check BEFORE reading/saving any file bytes to disk beyond memory.
     org_doc_type = get_org_document_type(db, document_type_id, current.org_id)
+    resolved_folder_id = _resolve_upload_folder_id(
+        db,
+        folder_id=folder_id,
+        org_id=current.org_id,
+        document_type_id=document_type_id,
+    )
 
     if not file.filename or not file.filename.lower().endswith(".docx"):
         raise HTTPException(status_code=400, detail="Only .docx files are accepted")
@@ -306,6 +330,7 @@ async def upload_org_template(
         display_name=label,
         org_id=current.org_id,
         org_document_type_id=org_doc_type.id,
+        folder_id=resolved_folder_id,
         version=1,
         is_active=True,
     )
@@ -321,6 +346,7 @@ async def upload_org_template(
         "id": template.id,
         "org_id": template.org_id,
         "org_document_type_id": template.org_document_type_id,
+        "folder_id": template.folder_id,
         "docx_filename": template.docx_filename,
         "display_name": resolved_display_name(template),
         "placeholders": placeholders,
@@ -466,26 +492,50 @@ def delete_org_template(
 
 
 @router.patch("/templates/{template_id}")
-def rename_org_template(
+def patch_org_template(
     template_id: int,
-    body: TemplateDisplayNameUpdate,
+    body: TemplatePatch,
     current: OrgUserContext = Depends(require_org_role("org_admin")),
     db: Session = Depends(get_db),
 ):
+    """Rename and/or move a template between folders (folder_id null = uncategorized)."""
     template = get_org_template(db, template_id, current.org_id)
-    name = (body.display_name or "").strip()
-    if not name:
+    data = body.model_dump(exclude_unset=True)
+    if not data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="display_name is required",
+            detail="No fields to update",
         )
-    template.display_name = name
+
+    if "display_name" in data:
+        name = (data.get("display_name") or "").strip()
+        if not name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="display_name is required",
+            )
+        template.display_name = name
+
+    if "folder_id" in data:
+        folder_id = data.get("folder_id")
+        if folder_id is None:
+            template.folder_id = None
+        else:
+            get_org_template_folder(
+                db,
+                folder_id,
+                current.org_id,
+                document_type_id=template.org_document_type_id,
+            )
+            template.folder_id = folder_id
+
     db.commit()
     db.refresh(template)
     return {
         "id": template.id,
         "org_id": template.org_id,
         "org_document_type_id": template.org_document_type_id,
+        "folder_id": template.folder_id,
         "docx_filename": template.docx_filename,
         "display_name": resolved_display_name(template),
     }

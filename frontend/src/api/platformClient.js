@@ -186,11 +186,14 @@ export async function listOrgTemplates(documentTypeId) {
   return data
 }
 
-export async function uploadOrgTemplate(documentTypeId, file, displayName) {
+export async function uploadOrgTemplate(documentTypeId, file, displayName, folderId) {
   const form = new FormData()
   form.append('file', file)
   if (displayName != null && String(displayName).trim()) {
     form.append('display_name', String(displayName).trim())
+  }
+  if (folderId != null && folderId !== '') {
+    form.append('folder_id', String(folderId))
   }
   const { data } = await platformClient.post(`/${documentTypeId}/templates`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -205,10 +208,37 @@ export async function renameOrgTemplate(templateId, displayName) {
   return data
 }
 
+export async function moveOrgTemplate(templateId, folderId) {
+  const { data } = await platformClient.patch(`/templates/${templateId}`, {
+    folder_id: folderId ?? null,
+  })
+  return data
+}
+
 export async function deleteOrgTemplate(documentTypeId, templateId) {
   const { data } = await platformClient.delete(
     `/${documentTypeId}/templates/${templateId}`
   )
+  return data
+}
+
+export async function listTemplateFolders(documentTypeId) {
+  const { data } = await platformClient.get(`/${documentTypeId}/folders`)
+  return data
+}
+
+export async function createTemplateFolder(documentTypeId, name) {
+  const { data } = await platformClient.post(`/${documentTypeId}/folders`, { name })
+  return data
+}
+
+export async function renameTemplateFolder(folderId, name) {
+  const { data } = await platformClient.patch(`/folders/${folderId}`, { name })
+  return data
+}
+
+export async function deleteTemplateFolder(folderId) {
+  const { data } = await platformClient.delete(`/folders/${folderId}`)
   return data
 }
 
