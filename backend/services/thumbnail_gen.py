@@ -6,9 +6,7 @@ Fallback: python-docx + Pillow text render (works on Render without Word/LibreOf
 
 import logging
 import os
-import platform
 import shutil
-import subprocess
 import tempfile
 from typing import Optional
 
@@ -16,7 +14,7 @@ from services.logo_storage import resolve_template_local_path
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_THUMBNAIL_WIDTH_PX = int(os.getenv("THUMBNAIL_WIDTH_PX", "1200"))
+DEFAULT_THUMBNAIL_WIDTH_PX = int(os.getenv("THUMBNAIL_WIDTH_PX", "1600"))
 
 
 def generate_docx_thumbnail(
@@ -94,21 +92,26 @@ def _docx_text_thumbnail(docx_path: str, thumb_path: str, width_px: int) -> bool
         image = Image.new("RGB", (width_px, height_px), "white")
         draw = ImageDraw.Draw(image)
 
+        # Scale fonts with canvas width so text-fallback stays readable when
+        # downscaled into ~200 CSS-px cards (and sharper on retina).
+        title_px = max(28, int(width_px * 0.032))
+        body_px = max(20, int(width_px * 0.022))
         try:
-            title_font = ImageFont.truetype("arial.ttf", 22)
-            body_font = ImageFont.truetype("arial.ttf", 16)
+            title_font = ImageFont.truetype("arial.ttf", title_px)
+            body_font = ImageFont.truetype("arial.ttf", body_px)
         except OSError:
             title_font = ImageFont.load_default()
             body_font = title_font
 
-        margin_x = 56
-        y = 48
+        margin_x = max(48, int(width_px * 0.045))
+        y = max(40, int(width_px * 0.04))
+        line_gap = max(24, int(body_px * 1.55))
         draw.text((margin_x, y), lines[0][:90], fill="#8B1A1A", font=title_font)
-        y += 40
+        y += int(title_px * 1.8)
 
         for line in lines[1:36]:
             draw.text((margin_x, y), line[:100], fill="#222222", font=body_font)
-            y += 28
+            y += line_gap
             if y > height_px - 72:
                 break
 
@@ -117,7 +120,8 @@ def _docx_text_thumbnail(docx_path: str, thumb_path: str, width_px: int) -> bool
             outline="#E8D8D8",
             width=2,
         )
-        image.save(thumb_path, "PNG")
+        # Optimize for sharp downscale into UI cards (no palette reduction).
+        image.save(thumb_path, "PNG", optimize=True)
         return True
     except Exception as exc:
         logger.warning("Text thumbnail fallback failed: %s", exc)
@@ -125,61 +129,26 @@ def _docx_text_thumbnail(docx_path: str, thumb_path: str, width_px: int) -> bool
 
 
 def _docx_to_pdf(docx_path: str) -> Optional[str]:
-    fd, tmp_pdf = tempfile.mkstemp(suffix=".pdf")
-    os.close(fd)
-
-    if platform.system() == "Windows":
-        try:
-            from services.pdf_converter import _windows_docx2pdf
-
-            _windows_docx2pdf(docx_path, tmp_pdf)
-            if os.path.exists(tmp_pdf) and os.path.getsize(tmp_pdf) > 0:
-                return tmp_pdf
-        except Exception as exc:
-            logger.warning("docx2pdf failed for thumbnail: %s", exc)
-        if os.path.exists(tmp_pdf):
-            os.remove(tmp_pdf)
-        return None
-
-    libreoffice_cmd = shutil.which("libreoffice") or shutil.which("soffice")
-    if not libreoffice_cmd:
-        if os.path.exists(tmp_pdf):
-            os.remove(tmp_pdf)
-        return None
-
+    """Convert docx → PDF via shared pdf_converter (docx2pdf on Windows, LibreOffice elsewhere)."""
     tmp_dir = tempfile.mkdtemp()
     try:
-        result = subprocess.run(
-            [
-                libreoffice_cmd,
-                "--headless",
-                "--convert-to",
-                "pdf",
-                "--outdir",
-                tmp_dir,
-                docx_path,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        base = os.path.splitext(os.path.basename(docx_path))[0]
-        pdf_out = os.path.join(tmp_dir, base + ".pdf")
+        from services.pdf_converter import try_convert_to_pdf
 
-        if result.returncode == 0 and os.path.exists(pdf_out):
-            shutil.move(pdf_out, tmp_pdf)
-            return tmp_pdf
+        pdf_path, err = try_convert_to_pdf(docx_path, tmp_dir)
+        if not pdf_path or not os.path.exists(pdf_path) or os.path.getsize(pdf_path) == 0:
+            if err:
+                logger.warning("docx→pdf for thumbnail failed: %s", err)
+            return None
+
+        fd, tmp_pdf = tempfile.mkstemp(suffix=".pdf")
+        os.close(fd)
+        shutil.move(pdf_path, tmp_pdf)
+        return tmp_pdf
     except Exception as exc:
-        logger.warning("LibreOffice thumbnail failed: %s", exc)
+        logger.warning("docx→pdf for thumbnail failed: %s", exc)
+        return None
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        if os.path.exists(tmp_pdf) and os.path.getsize(tmp_pdf) == 0:
-            os.remove(tmp_pdf)
-
-    if os.path.exists(tmp_pdf):
-        os.remove(tmp_pdf)
-    return None
-
 
 def regenerate_all_thumbnails(template_store_dir: str, templates: list) -> dict:
     thumbnail_dir = os.path.join(template_store_dir, "thumbnails")

@@ -75,10 +75,18 @@ function documentTitle(item) {
 }
 
 function DocumentThumbFallback({ onClick }) {
+  const onKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onClick?.(event)
+    }
+  }
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={onKeyDown}
       aria-label="Preview document"
       style={{
         width: '100%',
@@ -95,7 +103,7 @@ function DocumentThumbFallback({ onClick }) {
       }}
     >
       <FileWordOutlined style={{ fontSize: 40 }} />
-    </button>
+    </div>
   )
 }
 
@@ -135,16 +143,26 @@ function DocumentThumbPreview({
     }
   }, [documentTypeId, templateId, hasThumbnail])
 
+  const onKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onPreview?.(event)
+    }
+  }
+
   if (!hasThumbnail || failed || !url) {
     return <DocumentThumbFallback onClick={onPreview} />
   }
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onPreview}
+      onKeyDown={onKeyDown}
       aria-label="Preview document"
       style={{
+        position: 'relative',
         width: '100%',
         aspectRatio: `${THUMB_W} / ${THUMB_H}`,
         borderRadius: 10,
@@ -154,22 +172,31 @@ function DocumentThumbPreview({
         boxShadow: '0 1px 3px rgba(107, 15, 15, 0.08)',
         padding: 0,
         cursor: 'zoom-in',
-        display: 'block',
+        // Avoid <button> UA compositing quirks that soften nested bitmaps.
+        isolation: 'isolate',
       }}
     >
       <img
         src={url}
         alt=""
+        decoding="async"
+        draggable={false}
         style={{
+          position: 'absolute',
+          inset: 0,
           width: '100%',
           height: '100%',
-          objectFit: 'cover',
+          // contain = full page, no cover-zoom; matches A4-ish card better
+          objectFit: 'contain',
           objectPosition: 'top center',
+          imageRendering: 'auto',
           display: 'block',
+          // Keep bitmap on its own layer without filters/transforms
+          transform: 'translateZ(0)',
         }}
         onError={() => setFailed(true)}
       />
-    </button>
+    </div>
   )
 }
 
