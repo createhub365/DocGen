@@ -206,8 +206,16 @@ export default function PlatformDashboard() {
       createForm.resetFields()
       navigate(`/platform/document-types/${created.id}`)
     } catch (err) {
+      const status = err?.response?.status
       const detail = await readPlatformErrorDetail(err)
-      message.error(detail || 'Could not create document type')
+      if (status === 409) {
+        message.error(
+          detail ||
+            'A document type with this name already exists. Choose a different name.'
+        )
+      } else {
+        message.error(detail || 'Could not create document type')
+      }
     } finally {
       setCreateLoading(false)
     }

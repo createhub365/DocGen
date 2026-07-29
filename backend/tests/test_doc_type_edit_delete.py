@@ -58,6 +58,62 @@ def test_patch_updates_name_description_icon_not_slug(dual_org_clients):
     assert row.icon == "bank"
 
 
+def test_soft_delete_frees_slug_for_reuse(dual_org_clients):
+    """Soft-deleted types must not block recreating the same slug (option a)."""
+    client_a = dual_org_clients["client_a"]
+    db = dual_org_clients["db"]
+
+    created = client_a.post(
+        "/api/platform/document-types/",
+        json={"name": "Reusable", "slug": "reusable-slug"},
+    )
+    assert created.status_code == 201, created.text
+    tid = created.json()["id"]
+
+    deleted = client_a.delete(f"/api/platform/document-types/{tid}")
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["is_active"] is False
+
+    recreated = client_a.post(
+        "/api/platform/document-types/",
+        json={"name": "Reusable Again", "slug": "reusable-slug"},
+    )
+    assert recreated.status_code == 201, recreated.text
+    assert recreated.json()["slug"] == "reusable-slug"
+    assert recreated.json()["id"] != tid
+    assert recreated.json()["is_active"] is True
+
+    db.expire_all()
+    inactive = db.query(OrgDocumentType).filter(OrgDocumentType.id == tid).first()
+    active = (
+        db.query(OrgDocumentType)
+        .filter(OrgDocumentType.id == recreated.json()["id"])
+        .first()
+    )
+    assert inactive.is_active is False
+    assert inactive.slug == "reusable-slug"
+    assert active.is_active is True
+    assert active.slug == "reusable-slug"
+
+
+def test_active_duplicate_slug_still_409(dual_org_clients):
+    client_a = dual_org_clients["client_a"]
+
+    first = client_a.post(
+        "/api/platform/document-types/",
+        json={"name": "Alpha", "slug": "dup-slug"},
+    )
+    assert first.status_code == 201, first.text
+
+    second = client_a.post(
+        "/api/platform/document-types/",
+        json={"name": "Alpha Copy", "slug": "dup-slug"},
+    )
+    assert second.status_code == 409, second.text
+    detail = second.json().get("detail", "")
+    assert "already exists" in detail.lower()
+
+
 def test_soft_delete_hides_from_list_and_cross_org_blocked(dual_org_clients):
     client_a = dual_org_clients["client_a"]
     client_b = dual_org_clients["client_b"]

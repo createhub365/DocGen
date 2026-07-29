@@ -102,7 +102,16 @@ class OrgDocumentType(Base):
 
     __tablename__ = "org_document_types"
     __table_args__ = (
-        UniqueConstraint("org_id", "slug", name="uq_org_document_types_org_slug"),
+        # Soft-deleted rows (is_active=false) must not reserve the slug —
+        # uniqueness applies only among active types so slug can be reused.
+        Index(
+            "uq_org_document_types_org_slug_active",
+            "org_id",
+            "slug",
+            unique=True,
+            sqlite_where=text("is_active = 1"),
+            postgresql_where=text("is_active IS TRUE"),
+        ),
         Index("ix_org_document_types_org_id", "org_id"),
     )
 

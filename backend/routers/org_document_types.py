@@ -52,7 +52,10 @@ def create_document_type(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Document type slug already exists in this organization",
+            detail=(
+                "A document type with this slug already exists. "
+                "Choose a different name or slug."
+            ),
         )
     log_audit_event(
         db,
@@ -168,7 +171,10 @@ def update_document_type(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Document type slug already exists in this organization",
+            detail=(
+                "A document type with this slug already exists. "
+                "Choose a different name or slug."
+            ),
         )
     return row
 
