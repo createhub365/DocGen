@@ -204,9 +204,40 @@ class FieldDefinition(Base):
     option_list_id = Column(
         Integer, ForeignKey("org_option_lists.id"), nullable=True
     )
+    # Auto-computed at generate time (e.g. ref_number) — never shown in wizard.
+    is_auto_generated = Column(Boolean, default=False, nullable=False)
+    # e.g. {"kind": "ref_number", "prefix": "OLAW"}
+    auto_config_json = Column(JSON, nullable=True)
 
     flow_step = relationship("FlowStep", back_populates="field_definitions")
     option_list = relationship("OrgOptionList", back_populates="field_definitions")
+
+
+class OrgRefCounter(Base):
+    """Per-org, per-document-type, per-year sequence for auto reference numbers."""
+
+    __tablename__ = "org_ref_counters"
+    __table_args__ = (
+        UniqueConstraint(
+            "org_id",
+            "document_type_id",
+            "year",
+            name="uq_org_ref_counters_org_type_year",
+        ),
+        Index("ix_org_ref_counters_org_id", "org_id"),
+        Index("ix_org_ref_counters_document_type_id", "document_type_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
+    document_type_id = Column(
+        Integer, ForeignKey("org_document_types.id"), nullable=False
+    )
+    year = Column(Integer, nullable=False)
+    last_sequence = Column(Integer, nullable=False, default=0)
+
+    organization = relationship("Organization")
+    document_type = relationship("OrgDocumentType")
 
 
 class OrgOptionList(Base):

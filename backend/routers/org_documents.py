@@ -18,6 +18,7 @@ from database import get_db
 from routers.org_templates import _resolve_stored_template_path
 from routers.placeholder_mapping import _mapping_completeness
 from routers.platform_scope import (
+    auto_ref_field_definitions_for_flow,
     get_org_document_type,
     get_published_flow_for_org_doc_type,
     org_output_dir,
@@ -27,6 +28,7 @@ from routers.platform_scope import (
 )
 from schemas_platform import OrgGenerateRequest, OrgGenerateResponse
 from services.doc_generator import fill_template
+from services.org_ref_counter import get_next_ref_number
 from services.pdf_converter import try_convert_to_pdf
 from utils.file_utils import safe_join, safe_join_relative
 
@@ -118,7 +120,36 @@ def generate_org_document(
         )
 
     required = required_field_keys_for_published_flow(db, flow)
-    submitted = body.fields or {}
+    submitted = dict(body.fields or {})
+
+    # Auto-ref fields: allocate server-side and override any client-supplied value.
+    auto_ref_values: dict[str, str] = {}
+    for fd in auto_ref_field_definitions_for_flow(db, flow):
+        cfg = fd.auto_config_json if isinstance(fd.auto_config_json, dict) else {}
+        kind = str(cfg.get("kind") or "ref_number")
+        if kind != "ref_number":
+            continue
+        prefix = str(cfg.get("prefix") or "").strip()
+        if not prefix:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Auto reference field is missing a prefix",
+                    "field_key": fd.field_key,
+                },
+            )
+        try:
+            value = get_next_ref_number(
+                db, current.org_id, document_type_id, prefix
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+        submitted[fd.field_key] = value
+        auto_ref_values[fd.field_key] = value
+
     missing = [
         key
         for key in sorted(required)
@@ -141,6 +172,16 @@ def generate_org_document(
         if not m.is_mapped:
             continue
         fill_data[m.placeholder_key] = submitted.get(m.field_key, "")
+
+    # Drive legacy barcode injection in fill_template (looks for key "ref_number").
+    # One auto-ref field_key can map to both {{ref_number}} and {{ref_number_barcode}}.
+    if auto_ref_values:
+        primary = auto_ref_values.get("ref_number") or next(
+            iter(auto_ref_values.values())
+        )
+        fill_data["ref_number"] = primary
+        # Ensure barcode placeholder is not left as text if unmapped/mis-mapped.
+        fill_data.pop("ref_number_barcode", None)
 
     template_path = _resolve_stored_template_path(template.docx_filename)
     if not template_path:

@@ -143,6 +143,11 @@ export function collectFieldsPayload(values) {
   return out
 }
 
+/** Fields shown as wizard inputs (hides server-side auto-generated values). */
+export function wizardVisibleFields(fields) {
+  return (fields || []).filter((f) => !f?.is_auto_generated)
+}
+
 /** Field keys owned by a step (for per-page validation). */
 export function fieldKeysForStep(step) {
   if (!step || step.step_type === 'file_upload') return []
@@ -158,7 +163,7 @@ export function fieldKeysForStep(step) {
   if (step.step_type === 'party_selector') {
     return ['party.name', 'party.email', 'party.address']
   }
-  const fromDefs = (step.fields || [])
+  const fromDefs = wizardVisibleFields(step.fields)
     .filter((f) => f.is_required)
     .map((f) => f.field_key)
   if (fromDefs.length) return fromDefs
@@ -168,7 +173,7 @@ export function fieldKeysForStep(step) {
 
 export function requiredKeysForStep(step) {
   if (!step) return []
-  return (step.fields || [])
+  return wizardVisibleFields(step.fields)
     .filter((f) => f.is_required)
     .map((f) => f.field_key)
 }
@@ -302,7 +307,7 @@ export default function GenerateDocumentPage() {
   const requiredKeys = useMemo(() => {
     const keys = new Set()
     for (const step of steps) {
-      for (const field of step.fields || []) {
+      for (const field of wizardVisibleFields(step.fields)) {
         if (field.is_required) keys.add(field.field_key)
       }
     }
@@ -558,7 +563,7 @@ export default function GenerateDocumentPage() {
     if (step.step_type === 'custom_fields') {
       return (
         <Card key={step.id} title={step.label || 'Fields'} style={{ borderRadius: 12 }}>
-          {(step.fields || []).map((field) => (
+          {wizardVisibleFields(step.fields).map((field) => (
             <Form.Item
               key={field.id}
               name={field.field_key}
@@ -578,14 +583,14 @@ export default function GenerateDocumentPage() {
               <FieldInput field={field} />
             </Form.Item>
           ))}
-          {!step.fields?.length && (
+          {!wizardVisibleFields(step.fields).length && (
             <Text type="secondary">No field definitions on this step.</Text>
           )}
         </Card>
       )
     }
 
-    const fields = step.fields || []
+    const fields = wizardVisibleFields(step.fields)
     if (fields.length) {
       return (
         <Card key={step.id} title={step.label || step.step_type} style={{ borderRadius: 12 }}>
@@ -612,6 +617,16 @@ export default function GenerateDocumentPage() {
       )
     }
 
+    // Fall through for steps with no visible (non-auto) field definitions
+    if ((step.fields || []).length && !fields.length) {
+      return (
+        <Card key={step.id} title={step.label || step.step_type} style={{ borderRadius: 12 }}>
+          <Text type="secondary">
+            Reference numbers for this step are filled in automatically.
+          </Text>
+        </Card>
+      )
+    }
     const configKey = step.config_json?.field_key
     if (!configKey) return null
 
@@ -664,9 +679,11 @@ export default function GenerateDocumentPage() {
       const keys =
         step.step_type === 'country_selector' || step.step_type === 'party_selector'
           ? fieldKeysForStep(step)
-          : (step.fields || []).map((f) => f.field_key).concat(
-              step.config_json?.field_key ? [step.config_json.field_key] : []
-            )
+          : wizardVisibleFields(step.fields)
+              .map((f) => f.field_key)
+              .concat(
+                step.config_json?.field_key ? [step.config_json.field_key] : []
+              )
       const unique = [...new Set(keys)].filter(Boolean)
       if (!unique.length) continue
       items.push({

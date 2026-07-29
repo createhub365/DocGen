@@ -258,6 +258,8 @@ def field_definition_read(
         is_required=field.is_required,
         options_json=field.options_json,
         option_list_id=field.option_list_id,
+        is_auto_generated=bool(getattr(field, "is_auto_generated", False)),
+        auto_config_json=getattr(field, "auto_config_json", None),
         effective_options=resolve_field_effective_options(db, field),
     )
 
@@ -360,9 +362,33 @@ def required_field_keys_for_published_flow(
         .filter(
             models.FieldDefinition.flow_step_id.in_(step_ids),
             models.FieldDefinition.is_required.is_(True),
+            models.FieldDefinition.is_auto_generated.is_(False),
         )
         .all()
     }
+
+
+def auto_ref_field_definitions_for_flow(
+    db: Session, flow: models.FlowConfig
+) -> list[models.FieldDefinition]:
+    """FieldDefinitions on this flow flagged as auto-generated ref numbers."""
+    step_ids = [
+        s.id
+        for s in db.query(models.FlowStep)
+        .filter(models.FlowStep.flow_config_id == flow.id)
+        .all()
+    ]
+    if not step_ids:
+        return []
+    return (
+        db.query(models.FieldDefinition)
+        .filter(
+            models.FieldDefinition.flow_step_id.in_(step_ids),
+            models.FieldDefinition.is_auto_generated.is_(True),
+        )
+        .order_by(models.FieldDefinition.id.asc())
+        .all()
+    )
 
 
 def ensure_platform_legacy_template_fks(db: Session) -> dict[str, int]:

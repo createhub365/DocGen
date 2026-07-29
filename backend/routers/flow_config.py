@@ -303,6 +303,8 @@ def create_flow_draft_from_published(
                     is_required=fd.is_required,
                     options_json=fd.options_json,
                     option_list_id=fd.option_list_id,
+                    is_auto_generated=bool(getattr(fd, "is_auto_generated", False)),
+                    auto_config_json=getattr(fd, "auto_config_json", None),
                 )
             )
 
@@ -408,14 +410,29 @@ def add_field_definition(
     if option_list_id is not None:
         get_org_option_list(db, option_list_id, current.org_id)
 
+    is_auto = bool(body.is_auto_generated)
+    auto_config = body.auto_config_json
+    if is_auto:
+        prefix = ""
+        if isinstance(auto_config, dict):
+            prefix = str(auto_config.get("prefix") or "").strip()
+        if not prefix:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="auto_config_json.prefix is required for auto-generated fields",
+            )
+        auto_config = {"kind": "ref_number", "prefix": prefix}
+
     row = models.FieldDefinition(
         flow_step_id=step_id,
         field_key=field_key,
         field_label=body.field_label.strip(),
         field_type=body.field_type,
-        is_required=body.is_required,
+        is_required=False if is_auto else body.is_required,
         options_json=body.options_json,
         option_list_id=option_list_id,
+        is_auto_generated=is_auto,
+        auto_config_json=auto_config if is_auto else None,
     )
     db.add(row)
     try:
@@ -459,6 +476,24 @@ def update_field_definition(
         data["field_key"] = data["field_key"].strip()
     if "option_list_id" in data and data["option_list_id"] is not None:
         get_org_option_list(db, data["option_list_id"], current.org_id)
+
+    is_auto = data.get("is_auto_generated", row.is_auto_generated)
+    if is_auto:
+        cfg = data.get("auto_config_json", row.auto_config_json)
+        prefix = ""
+        if isinstance(cfg, dict):
+            prefix = str(cfg.get("prefix") or "").strip()
+        if not prefix:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="auto_config_json.prefix is required for auto-generated fields",
+            )
+        data["auto_config_json"] = {"kind": "ref_number", "prefix": prefix}
+        data["is_required"] = False
+        data["is_auto_generated"] = True
+    elif "is_auto_generated" in data and data["is_auto_generated"] is False:
+        data["auto_config_json"] = None
+
     for key, value in data.items():
         setattr(row, key, value)
     try:

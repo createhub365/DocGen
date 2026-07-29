@@ -279,6 +279,8 @@ class FieldDefinitionCreateRequest(BaseModel):
     is_required: bool = False
     options_json: Optional[Any] = None
     option_list_id: Optional[int] = None
+    is_auto_generated: bool = False
+    auto_config_json: Optional[Any] = None
 
 
 class FieldDefinitionCreate(BaseModel):
@@ -289,6 +291,8 @@ class FieldDefinitionCreate(BaseModel):
     is_required: bool = False
     options_json: Optional[Any] = None
     option_list_id: Optional[int] = None
+    is_auto_generated: bool = False
+    auto_config_json: Optional[Any] = None
 
 
 class FieldDefinitionUpdate(BaseModel):
@@ -298,6 +302,8 @@ class FieldDefinitionUpdate(BaseModel):
     is_required: Optional[bool] = None
     options_json: Optional[Any] = None
     option_list_id: Optional[int] = None
+    is_auto_generated: Optional[bool] = None
+    auto_config_json: Optional[Any] = None
 
 
 class FieldDefinitionRead(BaseModel):
@@ -311,6 +317,8 @@ class FieldDefinitionRead(BaseModel):
     is_required: bool
     options_json: Optional[Any] = None
     option_list_id: Optional[int] = None
+    is_auto_generated: bool = False
+    auto_config_json: Optional[Any] = None
     # List-wins resolved options for generate / UI (None when not a dropdown).
     effective_options: Optional[Any] = None
 
