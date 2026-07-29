@@ -16,6 +16,7 @@ _LOGO_MEDIA_TYPES = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".webp": "image/webp",
+    ".svg": "image/svg+xml",
     ".pdf": "application/pdf",
 }
 
@@ -243,6 +244,81 @@ def save_template_docx(content: bytes, filename: str, template_dir: str) -> str:
             },
         )
     return safe_name
+
+
+def save_org_logo(
+    content: bytes,
+    relative_path: str,
+    content_type: str,
+    template_root: str,
+) -> str:
+    """
+    Persist an org logo under template_root/orgs/{org_id}/….
+
+    relative_path must be org-scoped (orgs/{org_id}/logo_….ext).
+    Returns relative_path (local) or sb://template-documents/{relative_path}.
+    """
+    from utils.file_utils import safe_join_relative
+
+    rel = (relative_path or "").replace("\\", "/").lstrip("/")
+    if not rel.startswith("orgs/") or ".." in rel.split("/"):
+        raise ValueError("org logo path must be under orgs/{org_id}/")
+
+    full = safe_join_relative(template_root, rel)
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    with open(full, "wb") as handle:
+        handle.write(content)
+
+    if storage_enabled():
+        ensure_bucket(TEMPLATE_BUCKET)
+        _request(
+            "POST",
+            f"/storage/v1/object/{TEMPLATE_BUCKET}/{rel}",
+            data=content,
+            headers={
+                "Content-Type": content_type or "application/octet-stream",
+                "x-upsert": "true",
+            },
+        )
+        return f"{SB_PREFIX}{TEMPLATE_BUCKET}/{rel}"
+    return rel
+
+
+def delete_org_logo(stored_path: str | None, template_root: str) -> None:
+    """Best-effort remove of an org logo from local disk and Supabase."""
+    if not stored_path:
+        return
+
+    if is_remote_path(stored_path):
+        if not storage_enabled():
+            return
+        bucket, filename = _parse_stored_path(stored_path)
+        try:
+            _request("DELETE", f"/storage/v1/object/{bucket}/{filename}")
+        except urllib.error.HTTPError:
+            pass
+        except Exception:
+            pass
+        return
+
+    try:
+        from utils.file_utils import safe_join_relative
+
+        rel = str(stored_path).replace("\\", "/")
+        local = safe_join_relative(template_root, rel)
+        if os.path.exists(local):
+            os.unlink(local)
+    except Exception:
+        pass
+
+    if storage_enabled():
+        rel = str(stored_path).replace("\\", "/")
+        try:
+            _request("DELETE", f"/storage/v1/object/{TEMPLATE_BUCKET}/{rel}")
+        except urllib.error.HTTPError:
+            pass
+        except Exception:
+            pass
 
 
 def delete_template_docx(stored_path: str | None, template_dir: str) -> None:

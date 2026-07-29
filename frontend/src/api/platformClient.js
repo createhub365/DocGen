@@ -332,6 +332,39 @@ export async function regenerateOrgThumbnails() {
   return data
 }
 
+/** Upload or replace org branding logo (org_admin). Returns updated organization. */
+export async function uploadOrgLogo(file) {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await platformClient.post('/organization/logo', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
+/** Remove org branding logo (org_admin). */
+export async function deleteOrgLogo() {
+  const { data } = await platformClient.delete('/organization/logo')
+  return data
+}
+
+/** Fetch org logo as a blob URL (revoke when done). Returns null if missing. */
+export async function fetchOrgLogoUrl() {
+  try {
+    const { data } = await platformClient.get('/organization/logo', {
+      responseType: 'blob',
+    })
+    if (!data || !(data instanceof Blob) || data.size === 0) return null
+    if (data.type && !data.type.startsWith('image/') && data.type !== 'image/svg+xml') {
+      // Some browsers report SVG oddly; still try if non-JSON
+      if (data.type.includes('json')) return null
+    }
+    return URL.createObjectURL(data)
+  } catch {
+    return null
+  }
+}
+
 export async function getPublishedFlow(documentTypeId) {
   const { data } = await platformClient.get(`/${documentTypeId}/flow/published`)
   return data

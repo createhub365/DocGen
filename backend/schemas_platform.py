@@ -60,6 +60,8 @@ class OrganizationRead(BaseModel):
     slug: str
     created_at: datetime
     is_active: bool
+    has_logo: bool = False
+    logo_url: Optional[str] = None
 
 
 # ---- OrgUser ----

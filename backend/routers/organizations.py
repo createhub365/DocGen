@@ -34,6 +34,19 @@ router = APIRouter(tags=["platform-organizations"])
 
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
+ORG_LOGO_URL = "/api/platform/organization/logo"
+
+
+def organization_to_read(org: models.Organization) -> OrganizationRead:
+    """Serialize org with has_logo / logo_url for the white-label sidebar."""
+    base = OrganizationRead.model_validate(org)
+    has_logo = bool(getattr(org, "logo_path", None))
+    return base.model_copy(
+        update={
+            "has_logo": has_logo,
+            "logo_url": ORG_LOGO_URL if has_logo else None,
+        }
+    )
 
 def _cookie_params() -> dict:
     is_prod = os.getenv("ENVIRONMENT", "development").lower() == "production"
@@ -139,7 +152,7 @@ def signup(
     _set_platform_access_cookie(response, token)
 
     return OrgSignupResponse(
-        organization=OrganizationRead.model_validate(org),
+        organization=organization_to_read(org),
         user_id=user.id,
         role="org_admin",
         access_token=token,
@@ -196,7 +209,7 @@ def platform_login(
     )
     _set_platform_access_cookie(response, token)
     return PlatformLoginResponse(
-        organization=OrganizationRead.model_validate(org),
+        organization=organization_to_read(org),
         user_id=user.id,
         role=membership.role,
         access_token=token,
@@ -251,7 +264,7 @@ def me(
     )
 
     return {
-        "organization": OrganizationRead.model_validate(org),
+        "organization": organization_to_read(org),
         "membership": OrgUserRead.model_validate(membership),
         "username": user.username if user else None,
         "user_id": current.user_id,

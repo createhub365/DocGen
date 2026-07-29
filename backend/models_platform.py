@@ -65,6 +65,8 @@ class Organization(Base):
     slug = Column(String, unique=True, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    # Relative under TEMPLATE_DIR (orgs/{id}/…) or sb://… remote object
+    logo_path = Column(String, nullable=True)
 
     members = relationship("OrgUser", back_populates="organization")
     document_types = relationship("OrgDocumentType", back_populates="organization")

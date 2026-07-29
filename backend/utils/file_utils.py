@@ -9,8 +9,15 @@ DOCX_MIME_TYPES = {
 }
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 IMAGE_MIME_TYPES = {"image/png", "image/jpeg", "image/webp"}
+ORG_LOGO_EXTENSIONS = {".png", ".jpg", ".jpeg", ".svg"}
+ORG_LOGO_MIME_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/svg+xml",
+}
 MAX_TEMPLATE_SIZE = 20 * 1024 * 1024
 MAX_LOGO_SIZE = 5 * 1024 * 1024
+MAX_ORG_LOGO_SIZE = 2 * 1024 * 1024
 
 
 def remove_file(path: str):
@@ -87,3 +94,24 @@ def validate_logo_upload(filename: str | None, content_type: str | None, size: i
         raise HTTPException(status_code=400, detail="Invalid image type")
     if size > MAX_LOGO_SIZE:
         raise HTTPException(status_code=400, detail="File exceeds 5MB limit")
+
+
+def validate_org_logo_upload(
+    filename: str | None, content_type: str | None, size: int
+) -> None:
+    """Platform org branding logo: PNG/JPG/SVG, 2MB max."""
+    ext = os.path.splitext(filename or "")[1].lower()
+    if ext not in ORG_LOGO_EXTENSIONS:
+        raise HTTPException(
+            status_code=400, detail="Only PNG, JPG, and SVG files allowed"
+        )
+    if content_type and content_type not in ORG_LOGO_MIME_TYPES:
+        # Some browsers send image/svg+xml; others omit or use octet-stream for SVG
+        if not (
+            ext == ".svg"
+            and content_type
+            in {"application/octet-stream", "text/plain", "text/xml"}
+        ):
+            raise HTTPException(status_code=400, detail="Invalid image type")
+    if size > MAX_ORG_LOGO_SIZE:
+        raise HTTPException(status_code=400, detail="File exceeds 2MB limit")
