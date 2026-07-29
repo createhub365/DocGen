@@ -131,7 +131,7 @@ function AppRoutes() {
               <RequireOrgAdmin>
                 <PlatformPlaceholderPage
                   title="Audit log"
-                  blurb="Audit log viewer coming in a later phase."
+                  blurb="Coming in a later phase."
                 />
               </RequireOrgAdmin>
             }

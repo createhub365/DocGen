@@ -88,7 +88,7 @@ export default function GeneratedDocumentsPage() {
           Generated documents
         </Title>
         <Paragraph type="secondary" style={{ margin: 0 }}>
-          Documents created from platform flows. Download the DOCX for each run.
+          Download DOCX files from generation runs.
         </Paragraph>
       </>
     ),

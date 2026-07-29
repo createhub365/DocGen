@@ -29,9 +29,9 @@ import {
   FolderOpenOutlined,
   FolderOutlined,
   InboxOutlined,
-  LinkOutlined,
+  FormOutlined,
   MoreOutlined,
-  ThunderboltOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons'
 import {
   bulkDeleteOrgTemplates,
@@ -51,6 +51,7 @@ import {
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
+import AsyncBusyBar from '../../components/ui/AsyncBusyBar'
 import OrgDocumentPreviewModal from './OrgDocumentPreviewModal'
 import PlaceholderMappingPanel from './PlaceholderMappingPanel'
 
@@ -689,6 +690,7 @@ export default function TemplatesPanel({
           <Card
             key={item.id}
             size="small"
+            className="platform-lift-card platform-fade-in"
             styles={{ body: { padding: 12 } }}
             style={{
               borderRadius: 14,
@@ -779,7 +781,7 @@ export default function TemplatesPanel({
               <Button
                 className="platform-touch-target"
                 size="small"
-                icon={<LinkOutlined />}
+                icon={<FormOutlined />}
                 onClick={() => setMappingTemplate(item)}
               >
                 Open
@@ -790,7 +792,7 @@ export default function TemplatesPanel({
                     type="primary"
                     size="small"
                     className="platform-touch-target"
-                    icon={<ThunderboltOutlined />}
+                    icon={<PlayCircleOutlined />}
                     disabled={!canGenerate}
                     onClick={() =>
                       navigate(
@@ -865,8 +867,8 @@ export default function TemplatesPanel({
 
   const addLabel =
     templates.length >= 1
-      ? `Add another document (template) to ${documentTypeName}`
-      : `Add a document (template) to ${documentTypeName}`
+      ? `Add another document to ${documentTypeName}`
+      : `Add a document to ${documentTypeName}`
 
   const canSubmitAdd =
     !!String(watchedName || '').trim() && fileList.length > 0 && !uploading
@@ -875,8 +877,8 @@ export default function TemplatesPanel({
     <div>
       <Paragraph type="secondary" style={{ marginTop: 0 }}>
         {canManage
-          ? 'Each uploaded Word file is a document under this type. Map its placeholders, then generate from that specific document.'
-          : 'Each file here is a document you can generate from. Pick one and click Generate.'}
+          ? 'Upload Word files, map placeholders, then generate.'
+          : 'Pick a document and generate.'}
       </Paragraph>
 
       {canManage && templates.length >= 1 && (
@@ -884,7 +886,7 @@ export default function TemplatesPanel({
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
-          message="Multiple templates can share this same set of fields — upload another file here instead of creating a new document type, unless this new document needs different fields."
+          message="Need another file with the same fields? Upload it here instead of creating a new document type."
         />
       )}
 
@@ -973,6 +975,10 @@ export default function TemplatesPanel({
               </Button>
             </Space>
           </Space>
+          <AsyncBusyBar
+            active={bulkBusy}
+            label={`Working on ${selectedIds.length} document${selectedIds.length === 1 ? '' : 's'}…`}
+          />
         </Card>
       ) : null}
 
@@ -1049,6 +1055,7 @@ export default function TemplatesPanel({
                     key={`folder-${folder.id}`}
                     size="small"
                     hoverable
+                    className="platform-folder-tile platform-fade-in"
                     styles={{ body: { padding: 16 } }}
                     style={{ borderRadius: 14, cursor: 'pointer' }}
                     onClick={() => setActiveFolderId(folder.id)}
@@ -1196,7 +1203,6 @@ export default function TemplatesPanel({
                 <InboxOutlined />
               </p>
               <p className="ant-upload-text">Click or drag a .docx file here</p>
-              <p className="ant-upload-hint">Only Word (.docx) templates are accepted.</p>
             </Dragger>
             {fileList[0] && (
               <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>

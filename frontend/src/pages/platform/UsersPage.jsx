@@ -197,9 +197,7 @@ export default function UsersPage() {
           Users
         </Title>
         <Paragraph type="secondary" style={{ margin: 0 }}>
-          {isAdmin
-            ? 'Invite teammates and manage organization roles.'
-            : 'Organization members (view only).'}
+          {isAdmin ? 'Invite teammates and manage roles.' : 'Organization members.'}
         </Paragraph>
       </>
     ),

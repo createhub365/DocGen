@@ -17,7 +17,6 @@ import {
   AppstoreAddOutlined,
   FileTextOutlined,
   PlusOutlined,
-  RocketOutlined,
 } from '@ant-design/icons'
 import {
   createDocumentType,
@@ -233,9 +232,6 @@ export default function PlatformDashboard() {
         <Title level={3} style={{ margin: 0 }}>
           Dashboard
         </Title>
-        <Paragraph type="secondary" style={{ margin: 0 }}>
-          Create document types and manage their flow steps.
-        </Paragraph>
       </>
     ),
     []
@@ -243,7 +239,7 @@ export default function PlatformDashboard() {
   usePlatformPageChrome({ header })
 
   return (
-    <div>
+    <div className="platform-page-enter">
       {loadError && (
         <Alert type="error" showIcon message={loadError} style={{ marginBottom: 16 }} />
       )}
@@ -299,15 +295,15 @@ export default function PlatformDashboard() {
             style={{ margin: '0 auto 18px', maxWidth: 360, fontSize: 13, lineHeight: 1.5 }}
           >
             {isOrgAdmin
-              ? 'Start from scratch or install a starter kit to create your first type and flow.'
-              : 'No document types yet. Ask an organization admin to create one.'}
+              ? 'Create a type or install a starter kit to begin.'
+              : 'Ask an organization admin to create a document type.'}
           </Paragraph>
           {isOrgAdmin ? (
             <Space wrap style={{ justifyContent: 'center' }}>
               <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                 Create from scratch
               </Button>
-              <Button icon={<RocketOutlined />} onClick={openPresets}>
+              <Button icon={<AppstoreAddOutlined />} onClick={openPresets}>
                 Install starter kit
               </Button>
             </Space>
@@ -374,7 +370,7 @@ export default function PlatformDashboard() {
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
-            message="Already have a document type for this? Open it and add another template instead of creating a new type."
+            message="Need another file with the same fields? Open that type and add a template there."
             action={
               <Button size="small" type="link" onClick={closeCreateAndBrowse}>
                 Browse existing types
@@ -387,8 +383,8 @@ export default function PlatformDashboard() {
             type="warning"
             showIcon
             style={{ marginBottom: 16 }}
-            message={`A document type named “${nearDuplicateTypes[0].name}” already exists.`}
-            description="If you only need another file variant, open that type and add a template — you can still create a new type if the fields must differ."
+            message={`“${nearDuplicateTypes[0].name}” already exists.`}
+            description="Open it to add another file, or create a new type if the fields must differ."
             action={
               <Button
                 size="small"
@@ -441,7 +437,7 @@ export default function PlatformDashboard() {
         destroyOnHidden
       >
         <Paragraph type="secondary">
-          Structure only — document types and draft flows. No legacy data or template files are copied.
+          Structure only — types and draft flows. No template files.
         </Paragraph>
         <List
           loading={presetsLoading}

@@ -622,7 +622,7 @@ export default function GenerateDocumentPage() {
       return (
         <Card key={step.id} title={step.label || step.step_type} style={{ borderRadius: 12 }}>
           <Text type="secondary">
-            Reference numbers for this step are filled in automatically.
+            Reference numbers are filled in automatically.
           </Text>
         </Card>
       )

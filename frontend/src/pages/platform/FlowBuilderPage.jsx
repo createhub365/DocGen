@@ -28,13 +28,14 @@ import {
   CalendarOutlined,
   DeleteOutlined,
   EditOutlined,
+  CheckCircleOutlined,
   FileAddOutlined,
   FileTextOutlined,
   FontSizeOutlined,
+  GlobalOutlined,
   NumberOutlined,
   PlusOutlined,
   SaveOutlined,
-  SendOutlined,
   TeamOutlined,
   UnorderedListOutlined,
   UploadOutlined,
@@ -126,7 +127,7 @@ const STEP_META = {
   date_field: { label: 'Date field', icon: CalendarOutlined },
   dropdown: { label: 'Dropdown', icon: UnorderedListOutlined },
   party_selector: { label: 'Party selector', icon: TeamOutlined },
-  country_selector: { label: 'Country selector', icon: TeamOutlined },
+  country_selector: { label: 'Country selector', icon: GlobalOutlined },
   file_upload: { label: 'File upload', icon: UploadOutlined },
   rich_text: { label: 'Rich text', icon: FileTextOutlined },
   custom_fields: { label: 'Custom fields', icon: FileAddOutlined },
@@ -623,7 +624,7 @@ function StepCard({
         <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #f0e4e4' }}>
           <Text strong>Country selector</Text>
           <Paragraph type="secondary" style={{ margin: '4px 0 10px', fontSize: 12 }}>
-            Off = free-text name/code (legacy-compatible). On = built-in world list with flags.
+            Off = free-text name/code. On = world list with flags.
           </Paragraph>
           <Space direction="vertical" size={10} style={{ width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
@@ -1091,7 +1092,7 @@ export default function FlowBuilderPage() {
                   <Paragraph type="secondary" style={{ margin: 0 }}>
                     {flow
                       ? `Flow version ${flow.version}`
-                      : 'Define the steps users complete'}
+                      : 'Add the steps users complete'}
                   </Paragraph>
                   {documentType?.has_published_flow &&
                     !documentType?.has_draft_flow && (
@@ -1339,7 +1340,7 @@ function FlowBuilderChrome({
           {!isMobile ? (
             <Paragraph type="secondary" style={{ margin: 0 }}>
               {isOrgAdmin
-                ? 'Manage documents (templates) and the generation flow for this type.'
+                ? 'Documents and generation flow for this type.'
                 : 'View and generate documents for this type.'}
             </Paragraph>
           ) : (
@@ -1381,7 +1382,7 @@ function FlowBuilderChrome({
         <span style={{ display: isMobile ? 'block' : undefined, width: isMobile ? '100%' : undefined }}>
           <Button
             type="primary"
-            icon={<SendOutlined />}
+            icon={<CheckCircleOutlined />}
             disabled={!editable}
             loading={busy}
             onClick={onPublish}

@@ -218,7 +218,7 @@ export default function OptionListsPage() {
           Option lists
         </Title>
         <Paragraph type="secondary" style={{ margin: 0 }}>
-          Reusable dropdown choices for flow fields. Staff can view; only org admins can edit.
+          Shared dropdown choices for flow fields.
         </Paragraph>
       </>
     ),

@@ -10,7 +10,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd'
-import { ArrowLeftOutlined, SaveOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, PlayCircleOutlined, SaveOutlined } from '@ant-design/icons'
 import {
   buildResolvableFieldKeyOptions,
   generateFieldsFromPlaceholders,
@@ -372,7 +372,7 @@ export default function PlaceholderMappingPanel({
                   }
                 >
                   <Button
-                    icon={<ThunderboltOutlined />}
+                    icon={<PlayCircleOutlined />}
                     loading={generatingFields}
                     disabled={!hasDraftFlow}
                     onClick={generateMissingFields}
