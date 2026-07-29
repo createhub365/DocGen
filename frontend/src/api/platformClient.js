@@ -251,6 +251,36 @@ export async function fetchOrgTemplateDocxBlob(documentTypeId, templateId) {
   return blob.type === mime ? blob : new Blob([blob], { type: mime })
 }
 
+/**
+ * Fetch full multi-page PDF preview of an org template (LibreOffice/docx2pdf).
+ * Prefer this over page-1 thumbnails for the full-preview modal.
+ */
+export async function fetchOrgTemplatePreviewPdfBlob(documentTypeId, templateId) {
+  const response = await platformClient.get(
+    `/${documentTypeId}/templates/${templateId}/preview.pdf`,
+    { responseType: 'blob' }
+  )
+  const blob = response.data
+  if (blob.type?.includes('json') || blob.size < 100) {
+    const text = await blob.text()
+    try {
+      const err = JSON.parse(text)
+      throw new Error(
+        (typeof err.detail === 'string' && err.detail) ||
+          'PDF preview not available'
+      )
+    } catch (parseErr) {
+      if (parseErr instanceof Error && parseErr.message !== 'PDF preview not available') {
+        throw parseErr
+      }
+      throw new Error('PDF preview is missing or invalid')
+    }
+  }
+  return blob.type === 'application/pdf'
+    ? blob
+    : new Blob([blob], { type: 'application/pdf' })
+}
+
 export async function regenerateOrgThumbnails() {
   const { data } = await platformClient.post('/settings/regenerate-thumbnails')
   return data

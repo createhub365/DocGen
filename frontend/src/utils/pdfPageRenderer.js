@@ -14,8 +14,11 @@ export {
 
 async function getPdfjsLib() {
   const pdfjsLib = await import('pdfjs-dist')
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+  // pdfjs v6 ships an ESM worker; prefer the bundled file over CDN .js
+  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+    pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default
+  }
   return pdfjsLib
 }
 

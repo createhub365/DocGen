@@ -448,3 +448,70 @@ def download_org_template_docx(
         filename=filename,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/{document_type_id}/templates/{template_id}/preview.pdf")
+def preview_org_template_pdf(
+    document_type_id: int,
+    template_id: int,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Convert org template .docx → full multi-page PDF for in-browser preview.
+
+    Unlike /thumbnail (page-1 PNG only), this returns the complete PDF so the
+    client can render every page (watermarks, headers, floating logos included).
+    """
+    import shutil
+    import tempfile
+
+    from starlette.background import BackgroundTask
+
+    from services.pdf_converter import try_convert_to_pdf
+
+    get_org_document_type(db, document_type_id, current.org_id)
+    template = (
+        db.query(models.Template)
+        .filter(
+            models.Template.id == template_id,
+            models.Template.org_id == current.org_id,
+            models.Template.org_document_type_id == document_type_id,
+            models.Template.is_active.is_(True),
+        )
+        .first()
+    )
+    if not template:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    file_path = _resolve_stored_template_path(template.docx_filename)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Template file not found",
+        )
+
+    tmp_dir = tempfile.mkdtemp(prefix="org_tpl_preview_")
+    pdf_path, err = try_convert_to_pdf(file_path, tmp_dir)
+    if not pdf_path or not os.path.exists(pdf_path):
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=err or "Could not convert template to PDF for preview",
+        )
+
+    preview_name = os.path.splitext(_basename(template.docx_filename))[0] + ".pdf"
+
+    def _cleanup() -> None:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=preview_name,
+        background=BackgroundTask(_cleanup),
+        headers={
+            "Content-Disposition": f'inline; filename="{preview_name}"',
+            "Cache-Control": "private, max-age=60",
+        },
+    )

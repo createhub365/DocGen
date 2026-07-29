@@ -113,3 +113,29 @@ def test_download_org_template_docx_and_cross_org_blocked(dual_org_clients):
         f"/api/platform/{setup['dt_id']}/templates/{tmpl_id}/download"
     )
     assert blocked.status_code == 404
+
+
+def test_preview_pdf_returns_full_pdf_or_503_and_cross_org_blocked(dual_org_clients):
+    """Full preview must use docx→PDF (all pages), not the page-1 thumbnail path."""
+    client_a = dual_org_clients["client_a"]
+    client_b = dual_org_clients["client_b"]
+    setup = _setup_published_flow_with_field(client_a, slug="pdf-prev")
+
+    up = _upload(client_a, setup["dt_id"], filename="multi.docx")
+    assert up.status_code == 201, up.text
+    tmpl_id = up.json()["id"]
+
+    preview = client_a.get(
+        f"/api/platform/{setup['dt_id']}/templates/{tmpl_id}/preview.pdf"
+    )
+    # Converter available in CI/dev → 200 PDF; otherwise 503 (route still exists).
+    assert preview.status_code in (200, 503), preview.text
+    if preview.status_code == 200:
+        assert preview.headers.get("content-type", "").startswith("application/pdf")
+        assert preview.content[:4] == b"%PDF"
+        assert len(preview.content) > 200
+
+    blocked = client_b.get(
+        f"/api/platform/{setup['dt_id']}/templates/{tmpl_id}/preview.pdf"
+    )
+    assert blocked.status_code == 404
