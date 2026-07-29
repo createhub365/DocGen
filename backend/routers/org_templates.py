@@ -27,7 +27,9 @@ from schemas_platform import TemplateDisplayNameUpdate
 from services.logo_storage import (
     delete_template_docx,
     is_remote_path,
+    read_stored_file_bytes,
     resolve_template_local_path,
+    save_preview_pdf,
     save_template_docx,
 )
 from services.placeholder_extractor import extract_placeholders
@@ -110,6 +112,8 @@ def apply_org_template_thumbnail(
     Generate a page preview for an org template.
 
     Reuses generate_docx_thumbnail + persist_generated_thumbnail (same as admin).
+    When LibreOffice/docx2pdf succeeds, also caches the full multi-page PDF for
+    /preview.pdf (one conversion for thumb + preview).
     Never raises — thumbnail is optional.
     On success, stores org-scoped thumbnail_path and thumbnail_source_hash.
     Returns True if a thumbnail was persisted.
@@ -120,10 +124,13 @@ def apply_org_template_thumbnail(
         file_hash = source_hash or hash_docx_file(docx_path)
         org_dir = org_template_dir(TEMPLATE_DIR, template.org_id)
         thumbnail_dir = os.path.join(org_dir, "thumbnails")
+        preview_dir = os.path.join(org_dir, "previews")
+        preview_abs = os.path.join(preview_dir, f"preview_{template.id}.pdf")
         thumb_rel = generate_docx_thumbnail(
             docx_path=docx_path,
             thumbnail_dir=thumbnail_dir,
             template_id=template.id,
+            keep_pdf_path=preview_abs,
         )
         if not thumb_rel:
             return False
@@ -136,6 +143,18 @@ def apply_org_template_thumbnail(
                 template.thumbnail_path = f"orgs/{template.org_id}/{normalized}"
         if file_hash:
             template.thumbnail_source_hash = file_hash
+        if os.path.exists(preview_abs) and os.path.getsize(preview_abs) > 0:
+            with open(preview_abs, "rb") as handle:
+                pdf_bytes = handle.read()
+            stored = save_preview_pdf(
+                pdf_bytes, os.path.basename(preview_abs), preview_dir
+            )
+            if is_remote_path(stored):
+                template.preview_pdf_path = stored
+            else:
+                template.preview_pdf_path = (
+                    f"orgs/{template.org_id}/previews/{os.path.basename(preview_abs)}"
+                )
         db.commit()
         db.refresh(template)
         return bool(template.thumbnail_path)
@@ -144,6 +163,85 @@ def apply_org_template_thumbnail(
             "Org template thumbnail skipped for template %s: %s", template.id, exc
         )
         return False
+
+
+def _cached_preview_is_fresh(template: models.Template, docx_path: str) -> bool:
+    """True when preview_pdf_path exists and content hash matches current docx."""
+    if not getattr(template, "preview_pdf_path", None):
+        return False
+    current = hash_docx_file(docx_path)
+    stored = getattr(template, "thumbnail_source_hash", None)
+    return bool(current and stored and current == stored)
+
+
+def _serve_cached_preview_pdf(
+    template: models.Template, preview_name: str, *, cache_status: str = "hit"
+):
+    """Serve cached preview from local path or Supabase bytes."""
+    from fastapi.responses import Response
+
+    stored = template.preview_pdf_path
+    headers = {
+        "Content-Disposition": f'inline; filename="{preview_name}"',
+        "Cache-Control": "private, max-age=3600",
+        "X-Preview-Cache": cache_status,
+    }
+    if is_remote_path(stored):
+        payload = read_stored_file_bytes(stored, TEMPLATE_DIR)
+        if not payload:
+            return None
+        data, _media = payload
+        return Response(content=data, media_type="application/pdf", headers=headers)
+
+    try:
+        local = safe_join_relative(TEMPLATE_DIR, stored)
+    except HTTPException:
+        return None
+    if not os.path.exists(local) or os.path.getsize(local) == 0:
+        return None
+    return FileResponse(
+        local,
+        media_type="application/pdf",
+        filename=preview_name,
+        headers=headers,
+    )
+
+
+def _persist_preview_pdf_file(
+    template: models.Template,
+    db: Session,
+    pdf_path: str,
+    *,
+    source_hash: str | None = None,
+) -> bool:
+    """Copy a converted PDF into durable cache (local + optional Supabase)."""
+    if not template.org_id or not pdf_path or not os.path.exists(pdf_path):
+        return False
+    org_dir = org_template_dir(TEMPLATE_DIR, template.org_id)
+    preview_dir = os.path.join(org_dir, "previews")
+    os.makedirs(preview_dir, exist_ok=True)
+    dest_name = f"preview_{template.id}.pdf"
+    dest_abs = os.path.join(preview_dir, dest_name)
+    if os.path.abspath(pdf_path) != os.path.abspath(dest_abs):
+        import shutil
+
+        shutil.copy2(pdf_path, dest_abs)
+    with open(dest_abs, "rb") as handle:
+        pdf_bytes = handle.read()
+    stored = save_preview_pdf(pdf_bytes, dest_name, preview_dir)
+    if is_remote_path(stored):
+        template.preview_pdf_path = stored
+    else:
+        template.preview_pdf_path = f"orgs/{template.org_id}/previews/{dest_name}"
+    if source_hash:
+        template.thumbnail_source_hash = source_hash
+    elif not template.thumbnail_source_hash:
+        template.thumbnail_source_hash = hash_docx_file(
+            _resolve_stored_template_path(template.docx_filename) or ""
+        )
+    db.commit()
+    db.refresh(template)
+    return True
 
 
 # Back-compat alias for older call sites / tests
@@ -250,14 +348,17 @@ def list_org_templates(
         .order_by(models.Template.id.asc())
         .all()
     )
-    # Prefetch PlaceholderMapping rows for all templates in one query so
-    # completeness checks do not N+1 against mappings (DOCX detect still
-    # runs per template — placeholders are not stored as a count column).
+    # Prefetch PlaceholderMapping rows once; pass into completeness (DOCX detect
+    # still runs per template — placeholders are not stored as a count column).
     template_ids = [t.id for t in rows]
+    mappings_by_tid: dict[int, list] = {tid: [] for tid in template_ids}
     if template_ids:
-        db.query(models.PlaceholderMapping).filter(
-            models.PlaceholderMapping.template_id.in_(template_ids)
-        ).all()
+        for row in (
+            db.query(models.PlaceholderMapping)
+            .filter(models.PlaceholderMapping.template_id.in_(template_ids))
+            .all()
+        ):
+            mappings_by_tid.setdefault(row.template_id, []).append(row)
 
     gen_counts: dict[int, int] = {}
     if template_ids:
@@ -275,7 +376,9 @@ def list_org_templates(
     return [
         _template_list_item(
             t,
-            _mapping_completeness(db, t)[0],
+            _mapping_completeness(
+                db, t, mapping_rows=mappings_by_tid.get(t.id, [])
+            )[0],
             generated_document_count=gen_counts.get(t.id, 0),
         )
         for t in rows
@@ -458,10 +561,11 @@ def preview_org_template_pdf(
     db: Session = Depends(get_db),
 ):
     """
-    Convert org template .docx → full multi-page PDF for in-browser preview.
+    Serve full multi-page PDF for in-browser preview.
 
-    Unlike /thumbnail (page-1 PNG only), this returns the complete PDF so the
-    client can render every page (watermarks, headers, floating logos included).
+    Uses a content-hash cache (preview_pdf_path + thumbnail_source_hash) when the
+    source .docx is unchanged. On cache miss, converts via LibreOffice/docx2pdf,
+    persists the PDF, then serves it.
     """
     import shutil
     import tempfile
@@ -491,6 +595,13 @@ def preview_org_template_pdf(
             detail="Template file not found",
         )
 
+    preview_name = os.path.splitext(_basename(template.docx_filename))[0] + ".pdf"
+
+    if _cached_preview_is_fresh(template, file_path):
+        cached = _serve_cached_preview_pdf(template, preview_name, cache_status="hit")
+        if cached is not None:
+            return cached
+
     tmp_dir = tempfile.mkdtemp(prefix="org_tpl_preview_")
     pdf_path, err = try_convert_to_pdf(file_path, tmp_dir)
     if not pdf_path or not os.path.exists(pdf_path):
@@ -500,7 +611,26 @@ def preview_org_template_pdf(
             detail=err or "Could not convert template to PDF for preview",
         )
 
-    preview_name = os.path.splitext(_basename(template.docx_filename))[0] + ".pdf"
+    try:
+        _persist_preview_pdf_file(
+            template,
+            db,
+            pdf_path,
+            source_hash=hash_docx_file(file_path),
+        )
+    except Exception as exc:
+        logger.warning(
+            "Preview PDF cache persist failed for template %s: %s", template.id, exc
+        )
+
+    # Prefer serving the durable cache path; fall back to temp convert output.
+    if _cached_preview_is_fresh(template, file_path):
+        cached = _serve_cached_preview_pdf(
+            template, preview_name, cache_status="store"
+        )
+        if cached is not None:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return cached
 
     def _cleanup() -> None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -512,6 +642,7 @@ def preview_org_template_pdf(
         background=BackgroundTask(_cleanup),
         headers={
             "Content-Disposition": f'inline; filename="{preview_name}"',
-            "Cache-Control": "private, max-age=60",
+            "Cache-Control": "private, max-age=3600",
+            "X-Preview-Cache": "miss",
         },
     )

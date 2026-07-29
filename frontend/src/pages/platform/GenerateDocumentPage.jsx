@@ -210,21 +210,24 @@ export default function GenerateDocumentPage() {
     setPageIndex(0)
     setPageError(null)
     try {
-      const detail = await getDocumentType(documentTypeId)
+      const [detail, publishedSettled, templates] = await Promise.all([
+        getDocumentType(documentTypeId),
+        getPublishedFlow(documentTypeId)
+          .then((published) => ({ ok: true, published }))
+          .catch((error) => ({ ok: false, error })),
+        listOrgTemplates(documentTypeId),
+      ])
       setDocumentType(detail)
 
-      let published
-      try {
-        published = await getPublishedFlow(documentTypeId)
-      } catch (error) {
-        if (error.response?.status === 404) {
+      if (!publishedSettled.ok) {
+        if (publishedSettled.error?.response?.status === 404) {
           setLoadError('Publish a flow first before generating.')
           return
         }
-        throw error
+        throw publishedSettled.error
       }
+      const published = publishedSettled.published
 
-      const templates = await listOrgTemplates(documentTypeId)
       const complete = (templates || []).filter((t) => t.is_complete)
 
       let resolvedId = null

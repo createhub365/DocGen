@@ -41,13 +41,20 @@ def _detected_placeholder_ids(template: models.Template) -> list[str]:
 
 
 def _mapping_completeness(
-    db: Session, template: models.Template
+    db: Session,
+    template: models.Template,
+    *,
+    mapping_rows: list[models.PlaceholderMapping] | None = None,
 ) -> tuple[bool, list[str], list[str], list[models.PlaceholderMapping]]:
     path = _resolve_stored_template_path(template.docx_filename)
     rows = (
-        db.query(models.PlaceholderMapping)
-        .filter(models.PlaceholderMapping.template_id == template.id)
-        .all()
+        mapping_rows
+        if mapping_rows is not None
+        else (
+            db.query(models.PlaceholderMapping)
+            .filter(models.PlaceholderMapping.template_id == template.id)
+            .all()
+        )
     )
     # Missing on-disk/storage file: never treat as complete (empty detect used to
     # mark is_complete=True and let Generate open, then 404 on fill).

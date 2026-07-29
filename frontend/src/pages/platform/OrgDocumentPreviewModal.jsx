@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Modal, Button, Spin, Typography } from 'antd'
-import { CloseOutlined, FileWordOutlined, LoadingOutlined } from '@ant-design/icons'
+import { Modal, Spin, Typography } from 'antd'
+import { FileWordOutlined, LoadingOutlined } from '@ant-design/icons'
 import {
   fetchOrgTemplatePreviewPdfBlob,
   fetchOrgTemplateThumbnailUrl,
@@ -122,14 +122,8 @@ export default function OrgDocumentPreviewModal({
     <Modal
       open={open}
       onCancel={onClose}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button danger type="primary" icon={<CloseOutlined />} onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      }
-      width="min(920px, 96vw)"
+      footer={null}
+      width={`min(${PREVIEW_PAGE_WIDTH + 2}px, 96vw)`}
       centered
       title={title || 'Document preview'}
       destroyOnHidden
@@ -137,12 +131,17 @@ export default function OrgDocumentPreviewModal({
         content: {
           border: `1px solid ${colors.border}`,
           boxShadow: '0 4px 16px rgba(107, 15, 15, 0.08)',
+          paddingBottom: 0,
+        },
+        header: {
+          marginBottom: 0,
+          paddingBottom: 8,
         },
         body: {
-          maxHeight: '75vh',
+          maxHeight: '80vh',
           overflowY: 'auto',
-          padding: loading ? 24 : 16,
-          background: '#f5f5f5',
+          padding: loading || mode === 'error' ? 24 : 0,
+          background: loading || mode === 'error' ? '#f5f5f5' : '#fff',
         },
       }}
     >
@@ -160,14 +159,7 @@ export default function OrgDocumentPreviewModal({
         </div>
       )}
       {!loading && mode === 'thumbnail' && thumbUrl && (
-        <div
-          style={{
-            maxWidth: PREVIEW_PAGE_WIDTH,
-            margin: '0 auto',
-            background: '#fff',
-            ...PAGE_FRAME,
-          }}
-        >
+        <div style={{ width: '100%', background: '#fff', ...PAGE_FRAME }}>
           <img
             src={thumbUrl}
             alt=""
@@ -175,7 +167,7 @@ export default function OrgDocumentPreviewModal({
           />
           <Text
             type="secondary"
-            style={{ display: 'block', textAlign: 'center', padding: '8px 12px' }}
+            style={{ display: 'block', textAlign: 'center', padding: '6px 8px', fontSize: 12 }}
           >
             Page 1 only — full PDF preview unavailable on this server
           </Text>
@@ -185,26 +177,26 @@ export default function OrgDocumentPreviewModal({
         <div>
           <Text
             type="secondary"
-            style={{ display: 'block', textAlign: 'center', marginBottom: 12 }}
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              padding: '6px 8px',
+              fontSize: 12,
+              background: '#fafafa',
+              borderBottom: `1px solid ${colors.border}`,
+            }}
           >
             {pageCount} page{pageCount === 1 ? '' : 's'} — scroll to view all
           </Text>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 16,
-              alignItems: 'center',
-            }}
-          >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {pages.map((page) => (
               <div
                 key={page.page}
                 style={{
                   width: '100%',
-                  maxWidth: PREVIEW_PAGE_WIDTH,
                   background: '#fff',
-                  ...PAGE_FRAME,
+                  borderBottom:
+                    page.page < pageCount ? `1px solid ${colors.border}` : undefined,
                 }}
               >
                 <img
@@ -212,17 +204,6 @@ export default function OrgDocumentPreviewModal({
                   alt={`Page ${page.page} of ${pageCount}`}
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                 />
-                <Text
-                  type="secondary"
-                  style={{
-                    display: 'block',
-                    textAlign: 'center',
-                    padding: '6px 8px',
-                    fontSize: 12,
-                  }}
-                >
-                  Page {page.page} of {pageCount}
-                </Text>
               </div>
             ))}
           </div>

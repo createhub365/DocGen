@@ -84,6 +84,8 @@ class Template(Base):
     thumbnail_path = Column(String, nullable=True)
     # SHA-256 hex of the docx bytes used to generate thumbnail_path (change detection).
     thumbnail_source_hash = Column(String(64), nullable=True)
+    # Cached full multi-page PDF for /preview.pdf (same content-hash as thumbnail).
+    preview_pdf_path = Column(String, nullable=True)
     label_overrides_json = Column(Text, nullable=True)
     category = Column(String, nullable=True)
     format_slug = Column(String, nullable=True)

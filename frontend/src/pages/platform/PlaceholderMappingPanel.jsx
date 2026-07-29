@@ -80,15 +80,22 @@ export default function PlaceholderMappingPanel({
     try {
       let published = null
       let options = []
-      try {
-        published = await getPublishedFlow(documentTypeId)
-      } catch (error) {
-        if (error.response?.status === 404) {
+      const [publishedSettled, mappings] = await Promise.all([
+        getPublishedFlow(documentTypeId)
+          .then((value) => ({ ok: true, value }))
+          .catch((error) => ({ ok: false, error })),
+        listPlaceholderMappings(template.id),
+      ])
+
+      if (!publishedSettled.ok) {
+        if (publishedSettled.error?.response?.status === 404) {
           setPublishGuard(true)
           setFieldOptions([])
         } else {
-          throw error
+          throw publishedSettled.error
         }
+      } else {
+        published = publishedSettled.value
       }
 
       if (published) {
@@ -103,7 +110,6 @@ export default function PlaceholderMappingPanel({
         setFieldOptions(options)
       }
 
-      const mappings = await listPlaceholderMappings(template.id)
       setDetected(mappings.detected_placeholders || [])
       setUnmapped(mappings.unmapped_placeholders || [])
       setIsComplete(!!mappings.is_complete)

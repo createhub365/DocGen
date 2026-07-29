@@ -7,6 +7,7 @@ from utils.file_utils import safe_join
 
 BUCKET = "employer-logos"
 THUMBNAIL_BUCKET = "template-thumbnails"
+PREVIEW_BUCKET = "template-previews"
 TEMPLATE_BUCKET = "template-documents"
 SB_PREFIX = "sb://"
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -15,6 +16,7 @@ _LOGO_MEDIA_TYPES = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".webp": "image/webp",
+    ".pdf": "application/pdf",
 }
 
 
@@ -148,6 +150,16 @@ def save_thumbnail(content: bytes, filename: str, thumbnail_dir: str) -> str:
     if is_remote_path(stored):
         return stored
     return f"thumbnails/{filename}"
+
+
+def save_preview_pdf(content: bytes, filename: str, preview_dir: str) -> str:
+    """Persist a full-preview PDF locally and/or to Supabase template-previews."""
+    stored = _save_object(
+        PREVIEW_BUCKET, content, filename, "application/pdf", preview_dir
+    )
+    if is_remote_path(stored):
+        return stored
+    return f"previews/{filename}"
 
 
 def resolve_logo_local_path(stored_path: str | None, logo_dir: str) -> str | None:

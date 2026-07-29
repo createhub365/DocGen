@@ -9,6 +9,7 @@ import {
   List,
   Modal,
   Space,
+  Spin,
   Tooltip,
   Typography,
 } from 'antd'
@@ -245,6 +246,12 @@ export default function PlatformDashboard() {
     <div>
       {loadError && (
         <Alert type="error" showIcon message={loadError} style={{ marginBottom: 16 }} />
+      )}
+
+      {loading && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+          <Spin size="large" />
+        </div>
       )}
 
       {!loading && types.length === 0 && !loadError && (

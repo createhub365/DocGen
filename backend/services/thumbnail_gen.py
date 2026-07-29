@@ -22,7 +22,12 @@ def generate_docx_thumbnail(
     thumbnail_dir: str,
     template_id: int,
     width_px: int | None = None,
+    keep_pdf_path: str | None = None,
 ) -> Optional[str]:
+    """
+    Render page-1 PNG. When keep_pdf_path is set and docx→PDF succeeds, copy the
+    intermediate PDF there (one LibreOffice pass serves thumbnail + full preview).
+    """
     width_px = width_px or DEFAULT_THUMBNAIL_WIDTH_PX
     os.makedirs(thumbnail_dir, exist_ok=True)
     thumb_filename = f"thumb_{template_id}.png"
@@ -31,6 +36,12 @@ def generate_docx_thumbnail(
     pdf_path = _docx_to_pdf(docx_path)
     if pdf_path:
         try:
+            if keep_pdf_path:
+                try:
+                    os.makedirs(os.path.dirname(keep_pdf_path) or ".", exist_ok=True)
+                    shutil.copy2(pdf_path, keep_pdf_path)
+                except OSError as exc:
+                    logger.warning("Could not keep preview PDF at %s: %s", keep_pdf_path, exc)
             if _pdf_to_png(pdf_path, thumb_path, width_px):
                 return f"thumbnails/{thumb_filename}"
         finally:

@@ -149,10 +149,18 @@ def test_bulk_continues_when_one_template_fails(dual_org_clients):
         "services.thumbnail_gen", fromlist=["generate_docx_thumbnail"]
     ).generate_docx_thumbnail
 
-    def selective_gen(docx_path, thumbnail_dir, template_id, width_px=None):
+    def selective_gen(
+        docx_path, thumbnail_dir, template_id, width_px=None, keep_pdf_path=None
+    ):
         if template_id == id_bad:
             raise RuntimeError("forced failure for one template")
-        return real_gen(docx_path, thumbnail_dir, template_id, width_px=width_px)
+        return real_gen(
+            docx_path,
+            thumbnail_dir,
+            template_id,
+            width_px=width_px,
+            keep_pdf_path=keep_pdf_path,
+        )
 
     with patch("routers.org_templates.generate_docx_thumbnail", side_effect=selective_gen):
         resp = client_a.post("/api/platform/settings/regenerate-thumbnails")

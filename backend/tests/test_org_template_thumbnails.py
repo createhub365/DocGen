@@ -139,3 +139,58 @@ def test_preview_pdf_returns_full_pdf_or_503_and_cross_org_blocked(dual_org_clie
         f"/api/platform/{setup['dt_id']}/templates/{tmpl_id}/preview.pdf"
     )
     assert blocked.status_code == 404
+
+
+def test_preview_pdf_cache_hit_skips_reconversion(dual_org_clients, tmp_path):
+    """Second preview for unchanged docx must serve cache (no second convert)."""
+    import os
+
+    from routers.org_templates import TEMPLATE_DIR, hash_docx_file
+
+    client_a = dual_org_clients["client_a"]
+    db = dual_org_clients["db"]
+    setup = _setup_published_flow_with_field(client_a, slug="pdf-cache")
+
+    up = _upload(client_a, setup["dt_id"], filename="cached.docx")
+    assert up.status_code == 201, up.text
+    tmpl_id = up.json()["id"]
+
+    # Seed a durable cached PDF + matching content hash (simulates prior convert).
+    row = db.query(Template).filter(Template.id == tmpl_id).first()
+    assert row is not None
+    org_dir = os.path.join(TEMPLATE_DIR, "orgs", str(row.org_id))
+    preview_dir = os.path.join(org_dir, "previews")
+    os.makedirs(preview_dir, exist_ok=True)
+    pdf_name = f"preview_{tmpl_id}.pdf"
+    pdf_abs = os.path.join(preview_dir, pdf_name)
+    # Minimal valid-enough PDF bytes for FileResponse
+    with open(pdf_abs, "wb") as handle:
+        handle.write(b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n")
+    docx_abs = os.path.join(TEMPLATE_DIR, row.docx_filename.replace("/", os.sep))
+    row.preview_pdf_path = f"orgs/{row.org_id}/previews/{pdf_name}"
+    row.thumbnail_source_hash = hash_docx_file(docx_abs)
+    db.commit()
+
+    convert_calls = {"n": 0}
+
+    def _fake_convert(docx_path, output_dir):
+        convert_calls["n"] += 1
+        return None, "should not convert on cache hit"
+
+    with patch(
+        "services.pdf_converter.try_convert_to_pdf", side_effect=_fake_convert
+    ):
+        first = client_a.get(
+            f"/api/platform/{setup['dt_id']}/templates/{tmpl_id}/preview.pdf"
+        )
+        second = client_a.get(
+            f"/api/platform/{setup['dt_id']}/templates/{tmpl_id}/preview.pdf"
+        )
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    assert first.content[:4] == b"%PDF"
+    assert second.content == first.content
+    assert first.headers.get("x-preview-cache") == "hit"
+    assert second.headers.get("x-preview-cache") == "hit"
+    assert convert_calls["n"] == 0
