@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Modal, Button, Spin, Typography } from 'antd'
-import { FileWordOutlined, LoadingOutlined } from '@ant-design/icons'
+import { CloseOutlined, FileWordOutlined, LoadingOutlined } from '@ant-design/icons'
 import {
   fetchOrgTemplatePreviewPdfBlob,
   fetchOrgTemplateThumbnailUrl,
 } from '../../api/platformClient'
+import { colors } from '../../design/tokens'
 import { renderPdfPagesToImages } from '../../utils/pdfPageRenderer'
 
 const { Text } = Typography
 
 const PREVIEW_PAGE_WIDTH = 794
+
+/** Subtle 1px hairline — matches platform `colors.border` (#E8D8D8). */
+const PAGE_FRAME = {
+  border: `1px solid ${colors.border}`,
+  boxShadow: 'none',
+}
 
 /**
  * Full-document preview for platform org templates.
@@ -117,7 +124,9 @@ export default function OrgDocumentPreviewModal({
       onCancel={onClose}
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Close</Button>
+          <Button danger type="primary" icon={<CloseOutlined />} onClick={onClose}>
+            Close
+          </Button>
         </div>
       }
       width="min(920px, 96vw)"
@@ -125,6 +134,10 @@ export default function OrgDocumentPreviewModal({
       title={title || 'Document preview'}
       destroyOnHidden
       styles={{
+        content: {
+          border: `1px solid ${colors.border}`,
+          boxShadow: '0 4px 16px rgba(107, 15, 15, 0.08)',
+        },
         body: {
           maxHeight: '75vh',
           overflowY: 'auto',
@@ -152,7 +165,7 @@ export default function OrgDocumentPreviewModal({
             maxWidth: PREVIEW_PAGE_WIDTH,
             margin: '0 auto',
             background: '#fff',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+            ...PAGE_FRAME,
           }}
         >
           <img
@@ -191,7 +204,7 @@ export default function OrgDocumentPreviewModal({
                   width: '100%',
                   maxWidth: PREVIEW_PAGE_WIDTH,
                   background: '#fff',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                  ...PAGE_FRAME,
                 }}
               >
                 <img
