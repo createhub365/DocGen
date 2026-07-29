@@ -59,14 +59,19 @@ def _get_active_org(db: Session, org_id: str) -> models.Organization:
 
 def _assert_logo_path_scoped(stored: str, org_id: str) -> None:
     """Reject paths that escape the caller's org prefix (defense in depth)."""
+    normalized = stored.replace("\\", "/")
     if is_remote_path(stored):
-        # Remote object keys must include orgs/{org_id}/
-        if f"orgs/{org_id}/" not in stored.replace("\\", "/"):
+        # Flat remote keys: org_logo_{org_id}_logo_….ext
+        # Legacy nested keys: …/orgs/{org_id}/…
+        if (
+            f"org_logo_{org_id}_" not in normalized
+            and f"orgs/{org_id}/" not in normalized
+        ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Logo not found"
             )
         return
-    rel = stored.replace("\\", "/").lstrip("/")
+    rel = normalized.lstrip("/")
     if not rel.startswith(f"orgs/{org_id}/"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Logo not found"
@@ -201,7 +206,19 @@ async def upload_organization_logo(
     if org.logo_path:
         delete_org_logo(org.logo_path, TEMPLATE_DIR)
 
-    stored = save_org_logo(content, relative, content_type, TEMPLATE_DIR)
+    try:
+        stored = save_org_logo(content, relative, content_type, TEMPLATE_DIR)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    except Exception as exc:  # noqa: BLE001 — surface storage failures cleanly
+        logger.exception("org logo upload failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not store organization logo",
+        ) from exc
+
     org.logo_path = stored
     db.commit()
     db.refresh(org)

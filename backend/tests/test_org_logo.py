@@ -127,3 +127,38 @@ def test_replace_and_delete_logo(dual_org_clients):
     assert deleted.status_code == 200
     assert deleted.json()["has_logo"] is False
     assert client_a.get("/api/platform/organization/logo").status_code == 404
+
+
+def test_remote_upload_uses_org_logos_bucket_not_template_documents(dual_org_clients, monkeypatch):
+    """Regression: images must not upload to template-documents (MIME 400 → 500)."""
+    import services.logo_storage as logo_storage
+
+    calls = []
+
+    def fake_enabled():
+        return True
+
+    def fake_ensure(bucket="employer-logos"):
+        calls.append(("ensure", bucket))
+
+    def fake_request(method, path, data=None, headers=None):
+        calls.append((method, path, (headers or {}).get("Content-Type")))
+        if "template-documents" in path:
+            raise logo_storage.urllib.error.HTTPError(
+                path, 400, "Bad Request", hdrs=None, fp=None
+            )
+        return b""
+
+    monkeypatch.setattr(logo_storage, "storage_enabled", fake_enabled)
+    monkeypatch.setattr(logo_storage, "ensure_bucket", fake_ensure)
+    monkeypatch.setattr(logo_storage, "_request", fake_request)
+
+    client_a = dual_org_clients["client_a"]
+    up = _upload_logo(client_a)
+    assert up.status_code == 200, up.text
+    assert up.json()["has_logo"] is True
+
+    post_calls = [c for c in calls if c[0] == "POST"]
+    assert post_calls, calls
+    assert any("org-logos/" in c[1] for c in post_calls), post_calls
+    assert not any("template-documents/" in c[1] for c in post_calls), post_calls

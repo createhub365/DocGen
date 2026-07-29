@@ -9,6 +9,7 @@ BUCKET = "employer-logos"
 THUMBNAIL_BUCKET = "template-thumbnails"
 PREVIEW_BUCKET = "template-previews"
 TEMPLATE_BUCKET = "template-documents"
+ORG_LOGO_BUCKET = "org-logos"
 SB_PREFIX = "sb://"
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 _LOGO_MEDIA_TYPES = {
@@ -256,32 +257,58 @@ def save_org_logo(
     Persist an org logo under template_root/orgs/{org_id}/….
 
     relative_path must be org-scoped (orgs/{org_id}/logo_….ext).
-    Returns relative_path (local) or sb://template-documents/{relative_path}.
+    Remote objects use the dedicated org-logos bucket with a flat key
+    (template-documents rejects image MIME types → 400).
+    Returns relative_path (local) or sb://org-logos/{flat_key}.
     """
     from utils.file_utils import safe_join_relative
 
     rel = (relative_path or "").replace("\\", "/").lstrip("/")
-    if not rel.startswith("orgs/") or ".." in rel.split("/"):
+    parts = rel.split("/")
+    if len(parts) < 3 or parts[0] != "orgs" or ".." in parts:
         raise ValueError("org logo path must be under orgs/{org_id}/")
+    org_id = parts[1]
+    basename = parts[-1]
+    if not basename.startswith("logo_"):
+        raise ValueError("org logo basename must start with logo_")
 
     full = safe_join_relative(template_root, rel)
     os.makedirs(os.path.dirname(full), exist_ok=True)
     with open(full, "wb") as handle:
         handle.write(content)
 
-    if storage_enabled():
-        ensure_bucket(TEMPLATE_BUCKET)
+    if not storage_enabled():
+        return rel
+
+    # Flat key keeps org scope without nested Storage paths.
+    remote_name = f"org_logo_{org_id}_{basename}"
+    try:
+        ensure_bucket(ORG_LOGO_BUCKET)
         _request(
             "POST",
-            f"/storage/v1/object/{TEMPLATE_BUCKET}/{rel}",
+            f"/storage/v1/object/{ORG_LOGO_BUCKET}/{remote_name}",
             data=content,
             headers={
                 "Content-Type": content_type or "application/octet-stream",
                 "x-upsert": "true",
             },
         )
-        return f"{SB_PREFIX}{TEMPLATE_BUCKET}/{rel}"
-    return rel
+        return f"{SB_PREFIX}{ORG_LOGO_BUCKET}/{remote_name}"
+    except urllib.error.HTTPError as exc:
+        # Local file is already written; keep serving from disk rather than 500.
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", errors="replace")[:300]
+        except Exception:
+            pass
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "org logo remote upload failed (%s): %s — using local path",
+            exc.code,
+            body or exc.reason,
+        )
+        return rel
 
 
 def delete_org_logo(stored_path: str | None, template_root: str) -> None:
@@ -311,14 +338,21 @@ def delete_org_logo(stored_path: str | None, template_root: str) -> None:
     except Exception:
         pass
 
+    # Also try flat remote key derived from local relative path.
     if storage_enabled():
         rel = str(stored_path).replace("\\", "/")
-        try:
-            _request("DELETE", f"/storage/v1/object/{TEMPLATE_BUCKET}/{rel}")
-        except urllib.error.HTTPError:
-            pass
-        except Exception:
-            pass
+        parts = rel.split("/")
+        if len(parts) >= 3 and parts[0] == "orgs":
+            remote_name = f"org_logo_{parts[1]}_{parts[-1]}"
+            try:
+                _request(
+                    "DELETE",
+                    f"/storage/v1/object/{ORG_LOGO_BUCKET}/{remote_name}",
+                )
+            except urllib.error.HTTPError:
+                pass
+            except Exception:
+                pass
 
 
 def delete_template_docx(stored_path: str | None, template_dir: str) -> None:
