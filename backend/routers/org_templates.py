@@ -24,7 +24,12 @@ from routers.platform_scope import (
     org_template_dir,
     unique_docx_name,
 )
-from schemas_platform import TemplatePatch
+from schemas_platform import (
+    TemplateBulkDeleteRequest,
+    TemplateBulkMoveRequest,
+    TemplateBulkResult,
+    TemplatePatch,
+)
 from services.logo_storage import (
     delete_template_docx,
     is_remote_path,
@@ -411,28 +416,28 @@ def list_org_templates(
     ]
 
 
-@router.delete(
-    "/{document_type_id}/templates/{template_id}",
-    status_code=status.HTTP_200_OK,
-)
-def delete_org_template(
+def _hard_delete_org_template(
+    db: Session,
+    *,
+    org_id: str,
     document_type_id: int,
     template_id: int,
-    current: OrgUserContext = Depends(require_org_role("org_admin")),
-    db: Session = Depends(get_db),
-):
+    actor_user_id: Optional[int] = None,
+    audit: bool = True,
+) -> dict:
     """
-    Hard-delete an org template + mappings + stored file.
+    Hard-delete one org template + mappings + stored file.
 
     GeneratedDocument rows that referenced this template keep their files;
     template_id is SET NULL via FK (historical downloads remain available).
+
+    Shared by single DELETE and bulk-delete. Raises HTTPException on miss.
     """
-    get_org_document_type(db, document_type_id, current.org_id)
     template = (
         db.query(models.Template)
         .filter(
             models.Template.id == template_id,
-            models.Template.org_id == current.org_id,
+            models.Template.org_id == org_id,
             models.Template.org_document_type_id == document_type_id,
             models.Template.is_active.is_(True),
         )
@@ -469,19 +474,20 @@ def delete_org_template(
     # Best-effort file cleanup after DB commit
     delete_template_docx(stored_path, TEMPLATE_DIR)
 
-    log_audit_event(
-        db,
-        current.org_id,
-        current.user_id,
-        "template.deleted",
-        "Template",
-        template_id,
-        {
-            "document_type_id": document_type_id,
-            "display_name": display,
-            "generated_documents_retained": int(gen_count),
-        },
-    )
+    if audit:
+        log_audit_event(
+            db,
+            org_id,
+            actor_user_id,
+            "template.deleted",
+            "Template",
+            template_id,
+            {
+                "document_type_id": document_type_id,
+                "display_name": display,
+                "generated_documents_retained": int(gen_count),
+            },
+        )
 
     return {
         "deleted": True,
@@ -489,6 +495,180 @@ def delete_org_template(
         "display_name": display,
         "generated_documents_retained": int(gen_count),
     }
+
+
+def _move_org_template_folder(
+    db: Session,
+    template: models.Template,
+    folder_id: Optional[int],
+    org_id: str,
+) -> None:
+    """Set template.folder_id (null = uncategorized). Validates folder scope."""
+    if folder_id is None:
+        template.folder_id = None
+        return
+    get_org_template_folder(
+        db,
+        folder_id,
+        org_id,
+        document_type_id=template.org_document_type_id,
+    )
+    template.folder_id = folder_id
+
+
+@router.delete(
+    "/{document_type_id}/templates/{template_id}",
+    status_code=status.HTTP_200_OK,
+)
+def delete_org_template(
+    document_type_id: int,
+    template_id: int,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Hard-delete an org template + mappings + stored file.
+
+    GeneratedDocument rows that referenced this template keep their files;
+    template_id is SET NULL via FK (historical downloads remain available).
+    """
+    get_org_document_type(db, document_type_id, current.org_id)
+    return _hard_delete_org_template(
+        db,
+        org_id=current.org_id,
+        document_type_id=document_type_id,
+        template_id=template_id,
+        actor_user_id=current.user_id,
+        audit=True,
+    )
+
+
+@router.post(
+    "/{document_type_id}/templates/bulk-delete",
+    response_model=TemplateBulkResult,
+)
+def bulk_delete_org_templates(
+    document_type_id: int,
+    body: TemplateBulkDeleteRequest,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """Hard-delete many templates; partial success reported per id."""
+    get_org_document_type(db, document_type_id, current.org_id)
+
+    succeeded: list[int] = []
+    failed: list[dict] = []
+    for template_id in body.template_ids:
+        try:
+            _hard_delete_org_template(
+                db,
+                org_id=current.org_id,
+                document_type_id=document_type_id,
+                template_id=template_id,
+                actor_user_id=current.user_id,
+                audit=False,
+            )
+            succeeded.append(template_id)
+        except HTTPException as exc:
+            db.rollback()
+            detail = exc.detail
+            reason = detail if isinstance(detail, str) else str(detail)
+            failed.append({"id": template_id, "reason": reason})
+        except Exception as exc:  # noqa: BLE001 — report and continue batch
+            db.rollback()
+            failed.append({"id": template_id, "reason": str(exc)})
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "templates.bulk_deleted",
+        "OrgDocumentType",
+        document_type_id,
+        {
+            "document_type_id": document_type_id,
+            "requested": len(body.template_ids),
+            "succeeded": len(succeeded),
+            "failed": len(failed),
+            "succeeded_ids": succeeded,
+            "failed_ids": [item["id"] for item in failed],
+        },
+    )
+    return {"succeeded": succeeded, "failed": failed}
+
+
+@router.post(
+    "/{document_type_id}/templates/bulk-move",
+    response_model=TemplateBulkResult,
+)
+def bulk_move_org_templates(
+    document_type_id: int,
+    body: TemplateBulkMoveRequest,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """Move many templates into a folder (or uncategorized); partial success OK."""
+    get_org_document_type(db, document_type_id, current.org_id)
+
+    # Shared target: validate once so a bad folder fails clearly before mutating.
+    if body.folder_id is not None:
+        get_org_template_folder(
+            db,
+            body.folder_id,
+            current.org_id,
+            document_type_id=document_type_id,
+        )
+
+    succeeded: list[int] = []
+    failed: list[dict] = []
+    for template_id in body.template_ids:
+        try:
+            template = (
+                db.query(models.Template)
+                .filter(
+                    models.Template.id == template_id,
+                    models.Template.org_id == current.org_id,
+                    models.Template.org_document_type_id == document_type_id,
+                    models.Template.is_active.is_(True),
+                )
+                .first()
+            )
+            if not template:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+                )
+            _move_org_template_folder(
+                db, template, body.folder_id, current.org_id
+            )
+            db.commit()
+            succeeded.append(template_id)
+        except HTTPException as exc:
+            db.rollback()
+            detail = exc.detail
+            reason = detail if isinstance(detail, str) else str(detail)
+            failed.append({"id": template_id, "reason": reason})
+        except Exception as exc:  # noqa: BLE001 — report and continue batch
+            db.rollback()
+            failed.append({"id": template_id, "reason": str(exc)})
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "templates.bulk_moved",
+        "OrgDocumentType",
+        document_type_id,
+        {
+            "document_type_id": document_type_id,
+            "folder_id": body.folder_id,
+            "requested": len(body.template_ids),
+            "succeeded": len(succeeded),
+            "failed": len(failed),
+            "succeeded_ids": succeeded,
+            "failed_ids": [item["id"] for item in failed],
+        },
+    )
+    return {"succeeded": succeeded, "failed": failed}
 
 
 @router.patch("/templates/{template_id}")
@@ -517,17 +697,9 @@ def patch_org_template(
         template.display_name = name
 
     if "folder_id" in data:
-        folder_id = data.get("folder_id")
-        if folder_id is None:
-            template.folder_id = None
-        else:
-            get_org_template_folder(
-                db,
-                folder_id,
-                current.org_id,
-                document_type_id=template.org_document_type_id,
-            )
-            template.folder_id = folder_id
+        _move_org_template_folder(
+            db, template, data.get("folder_id"), current.org_id
+        )
 
     db.commit()
     db.refresh(template)

@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   Dropdown,
   Empty,
   Form,
@@ -19,6 +20,8 @@ import {
 } from 'antd'
 import {
   ArrowLeftOutlined,
+  CheckSquareOutlined,
+  CloseOutlined,
   DeleteOutlined,
   EditOutlined,
   FileWordOutlined,
@@ -31,6 +34,8 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons'
 import {
+  bulkDeleteOrgTemplates,
+  bulkMoveOrgTemplates,
   createTemplateFolder,
   deleteOrgTemplate,
   deleteTemplateFolder,
@@ -254,6 +259,9 @@ export default function TemplatesPanel({
   const [moveTarget, setMoveTarget] = useState(null)
   const [moveFolderId, setMoveFolderId] = useState(null)
   const [moveLoading, setMoveLoading] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const loadTemplates = useCallback(async () => {
     setLoading(true)
@@ -279,6 +287,8 @@ export default function TemplatesPanel({
 
   useEffect(() => {
     setActiveFolderId(null)
+    setSelectMode(false)
+    setSelectedIds([])
     loadTemplates()
   }, [loadTemplates])
 
@@ -297,6 +307,8 @@ export default function TemplatesPanel({
     return templates.filter((t) => t.folder_id === activeFolderId)
   }, [templates, activeFolderId])
 
+  const visibleTemplates = activeFolderId == null ? rootTemplates : folderTemplates
+
   const folderCounts = useMemo(() => {
     const counts = {}
     for (const f of folders) counts[f.id] = 0
@@ -305,6 +317,97 @@ export default function TemplatesPanel({
     }
     return counts
   }, [folders, templates])
+
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedIds([])
+  }
+
+  const toggleSelectMode = () => {
+    if (selectMode) {
+      exitSelectMode()
+      return
+    }
+    setSelectMode(true)
+    setSelectedIds([])
+  }
+
+  const toggleSelected = (id) => {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
+    )
+  }
+
+  const formatBulkSummary = (result, verb) => {
+    const ok = result?.succeeded?.length || 0
+    const failed = result?.failed || []
+    if (!failed.length) return `${ok} ${verb}`
+    const reasons = failed
+      .map((f) => `#${f.id}: ${f.reason || 'failed'}`)
+      .join('; ')
+    return `${ok} ${verb}, ${failed.length} failed: ${reasons}`
+  }
+
+  const confirmBulkDelete = () => {
+    const count = selectedIds.length
+    if (!count) return
+    Modal.confirm({
+      title: `Delete ${count} selected document${count === 1 ? '' : 's'}?`,
+      content:
+        'This permanently removes the Word files and placeholder mappings. Generated downloads are kept.',
+      okText: 'Delete',
+      okButtonProps: { danger: true },
+      cancelText: 'Cancel',
+      onOk: async () => {
+        setBulkBusy(true)
+        try {
+          const result = await bulkDeleteOrgTemplates(documentTypeId, selectedIds)
+          const failed = result?.failed || []
+          const msg = formatBulkSummary(result, 'deleted')
+          if (failed.length) {
+            message.warning(msg)
+            setSelectedIds(failed.map((f) => f.id))
+          } else {
+            message.success(msg)
+            exitSelectMode()
+          }
+          await loadTemplates()
+        } catch (error) {
+          message.error(
+            (await readPlatformErrorDetail(error)) || 'Bulk delete failed'
+          )
+        } finally {
+          setBulkBusy(false)
+        }
+      },
+    })
+  }
+
+  const onBulkMove = async (folderId) => {
+    if (!selectedIds.length) return
+    setBulkBusy(true)
+    try {
+      const result = await bulkMoveOrgTemplates(
+        documentTypeId,
+        selectedIds,
+        folderId
+      )
+      const failed = result?.failed || []
+      const msg = formatBulkSummary(result, 'moved')
+      if (failed.length) {
+        message.warning(msg)
+        setSelectedIds(failed.map((f) => f.id))
+      } else {
+        message.success(msg)
+        exitSelectMode()
+      }
+      await loadTemplates()
+    } catch (error) {
+      message.error((await readPlatformErrorDetail(error)) || 'Bulk move failed')
+    } finally {
+      setBulkBusy(false)
+    }
+  }
 
   const closeAddModal = () => {
     setAddOpen(false)
@@ -550,6 +653,7 @@ export default function TemplatesPanel({
     >
       {items.map((item) => {
         const isComplete = completeness[item.id] === true
+        const selected = selectedIds.includes(item.id)
         const canGenerate = isComplete && hasPublishedFlow
         let generateTip = 'Generate this document'
         if (!canGenerate) {
@@ -590,6 +694,8 @@ export default function TemplatesPanel({
               borderRadius: 14,
               width: '100%',
               maxWidth: isMobile ? undefined : DOC_CARD_MAX_PX,
+              outline: selected ? '2px solid #8B1A1A' : undefined,
+              outlineOffset: 1,
             }}
           >
             <div style={{ position: 'relative', marginBottom: 10 }}>
@@ -609,6 +715,29 @@ export default function TemplatesPanel({
               >
                 {statusTag}
               </div>
+              {selectMode && canManage ? (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    zIndex: 2,
+                    background: 'rgba(255,255,255,0.92)',
+                    borderRadius: 6,
+                    padding: 2,
+                    lineHeight: 1,
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                  onMouseDown={(event) => event.stopPropagation()}
+                >
+                  <Checkbox
+                    checked={selected}
+                    aria-label={`Select ${title}`}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={() => toggleSelected(item.id)}
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div style={{ marginBottom: 10, minWidth: 0 }}>
@@ -772,6 +901,77 @@ export default function TemplatesPanel({
             <Button icon={<FolderAddOutlined />} onClick={openCreateFolder}>
               New folder
             </Button>
+            {templates.length >= 1 ? (
+              <Button
+                icon={<CheckSquareOutlined />}
+                type={selectMode ? 'default' : 'dashed'}
+                onClick={toggleSelectMode}
+              >
+                {selectMode ? 'Cancel select' : 'Select'}
+              </Button>
+            ) : null}
+          </Space>
+        </Card>
+      ) : null}
+
+      {canManage && selectMode && selectedIds.length > 0 ? (
+        <Card
+          size="small"
+          style={{
+            borderRadius: 12,
+            marginBottom: 16,
+            background: '#faf7f7',
+            borderColor: '#e8d4d4',
+          }}
+        >
+          <Space wrap align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Text strong>
+              {selectedIds.length} selected
+              {visibleTemplates.length
+                ? ` · ${visibleTemplates.filter((t) => selectedIds.includes(t.id)).length} in this view`
+                : ''}
+            </Text>
+            <Space wrap>
+              <Dropdown
+                menu={{
+                  items: [
+                    {
+                      key: 'uncategorized',
+                      label: 'Uncategorized',
+                      icon: <InboxOutlined />,
+                      onClick: () => onBulkMove(null),
+                    },
+                    ...folders.map((folder) => ({
+                      key: `folder-${folder.id}`,
+                      label: folder.name,
+                      icon: <FolderOutlined />,
+                      onClick: () => onBulkMove(folder.id),
+                    })),
+                  ],
+                }}
+                trigger={['click']}
+                disabled={bulkBusy}
+              >
+                <Button icon={<FolderOutlined />} loading={bulkBusy}>
+                  Move to folder
+                </Button>
+              </Dropdown>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                loading={bulkBusy}
+                onClick={confirmBulkDelete}
+              >
+                Delete
+              </Button>
+              <Button
+                icon={<CloseOutlined />}
+                disabled={bulkBusy}
+                onClick={() => setSelectedIds([])}
+              >
+                Clear selection
+              </Button>
+            </Space>
           </Space>
         </Card>
       ) : null}

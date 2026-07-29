@@ -424,6 +424,25 @@ class TemplatePatch(BaseModel):
     folder_id: Optional[int] = None
 
 
+class TemplateBulkDeleteRequest(BaseModel):
+    template_ids: list[int]
+
+
+class TemplateBulkMoveRequest(BaseModel):
+    template_ids: list[int]
+    folder_id: Optional[int] = None
+
+
+class TemplateBulkFailure(BaseModel):
+    id: int
+    reason: str
+
+
+class TemplateBulkResult(BaseModel):
+    succeeded: list[int]
+    failed: list[TemplateBulkFailure]
+
+
 class TemplateFolderCreate(BaseModel):
     name: str
 

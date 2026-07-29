@@ -222,6 +222,22 @@ export async function deleteOrgTemplate(documentTypeId, templateId) {
   return data
 }
 
+export async function bulkDeleteOrgTemplates(documentTypeId, templateIds) {
+  const { data } = await platformClient.post(
+    `/${documentTypeId}/templates/bulk-delete`,
+    { template_ids: templateIds }
+  )
+  return data
+}
+
+export async function bulkMoveOrgTemplates(documentTypeId, templateIds, folderId) {
+  const { data } = await platformClient.post(
+    `/${documentTypeId}/templates/bulk-move`,
+    { template_ids: templateIds, folder_id: folderId ?? null }
+  )
+  return data
+}
+
 export async function listTemplateFolders(documentTypeId) {
   const { data } = await platformClient.get(`/${documentTypeId}/folders`)
   return data
