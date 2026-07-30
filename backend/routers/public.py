@@ -1,14 +1,17 @@
 from datetime import datetime, timezone
 import os
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import APIRouter, Depends
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 
 import models
 from database import get_db
+from services.generated_document_storage import (
+    GeneratedDocumentStorageError,
+    get_generated_document_bytes,
+)
 from services.pdf_converter import pdf_converter_available
-from utils.file_utils import safe_join_relative
 
 router = APIRouter(tags=["public"])
 
@@ -64,6 +67,31 @@ _INVALID_HTML = """<!DOCTYPE html>
 </html>
 """
 
+_FILE_GONE_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Document no longer available</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f7f4f4; color: #1f1f1f;
+           display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #fff; border: 1px solid #e8d8d8; border-radius: 12px;
+            padding: 28px 32px; max-width: 420px; text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    p { margin: 0; color: #666; line-height: 1.5; font-size: .95rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>This document is no longer available</h1>
+    <p>The file was lost from temporary server storage. Ask the sender to generate the document again and share a new link.</p>
+  </div>
+</body>
+</html>
+"""
+
 
 @router.get("/health")
 def health_check():
@@ -91,7 +119,7 @@ def download_shared_document(token: str, db: Session = Depends(get_db)):
     Public (unauthenticated) PDF download via a time-limited share token.
 
     Reusable until expires_at. Expired/invalid tokens return a clean HTML page
-    (not a raw 404/500).
+    (not a raw 404/500). Missing stored files return an honest "no longer available" page.
     """
     raw = (token or "").strip()
     if not raw or len(raw) < 16:
@@ -121,15 +149,19 @@ def download_shared_document(token: str, db: Session = Depends(get_db)):
         return HTMLResponse(content=_INVALID_HTML, status_code=410)
 
     try:
-        path = safe_join_relative(OUTPUT_DIR, doc.pdf_filename)
-    except HTTPException:
-        return HTMLResponse(content=_INVALID_HTML, status_code=410)
+        data, media, filename = get_generated_document_bytes(
+            stored_path=doc.pdf_filename,
+            local_output_dir=OUTPUT_DIR,
+            format="pdf",
+            document_id=doc.id,
+        )
+    except GeneratedDocumentStorageError:
+        return HTMLResponse(content=_FILE_GONE_HTML, status_code=410)
 
-    if not os.path.exists(path):
-        return HTMLResponse(content=_INVALID_HTML, status_code=410)
-
-    return FileResponse(
-        path,
-        media_type="application/pdf",
-        filename=os.path.basename(doc.pdf_filename),
+    return Response(
+        content=data,
+        media_type=media,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )

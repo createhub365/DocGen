@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 import models
@@ -36,10 +36,17 @@ from schemas_platform import (
 )
 from services.doc_generator import fill_template
 from services.document_email import send_document_email
+from services.generated_document_storage import (
+    GeneratedDocumentStorageError,
+    UNAVAILABLE_DETAIL,
+    get_generated_document_bytes,
+    persist_local_generated_pair,
+    unlink_local_quiet,
+)
 from services.org_ref_counter import get_next_ref_number
 from services.pdf_converter import try_convert_to_pdf
 from services.telegram_bot import send_document as telegram_send_document
-from utils.file_utils import safe_join, safe_join_relative
+from utils.file_utils import safe_join
 
 router = APIRouter(tags=["platform-documents"])
 
@@ -227,6 +234,8 @@ def generate_org_document(
         pdf_basename = os.path.basename(pdf_path)
         pdf_filename = f"orgs/{current.org_id}/{pdf_basename}"
 
+    # Insert first so we have a stable document id for the storage object key.
+    # On upload failure we delete this row — no silent half-success.
     generated = models.GeneratedDocument(
         user_id=current.user_id,
         template_id=template.id,
@@ -239,6 +248,28 @@ def generate_org_document(
     db.commit()
     db.refresh(generated)
 
+    try:
+        stored_docx, stored_pdf = persist_local_generated_pair(
+            org_id=current.org_id,
+            document_id=generated.id,
+            local_docx_path=output_path,
+            local_pdf_path=pdf_path,
+            output_dir=OUTPUT_DIR,
+        )
+        generated.docx_filename = stored_docx
+        generated.pdf_filename = stored_pdf
+        db.commit()
+        db.refresh(generated)
+    except GeneratedDocumentStorageError as exc:
+        db.delete(generated)
+        db.commit()
+        unlink_local_quiet(output_path)
+        unlink_local_quiet(pdf_path)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc) or "Failed to store generated document",
+        ) from exc
+
     log_audit_event(
         db,
         current.org_id,
@@ -249,6 +280,7 @@ def generate_org_document(
         {
             "document_type_id": org_doc_type.id,
             "template_id": template.id,
+            "storage": "supabase" if (stored_docx or "").startswith("sb://") else "local",
         },
     )
 
@@ -257,11 +289,11 @@ def generate_org_document(
         docx_url=f"/api/platform/generated/{generated.id}/download",
         pdf_url=(
             f"/api/platform/generated/{generated.id}/download?format=pdf"
-            if pdf_filename
+            if generated.pdf_filename
             else None
         ),
-        pdf_available=bool(pdf_filename),
-        filename=relative_docx,
+        pdf_available=bool(generated.pdf_filename),
+        filename=os.path.basename(stored_docx.replace("\\", "/")),
     )
 
 
@@ -313,68 +345,61 @@ def download_generated_document(
     current: OrgUserContext = Depends(get_current_org_user),
     db: Session = Depends(get_db),
 ):
+    """Download DOCX/PDF — used by downloads and the in-app PDF viewer."""
     doc = _get_org_generated_document(db, doc_id, current.org_id)
     if format == "pdf":
         if not doc.pdf_filename:
             raise HTTPException(status_code=404, detail="Not found")
-        rel = doc.pdf_filename
-        media = "application/pdf"
+        stored = doc.pdf_filename
     else:
         if not doc.docx_filename:
             raise HTTPException(status_code=404, detail="Not found")
-        rel = doc.docx_filename
-        media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        stored = doc.docx_filename
 
     try:
-        path = safe_join_relative(OUTPUT_DIR, rel)
-    except HTTPException:
-        raise HTTPException(status_code=404, detail="Not found")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Not found")
+        data, media, filename = get_generated_document_bytes(
+            stored_path=stored,
+            local_output_dir=OUTPUT_DIR,
+            format=format,
+            document_id=doc.id,
+        )
+    except GeneratedDocumentStorageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail=str(exc) or UNAVAILABLE_DETAIL,
+        ) from exc
 
-    return FileResponse(
-        path,
+    return Response(
+        content=data,
         media_type=media,
-        filename=os.path.basename(rel),
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )
 
 
 def _read_org_generated_pdf_bytes(
     doc: models.GeneratedDocument,
 ) -> tuple[bytes, str]:
+    """Shared PDF reader for share-link / Telegram / email (via storage helper)."""
     if not doc.pdf_filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="PDF is not available for this document",
         )
     try:
-        path = safe_join_relative(OUTPUT_DIR, doc.pdf_filename)
-    except HTTPException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=(
-                "Generated PDF file is missing on the server. "
-                "Generate the document again, then retry send/share."
-            ),
+        data, _media, filename = get_generated_document_bytes(
+            stored_path=doc.pdf_filename,
+            local_output_dir=OUTPUT_DIR,
+            format="pdf",
+            document_id=doc.id,
         )
-    if not os.path.exists(path):
-        # Common on Render free tier: ./output is ephemeral and cleared on redeploy.
+    except GeneratedDocumentStorageError as exc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=(
-                "Generated PDF file is missing on the server "
-                "(often cleared after a redeploy). "
-                "Generate the document again, then retry send/share."
-            ),
-        )
-    with open(path, "rb") as fh:
-        data = fh.read()
-    if not data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="PDF file is empty or unavailable",
-        )
-    return data, os.path.basename(doc.pdf_filename)
+            status_code=status.HTTP_410_GONE,
+            detail=str(exc) or UNAVAILABLE_DETAIL,
+        ) from exc
+    return data, filename
 
 
 @router.post(

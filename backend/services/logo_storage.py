@@ -67,14 +67,16 @@ def _request(method: str, path: str, data: bytes | None = None, headers: dict | 
         return response.read()
 
 
-def ensure_bucket(bucket: str = BUCKET) -> None:
+def ensure_bucket(bucket: str = BUCKET, *, public: bool = True) -> None:
     if not storage_enabled():
         return
     try:
         _request(
             "POST",
             "/storage/v1/bucket",
-            data=json.dumps({"id": bucket, "name": bucket, "public": True}).encode("utf-8"),
+            data=json.dumps(
+                {"id": bucket, "name": bucket, "public": public}
+            ).encode("utf-8"),
             headers={"Content-Type": "application/json"},
         )
     except urllib.error.HTTPError as exc:
