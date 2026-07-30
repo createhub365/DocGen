@@ -186,7 +186,23 @@ export async function listOrgTemplates(documentTypeId) {
   return data
 }
 
-export async function uploadOrgTemplate(documentTypeId, file, displayName, folderId) {
+/**
+ * @param {number|string} documentTypeId
+ * @param {File|Blob} file
+ * @param {string} [displayName]
+ * @param {number|string|null} [folderId]
+ * @param {{ onUploadProgress?: (percent: number) => void }} [options]
+ *   onUploadProgress receives 0–100 for bytes sent. After the last byte
+ *   (100), the HTTP request may still be awaiting server processing —
+ *   callers should treat post-100 wait as a separate "processing" phase.
+ */
+export async function uploadOrgTemplate(
+  documentTypeId,
+  file,
+  displayName,
+  folderId,
+  options = {}
+) {
   const form = new FormData()
   form.append('file', file)
   if (displayName != null && String(displayName).trim()) {
@@ -195,8 +211,20 @@ export async function uploadOrgTemplate(documentTypeId, file, displayName, folde
   if (folderId != null && folderId !== '') {
     form.append('folder_id', String(folderId))
   }
+  const onUploadProgress = options?.onUploadProgress
   const { data } = await platformClient.post(`/${documentTypeId}/templates`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (event) => {
+      if (typeof onUploadProgress !== 'function') return
+      const total = event.total
+      if (!total || total <= 0) {
+        // Some environments omit Content-Length; report unknown as 0 until done.
+        onUploadProgress(0)
+        return
+      }
+      const percent = Math.min(100, Math.round((event.loaded / total) * 100))
+      onUploadProgress(percent)
+    },
   })
   return data
 }
@@ -338,6 +366,14 @@ export async function uploadOrgLogo(file) {
   form.append('file', file)
   const { data } = await platformClient.post('/organization/logo', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
+/** Set org UI theme preset key (org_admin). Pass null to reset to classic. */
+export async function updateOrgTheme(themeKey) {
+  const { data } = await platformClient.patch('/organization/theme', {
+    theme_key: themeKey,
   })
   return data
 }

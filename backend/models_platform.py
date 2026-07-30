@@ -67,6 +67,8 @@ class Organization(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     # Relative under TEMPLATE_DIR (orgs/{id}/…) or sb://… remote object
     logo_path = Column(String, nullable=True)
+    # Org UI theme preset key (frontend themes.js); null → classic maroon/gold
+    theme_key = Column(String(64), nullable=True)
 
     members = relationship("OrgUser", back_populates="organization")
     document_types = relationship("OrgDocumentType", back_populates="organization")

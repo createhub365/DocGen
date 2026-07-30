@@ -35,13 +35,13 @@ import { DEFAULT_DOC_TYPE_ICON } from './docTypeIcons'
 
 const { Title, Paragraph } = Typography
 
-/** Brand palette (same as PlatformLayout / design tokens). */
+/** Brand palette via CSS variables (follows org theme). */
 const BRAND = {
-  maroon: '#8B1A1A',
-  gold: '#D4A017',
-  softMaroonBg: '#f5eded',
-  border: '#f0e4e4',
-  surface: '#FDF7F7',
+  maroon: 'var(--primary)',
+  gold: 'var(--accent)',
+  softMaroonBg: 'var(--surface-3)',
+  border: 'var(--border)',
+  surface: 'var(--surface-2)',
 }
 
 /** Grid min track; cards grow up to MAX then wrap. */

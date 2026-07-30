@@ -352,7 +352,7 @@ export default function PlatformLayout() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: 'linear-gradient(180deg, #6B0F0F 0%, #2D0505 100%)',
+        background: 'linear-gradient(180deg, var(--sidebar-from) 0%, var(--sidebar-to) 100%)',
         color: 'white',
       }}
     >
@@ -370,7 +370,7 @@ export default function PlatformLayout() {
           flexDirection: 'column',
           height: '100vh',
           overflow: 'hidden',
-          background: 'var(--surface2, #FDF7F7)',
+          background: 'var(--surface-2, #FDF7F7)',
         }}
       >
         {isMobile && (
@@ -383,7 +383,7 @@ export default function PlatformLayout() {
               alignItems: 'center',
               gap: 8,
               padding: '0 12px',
-              background: 'linear-gradient(90deg, #6B0F0F 0%, #2D0505 100%)',
+              background: 'linear-gradient(90deg, var(--sidebar-from) 0%, var(--sidebar-to) 100%)',
               color: 'white',
               zIndex: 20,
             }}
@@ -391,13 +391,13 @@ export default function PlatformLayout() {
             <Button
               type="text"
               aria-label="Open navigation menu"
-              icon={<MenuOutlined style={{ fontSize: 20, color: '#D4A017' }} />}
+              icon={<MenuOutlined style={{ fontSize: 20, color: 'var(--accent)' }} />}
               onClick={() => setDrawerOpen(true)}
               className="platform-touch-target"
               style={{
                 width: 44,
                 height: 44,
-                color: '#D4A017',
+                color: 'var(--accent)',
               }}
             />
             <OrgAvatar name={orgName} logoUrl={logoUrl} size={32} />

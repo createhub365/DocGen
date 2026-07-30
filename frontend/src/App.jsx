@@ -4,6 +4,7 @@ import FullPageSpinner from './components/ui/FullPageSpinner'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { PlatformAuthProvider, usePlatformAuth } from './context/PlatformAuthContext'
 import PlatformLayout, { ProtectedPlatformRoute } from './components/PlatformLayout'
+import PlatformThemeProvider from './components/PlatformThemeProvider'
 import RequireOrgAdmin from './components/RequireOrgAdmin'
 import AppLayout from './components/AppLayout'
 
@@ -171,7 +172,9 @@ export default function App() {
   return (
     <AuthProvider>
       <PlatformAuthProvider>
-        <AppRoutes />
+        <PlatformThemeProvider>
+          <AppRoutes />
+        </PlatformThemeProvider>
       </PlatformAuthProvider>
     </AuthProvider>
   )

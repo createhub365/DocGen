@@ -52,6 +52,12 @@ class OrganizationUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+class OrganizationThemeUpdate(BaseModel):
+    """Set org UI theme preset. Null clears to the classic maroon/gold default."""
+
+    theme_key: Optional[str] = None
+
+
 class OrganizationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -62,6 +68,7 @@ class OrganizationRead(BaseModel):
     is_active: bool
     has_logo: bool = False
     logo_url: Optional[str] = None
+    theme_key: Optional[str] = None
 
 
 # ---- OrgUser ----

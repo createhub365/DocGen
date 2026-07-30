@@ -10,6 +10,7 @@ import {
   Form,
   Input,
   Modal,
+  Progress,
   Select,
   Space,
   Spin,
@@ -234,6 +235,8 @@ export default function TemplatesPanel({
   const canManage = canManageProp ?? isOrgAdmin
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadPhase, setUploadPhase] = useState('idle') // idle | uploading | processing
+  const [uploadPercent, setUploadPercent] = useState(0)
   const [templates, setTemplates] = useState([])
   const [folders, setFolders] = useState([])
   const [activeFolderId, setActiveFolderId] = useState(null) // null = root
@@ -411,15 +414,20 @@ export default function TemplatesPanel({
   }
 
   const closeAddModal = () => {
+    if (uploading) return
     setAddOpen(false)
     setUploadError(null)
     setFileList([])
+    setUploadPhase('idle')
+    setUploadPercent(0)
     addForm.resetFields()
   }
 
   const openAddModal = () => {
     setUploadError(null)
     setFileList([])
+    setUploadPhase('idle')
+    setUploadPercent(0)
     addForm.resetFields()
     if (activeFolderId != null) {
       addForm.setFieldsValue({ folder_id: activeFolderId })
@@ -456,6 +464,8 @@ export default function TemplatesPanel({
     }
 
     setUploading(true)
+    setUploadPhase('uploading')
+    setUploadPercent(0)
     setUploadError(null)
     setLastUpload(null)
     try {
@@ -464,8 +474,20 @@ export default function TemplatesPanel({
         documentTypeId,
         file,
         displayName,
-        folderId
+        folderId,
+        {
+          onUploadProgress: (percent) => {
+            setUploadPercent(percent)
+            if (percent >= 100) {
+              // Bytes sent; server may still be generating thumbnail / detecting placeholders.
+              setUploadPhase('processing')
+            }
+          },
+        }
       )
+      // Ensure processing flash even if progress events were sparse/missing.
+      setUploadPhase('processing')
+      setUploadPercent(100)
       const ids = placeholderIds(result.placeholders)
       setLastUpload({
         id: result.id,
@@ -473,7 +495,13 @@ export default function TemplatesPanel({
         docx_filename: result.docx_filename,
         placeholders: ids,
       })
-      closeAddModal()
+      setUploading(false)
+      setUploadPhase('idle')
+      setUploadPercent(0)
+      setAddOpen(false)
+      setUploadError(null)
+      setFileList([])
+      addForm.resetFields()
       message.success('Document uploaded')
       await loadTemplates()
     } catch (error) {
@@ -481,6 +509,8 @@ export default function TemplatesPanel({
         (await readPlatformErrorDetail(error)) ||
           'Upload failed. Check file type and that this document type still exists.'
       )
+      setUploadPhase('idle')
+      setUploadPercent(0)
     } finally {
       setUploading(false)
     }
@@ -1164,6 +1194,8 @@ export default function TemplatesPanel({
         footer={null}
         destroyOnHidden
         maskClosable={!uploading}
+        keyboard={!uploading}
+        closable={!uploading}
       >
         <Form
           form={addForm}
@@ -1195,7 +1227,9 @@ export default function TemplatesPanel({
               accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               beforeUpload={beforeUpload}
               fileList={fileList}
-              onRemove={() => setFileList([])}
+              onRemove={() => {
+                if (!uploading) setFileList([])
+              }}
               maxCount={1}
               disabled={uploading}
             >
@@ -1211,12 +1245,44 @@ export default function TemplatesPanel({
             )}
           </Form.Item>
 
+          {uploading && (
+            <div style={{ marginBottom: 16 }}>
+              {uploadPhase === 'processing' ? (
+                <>
+                  <Text style={{ display: 'block', marginBottom: 6 }}>Processing…</Text>
+                  <Progress
+                    percent={100}
+                    status="active"
+                    showInfo={false}
+                    strokeColor={{ from: '#1677ff', to: '#69b1ff' }}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={{ display: 'block', marginBottom: 6 }}>
+                    Uploading… {uploadPercent}%
+                  </Text>
+                  <Progress percent={uploadPercent} status="active" />
+                </>
+              )}
+            </div>
+          )}
+
           {uploadError && (
             <Alert type="error" showIcon message={uploadError} style={{ marginBottom: 12 }} />
           )}
 
-          <Button type="primary" htmlType="submit" loading={uploading} disabled={!canSubmitAdd} block>
-            Upload document
+          <Button
+            type="primary"
+            htmlType="submit"
+            disabled={!canSubmitAdd || uploading}
+            block
+          >
+            {uploading
+              ? uploadPhase === 'processing'
+                ? 'Processing…'
+                : 'Uploading…'
+              : 'Upload document'}
           </Button>
         </Form>
       </Modal>

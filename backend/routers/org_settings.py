@@ -22,6 +22,7 @@ from routers.org_templates import (
 )
 from routers.organizations import organization_to_read
 from routers.platform_scope import log_audit_event
+from schemas_platform import OrganizationRead, OrganizationThemeUpdate
 from services.logo_storage import (
     delete_org_logo,
     is_remote_path,
@@ -36,6 +37,17 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 TEMPLATE_DIR = os.getenv("TEMPLATE_DIR", "./template_store")
+
+# Keep in sync with frontend/src/design/themes.js keys.
+ALLOWED_ORG_THEME_KEYS = frozenset(
+    {
+        "classic",
+        "navy",
+        "forest",
+        "slate",
+        "terracotta",
+    }
+)
 
 router = APIRouter(tags=["platform-settings"])
 
@@ -184,6 +196,44 @@ def regenerate_org_thumbnails(
     )
 
     return summary
+
+
+@router.patch("/organization/theme", response_model=OrganizationRead)
+def update_organization_theme(
+    body: OrganizationThemeUpdate,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """Set org UI theme preset (org_admin only). Null clears to classic default."""
+    raw = body.theme_key
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        theme_key = None
+    else:
+        theme_key = raw.strip().lower()
+        if theme_key not in ALLOWED_ORG_THEME_KEYS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Invalid theme_key. Allowed: "
+                    + ", ".join(sorted(ALLOWED_ORG_THEME_KEYS))
+                ),
+            )
+
+    org = _get_active_org(db, current.org_id)
+    org.theme_key = theme_key
+    db.commit()
+    db.refresh(org)
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "organization.theme_updated",
+        "Organization",
+        org.id,
+        metadata={"theme_key": theme_key},
+    )
+    return organization_to_read(org)
 
 
 @router.post("/organization/logo")

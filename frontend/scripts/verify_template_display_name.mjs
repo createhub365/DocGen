@@ -59,7 +59,11 @@ check('4. Frontend modal requires name + file before submit', () => {
   assert.ok(panel.includes('e.g. Standard Offer Letter'))
   assert.ok(panel.includes('canSubmitAdd'))
   assert.ok(panel.includes('Dragger'))
-  assert.ok(panel.includes('uploadOrgTemplate(documentTypeId, file, displayName)'))
+  assert.ok(panel.includes('uploadOrgTemplate('))
+  assert.ok(panel.includes('onUploadProgress'))
+  assert.ok(panel.includes('Uploading…'))
+  assert.ok(panel.includes('Processing…'))
+  assert.ok(client.includes('onUploadProgress'))
 })
 
 check('5. Card shows display_name primary + filename secondary + rename', () => {

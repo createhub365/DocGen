@@ -9,6 +9,7 @@ import {
   Upload,
 } from 'antd'
 import {
+  CheckOutlined,
   DeleteOutlined,
   PictureOutlined,
   UploadOutlined,
@@ -18,8 +19,14 @@ import {
   fetchOrgLogoUrl,
   readPlatformErrorDetail,
   regenerateOrgThumbnails,
+  updateOrgTheme,
   uploadOrgLogo,
 } from '../../api/platformClient'
+import {
+  THEME_PRESETS,
+  applyThemeCssVariables,
+  resolveThemeKey,
+} from '../../design/themes'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
@@ -31,6 +38,26 @@ const { Title, Text } = Typography
 const LOGO_ACCEPT = '.png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml'
 const LOGO_MAX_BYTES = 2 * 1024 * 1024
 
+function ThemeSwatch({ colors }) {
+  return (
+    <div style={{ display: 'flex', gap: 6 }} aria-hidden="true">
+      {colors.map((c) => (
+        <span
+          key={c}
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            background: c,
+            border: '1px solid rgba(0,0,0,0.08)',
+            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.25)',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const message = useAppMessage()
   const { currentOrg, refreshMe } = usePlatformAuth()
@@ -40,9 +67,16 @@ export default function SettingsPage() {
   const [error, setError] = useState(null)
   const [logoPreview, setLogoPreview] = useState(null)
   const [logoError, setLogoError] = useState(null)
+  const [themeError, setThemeError] = useState(null)
+  const [pendingTheme, setPendingTheme] = useState(null)
 
   const regenBusy = isLoading('regen')
   const logoBusy = isLoading('logo')
+  const themeBusy = isLoading('theme')
+
+  const selectedTheme = resolveThemeKey(
+    pendingTheme !== null ? pendingTheme : currentOrg?.theme_key
+  )
 
   const header = useMemo(
     () => (
@@ -127,6 +161,29 @@ export default function SettingsPage() {
       }
     })
 
+  const onSelectTheme = (key) => {
+    if (themeBusy || key === selectedTheme) return
+    const previous = resolveThemeKey(currentOrg?.theme_key)
+    setThemeError(null)
+    setPendingTheme(key)
+    applyThemeCssVariables(key)
+    runNamed('theme', async () => {
+      try {
+        await updateOrgTheme(key)
+        await refreshMe()
+        setPendingTheme(null)
+        message.success(`Theme updated to ${THEME_PRESETS.find((p) => p.key === key)?.name || key}`)
+      } catch (err) {
+        applyThemeCssVariables(previous)
+        setPendingTheme(null)
+        const detail =
+          (await readPlatformErrorDetail(err)) || 'Could not update theme'
+        setThemeError(detail)
+        message.error(detail)
+      }
+    })
+  }
+
   const initial = (currentOrg?.name || '?').trim().charAt(0).toUpperCase() || '?'
 
   return (
@@ -135,8 +192,81 @@ export default function SettingsPage() {
       style={{ maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 16 }}
     >
       <Card
+        title="Theme"
+        style={{ borderRadius: 12, borderColor: 'var(--border)' }}
+      >
+        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+          Choose a color theme for your organization. Everyone in your org sees
+          the same theme on every device.
+        </Text>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+            gap: 12,
+          }}
+        >
+          {THEME_PRESETS.map((preset) => {
+            const selected = preset.key === selectedTheme
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                disabled={themeBusy}
+                onClick={() => onSelectTheme(preset.key)}
+                aria-pressed={selected}
+                style={{
+                  textAlign: 'left',
+                  cursor: themeBusy ? 'wait' : 'pointer',
+                  borderRadius: 12,
+                  border: selected
+                    ? '2px solid var(--primary)'
+                    : '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  padding: 12,
+                  boxShadow: selected ? 'var(--shadow-sm)' : 'none',
+                  position: 'relative',
+                }}
+              >
+                {selected ? (
+                  <CheckOutlined
+                    style={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      color: 'var(--primary)',
+                      fontSize: 14,
+                    }}
+                  />
+                ) : null}
+                <ThemeSwatch colors={preset.swatch} />
+                <Text strong style={{ display: 'block', marginTop: 10 }}>
+                  {preset.name}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {preset.description}
+                </Text>
+              </button>
+            )
+          })}
+        </div>
+
+        <AsyncBusyBar active={themeBusy} label="Saving theme…" />
+
+        {themeError && (
+          <Alert
+            type="error"
+            showIcon
+            message={themeError}
+            style={{ marginTop: 16 }}
+          />
+        )}
+      </Card>
+
+      <Card
         title="Organization logo"
-        style={{ borderRadius: 12, borderColor: '#f0e4e4' }}
+        style={{ borderRadius: 12, borderColor: 'var(--border)' }}
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
           PNG, JPG, or SVG · up to 2MB
@@ -161,8 +291,8 @@ export default function SettingsPage() {
                 height: 64,
                 borderRadius: 12,
                 objectFit: 'contain',
-                background: '#faf5f5',
-                border: '1px solid #f0e4e4',
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
               }}
             />
           ) : (
@@ -172,14 +302,14 @@ export default function SettingsPage() {
                 width: 64,
                 height: 64,
                 borderRadius: '50%',
-                background: 'rgba(107,15,15,0.08)',
-                border: '1px solid #f0e4e4',
+                background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                border: '1px solid var(--border)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 26,
                 fontWeight: 800,
-                color: '#6B0F0F',
+                color: 'var(--primary)',
               }}
             >
               {initial}
@@ -225,7 +355,7 @@ export default function SettingsPage() {
 
       <Card
         title="Document previews"
-        style={{ borderRadius: 12, borderColor: '#f0e4e4' }}
+        style={{ borderRadius: 12, borderColor: 'var(--border)' }}
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
           Create or refresh missing thumbnails for uploaded documents.
