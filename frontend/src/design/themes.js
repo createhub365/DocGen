@@ -334,3 +334,26 @@ export function clearThemeCssVariables() {
     root.style.removeProperty(`--shadow-${key}`)
   })
 }
+
+const DEFAULT_META_THEME_COLOR = '#8B1A1A'
+
+/**
+ * Update <meta name="theme-color"> for the current browser session
+ * (address-bar tint on supporting mobile browsers). Does not rewrite
+ * manifest.webmanifest — installed PWA chrome still uses the static manifest.
+ */
+export function setDocumentThemeColor(hex) {
+  if (typeof document === 'undefined') return
+  const value = hex || DEFAULT_META_THEME_COLOR
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.setAttribute('name', 'theme-color')
+    document.head.appendChild(meta)
+  }
+  meta.setAttribute('content', value)
+}
+
+export function getThemePrimary(themeKey) {
+  return getThemePreset(themeKey).colors.primary
+}

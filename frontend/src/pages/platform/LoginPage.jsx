@@ -54,7 +54,6 @@ export default function PlatformLoginPage() {
     <div
       className="login-page min-h-screen flex items-center justify-center"
       style={{
-        background: 'linear-gradient(135deg, #6B0F0F 0%, #3D0505 45%, #1A0A0A 100%)',
         padding: 24,
         position: 'relative',
         overflow: 'hidden',
@@ -65,39 +64,18 @@ export default function PlatformLoginPage() {
 
       <div className="animate-scale-in w-full" style={{ maxWidth: 420, position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 18,
-              background: 'rgba(255,255,255,0.10)',
-              border: '1px solid rgba(255,255,255,0.14)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 16,
-            }}
-          >
-            <FileTextOutlined style={{ fontSize: 32, color: '#D4A017' }} />
+          <div className="login-brand-mark" aria-hidden>
+            <FileTextOutlined />
           </div>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>
             DocFlow Platform
           </h1>
-          <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
             Organization sign in
           </Text>
         </div>
 
-        <div
-          className="login-card"
-          style={{
-            background: 'var(--surface)',
-            borderRadius: 'var(--radius-xl)',
-            boxShadow: '0 24px 64px rgba(0,0,0,0.40)',
-            padding: '36px 32px 28px',
-            border: '1px solid rgba(139,26,26,0.08)',
-          }}
-        >
+        <div className="login-card" style={{ padding: '36px 32px 28px' }}>
           {formError && (
             <Alert
               type={legacyOnly ? 'warning' : 'error'}
@@ -137,7 +115,7 @@ export default function PlatformLoginPage() {
             <Link to="/platform/signup">Create one</Link>
           </div>
           <div style={{ marginTop: 8, textAlign: 'center', fontSize: 12 }}>
-            <Link to="/login" style={{ color: 'var(--text-muted, #9A8080)' }}>
+            <Link to="/login" style={{ color: 'var(--text-muted)' }}>
               Legacy immigration login
             </Link>
           </div>
