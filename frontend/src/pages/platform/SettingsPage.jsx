@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Button,
   Card,
   Collapse,
+  Form,
+  Input,
+  List,
   Space,
   Typography,
   Upload,
@@ -12,11 +15,15 @@ import {
   CheckOutlined,
   DeleteOutlined,
   PictureOutlined,
+  PlusOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
 import {
+  createTelegramContact,
   deleteOrgLogo,
+  deleteTelegramContact,
   fetchOrgLogoUrl,
+  listTelegramContacts,
   readPlatformErrorDetail,
   regenerateOrgThumbnails,
   updateOrgTheme,
@@ -69,6 +76,11 @@ export default function SettingsPage() {
   const [logoError, setLogoError] = useState(null)
   const [themeError, setThemeError] = useState(null)
   const [pendingTheme, setPendingTheme] = useState(null)
+  const [tgContacts, setTgContacts] = useState([])
+  const [tgLoading, setTgLoading] = useState(false)
+  const [tgError, setTgError] = useState(null)
+  const [tgBusy, setTgBusy] = useState(false)
+  const [tgForm] = Form.useForm()
 
   const regenBusy = isLoading('regen')
   const logoBusy = isLoading('logo')
@@ -77,6 +89,26 @@ export default function SettingsPage() {
   const selectedTheme = resolveThemeKey(
     pendingTheme !== null ? pendingTheme : currentOrg?.theme_key
   )
+
+  const loadTelegramContacts = useCallback(async () => {
+    setTgLoading(true)
+    setTgError(null)
+    try {
+      const rows = await listTelegramContacts()
+      setTgContacts(Array.isArray(rows) ? rows : [])
+    } catch (err) {
+      setTgContacts([])
+      setTgError(
+        (await readPlatformErrorDetail(err)) || 'Could not load Telegram contacts'
+      )
+    } finally {
+      setTgLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadTelegramContacts()
+  }, [loadTelegramContacts])
 
   const header = useMemo(
     () => (
@@ -160,6 +192,40 @@ export default function SettingsPage() {
         message.error(detail)
       }
     })
+
+  const onAddTelegramContact = async (values) => {
+    setTgBusy(true)
+    setTgError(null)
+    try {
+      await createTelegramContact({
+        label: values.label,
+        chat_id: values.chat_id,
+      })
+      tgForm.resetFields()
+      message.success('Telegram contact added')
+      await loadTelegramContacts()
+    } catch (err) {
+      const detail =
+        (await readPlatformErrorDetail(err)) || 'Could not add contact'
+      setTgError(detail)
+      message.error(detail)
+    } finally {
+      setTgBusy(false)
+    }
+  }
+
+  const onDeleteTelegramContact = async (contactId) => {
+    setTgBusy(true)
+    try {
+      await deleteTelegramContact(contactId)
+      message.success('Contact removed')
+      await loadTelegramContacts()
+    } catch (err) {
+      message.error((await readPlatformErrorDetail(err)) || 'Could not delete contact')
+    } finally {
+      setTgBusy(false)
+    }
+  }
 
   const onSelectTheme = (key) => {
     if (themeBusy || key === selectedTheme) return
@@ -348,6 +414,81 @@ export default function SettingsPage() {
             type="error"
             showIcon
             message={logoError}
+            style={{ marginTop: 16 }}
+          />
+        )}
+      </Card>
+
+      <Card
+        title="Telegram contacts"
+        style={{ borderRadius: 12, borderColor: 'var(--border)' }}
+      >
+        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+          Saved chat IDs for the shared DocGen Telegram bot. Staff can pick these
+          when sharing a generated PDF. The bot token stays on the server only.
+        </Text>
+        <List
+          loading={tgLoading}
+          dataSource={tgContacts}
+          locale={{ emptyText: 'No contacts yet' }}
+          style={{ marginBottom: 16 }}
+          renderItem={(item) => (
+            <List.Item
+              actions={[
+                <Button
+                  key="del"
+                  type="link"
+                  danger
+                  icon={<DeleteOutlined />}
+                  loading={tgBusy}
+                  onClick={() => onDeleteTelegramContact(item.id)}
+                >
+                  Remove
+                </Button>,
+              ]}
+            >
+              <List.Item.Meta
+                title={item.label}
+                description={`chat_id: ${item.chat_id}`}
+              />
+            </List.Item>
+          )}
+        />
+        <Form
+          form={tgForm}
+          layout="vertical"
+          onFinish={onAddTelegramContact}
+          requiredMark={false}
+        >
+          <Form.Item
+            name="label"
+            label="Label"
+            rules={[{ required: true, message: 'Label is required' }]}
+          >
+            <Input placeholder="HR Manager - Apex Warehousing" />
+          </Form.Item>
+          <Form.Item
+            name="chat_id"
+            label="Telegram chat ID"
+            rules={[{ required: true, message: 'chat_id is required' }]}
+            extra="Numeric chat ID for the contact or group (from @userinfobot or similar)"
+          >
+            <Input placeholder="123456789" />
+          </Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            icon={<PlusOutlined />}
+            loading={tgBusy}
+          >
+            Add contact
+          </Button>
+        </Form>
+        {tgError && (
+          <Alert
+            type="error"
+            showIcon
+            message={tgError}
             style={{ marginTop: 16 }}
           />
         )}

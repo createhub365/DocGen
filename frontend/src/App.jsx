@@ -18,6 +18,7 @@ const AdminPanel = lazy(() => import('./components/AdminPanel'))
 const PlatformLoginPage = lazy(() => import('./pages/platform/LoginPage'))
 const PlatformSignupPage = lazy(() => import('./pages/platform/SignupPage'))
 const PlatformDashboard = lazy(() => import('./pages/platform/PlatformDashboard'))
+const DocumentTypesPage = lazy(() => import('./pages/platform/DocumentTypesPage'))
 const FlowBuilderPage = lazy(() => import('./pages/platform/FlowBuilderPage'))
 const GenerateDocumentPage = lazy(() => import('./pages/platform/GenerateDocumentPage'))
 const GeneratedDocumentsPage = lazy(() => import('./pages/platform/GeneratedDocumentsPage'))
@@ -91,7 +92,7 @@ function AppRoutes() {
         >
           <Route path="/platform" element={<PlatformDashboard />} />
           <Route path="/platform/dashboard" element={<Navigate to="/platform" replace />} />
-          <Route path="/platform/document-types" element={<PlatformDashboard />} />
+          <Route path="/platform/document-types" element={<DocumentTypesPage />} />
           <Route path="/platform/document-types/:id" element={<FlowBuilderPage />} />
           <Route
             path="/platform/document-types/:id/generate/:templateId"

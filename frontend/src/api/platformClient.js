@@ -456,6 +456,55 @@ export async function downloadGeneratedDocument(docId, format = 'docx') {
   window.URL.revokeObjectURL(url)
 }
 
+/** Fetch generated document bytes for in-app preview (does not trigger download). */
+export async function fetchGeneratedDocumentBlob(docId, format = 'pdf') {
+  const response = await platformClient.get(`/generated/${docId}/download`, {
+    params: { format },
+    responseType: 'blob',
+  })
+  return response.data
+}
+
+export async function createGeneratedShareLink(docId) {
+  const { data } = await platformClient.post(`/generated/${docId}/share-link`)
+  return data
+}
+
+export async function sendGeneratedDocumentTelegram(docId, telegramContactId) {
+  const { data } = await platformClient.post(`/generated/${docId}/send-telegram`, {
+    telegram_contact_id: telegramContactId,
+  })
+  return data
+}
+
+export async function sendGeneratedDocumentEmail(docId, payload) {
+  const { data } = await platformClient.post(`/generated/${docId}/send-email`, payload)
+  return data
+}
+
+export async function listTelegramContacts() {
+  const { data } = await platformClient.get('/telegram-contacts')
+  return data
+}
+
+export async function createTelegramContact(payload) {
+  const { data } = await platformClient.post('/telegram-contacts', payload)
+  return data
+}
+
+export async function updateTelegramContact(contactId, payload) {
+  const { data } = await platformClient.patch(
+    `/telegram-contacts/${contactId}`,
+    payload
+  )
+  return data
+}
+
+export async function deleteTelegramContact(contactId) {
+  const { data } = await platformClient.delete(`/telegram-contacts/${contactId}`)
+  return data
+}
+
 /**
  * Uses is_complete from GET .../templates (server-side) — no per-template
  * mappings round-trips.

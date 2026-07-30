@@ -1,11 +1,68 @@
 from datetime import datetime, timezone
 import os
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
+from sqlalchemy.orm import Session
 
+import models
+from database import get_db
 from services.pdf_converter import pdf_converter_available
+from utils.file_utils import safe_join_relative
 
 router = APIRouter(tags=["public"])
+
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "./output")
+
+_EXPIRED_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Link expired</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f7f4f4; color: #1f1f1f;
+           display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #fff; border: 1px solid #e8d8d8; border-radius: 12px;
+            padding: 28px 32px; max-width: 420px; text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    p { margin: 0; color: #666; line-height: 1.5; font-size: .95rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>This link has expired</h1>
+    <p>Ask the sender for a new download link. Shared links are temporary and stop working after they expire.</p>
+  </div>
+</body>
+</html>
+"""
+
+_INVALID_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Link unavailable</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f7f4f4; color: #1f1f1f;
+           display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #fff; border: 1px solid #e8d8d8; border-radius: 12px;
+            padding: 28px 32px; max-width: 420px; text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    p { margin: 0; color: #666; line-height: 1.5; font-size: .95rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>This link is unavailable</h1>
+    <p>The download link is invalid or the document is no longer available. Ask the sender for a new link.</p>
+  </div>
+</body>
+</html>
+"""
 
 
 @router.get("/health")
@@ -26,3 +83,53 @@ def health_check():
 @router.get("/ping")
 def ping():
     return {"pong": True}
+
+
+@router.get("/shared/{token}")
+def download_shared_document(token: str, db: Session = Depends(get_db)):
+    """
+    Public (unauthenticated) PDF download via a time-limited share token.
+
+    Reusable until expires_at. Expired/invalid tokens return a clean HTML page
+    (not a raw 404/500).
+    """
+    raw = (token or "").strip()
+    if not raw or len(raw) < 16:
+        return HTMLResponse(content=_INVALID_HTML, status_code=410)
+
+    row = (
+        db.query(models.DocumentShareToken)
+        .filter(models.DocumentShareToken.token == raw)
+        .first()
+    )
+    if not row:
+        return HTMLResponse(content=_INVALID_HTML, status_code=410)
+
+    now = datetime.utcnow()
+    if row.expires_at <= now:
+        return HTMLResponse(content=_EXPIRED_HTML, status_code=410)
+
+    doc = (
+        db.query(models.GeneratedDocument)
+        .filter(
+            models.GeneratedDocument.id == row.generated_document_id,
+            models.GeneratedDocument.org_id == row.org_id,
+        )
+        .first()
+    )
+    if not doc or not doc.pdf_filename:
+        return HTMLResponse(content=_INVALID_HTML, status_code=410)
+
+    try:
+        path = safe_join_relative(OUTPUT_DIR, doc.pdf_filename)
+    except HTTPException:
+        return HTMLResponse(content=_INVALID_HTML, status_code=410)
+
+    if not os.path.exists(path):
+        return HTMLResponse(content=_INVALID_HTML, status_code=410)
+
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=os.path.basename(doc.pdf_filename),
+    )

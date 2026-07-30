@@ -19,11 +19,14 @@ import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
   DownloadOutlined,
+  EyeOutlined,
   FileTextOutlined,
+  ShareAltOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import {
   downloadGeneratedDocument,
+  fetchGeneratedDocumentBlob,
   generateOrgDocument,
   getDocumentType,
   getPublishedFlow,
@@ -39,7 +42,10 @@ import {
   findWorldCountry,
   worldCountrySelectOptions,
 } from '../../data/worldCountries'
-
+import InAppPdfViewerModal from './InAppPdfViewerModal'
+import ShareGeneratedDocumentModal from './ShareGeneratedDocumentModal'
+import { renderPdfPagesToImages } from '../../utils/pdfPageRenderer'
+import { colors } from '../../design/tokens'
 /** flag-icons CSS sprite — works on Windows (emoji flags do not). */
 function WorldCountryFlag({ code, size = 18 }) {
   const cls = String(code || '')
@@ -201,10 +207,46 @@ export default function GenerateDocumentPage() {
   const [missingFields, setMissingFields] = useState([])
   const [submitError, setSubmitError] = useState(null)
   const [result, setResult] = useState(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [inlinePages, setInlinePages] = useState([])
+  const [inlineLoading, setInlineLoading] = useState(false)
   /** Index into `wizardPages` (steps + review). */
   const [pageIndex, setPageIndex] = useState(0)
   const [pageError, setPageError] = useState(null)
   const watchedCountryName = Form.useWatch('country.name', form)
+
+  const loadPdfBlob = useCallback(async () => {
+    if (!result?.document_id) throw new Error('No document')
+    return fetchGeneratedDocumentBlob(result.document_id, 'pdf')
+  }, [result?.document_id])
+
+  useEffect(() => {
+    if (!result?.pdf_available || !result?.document_id) {
+      setInlinePages([])
+      setInlineLoading(false)
+      return undefined
+    }
+    let cancelled = false
+    setInlineLoading(true)
+    setInlinePages([])
+    ;(async () => {
+      try {
+        const blob = await fetchGeneratedDocumentBlob(result.document_id, 'pdf')
+        if (cancelled) return
+        const pages = await renderPdfPagesToImages(blob, 640)
+        if (cancelled) return
+        setInlinePages(pages)
+      } catch {
+        if (!cancelled) setInlinePages([])
+      } finally {
+        if (!cancelled) setInlineLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [result?.document_id, result?.pdf_available])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -788,15 +830,76 @@ export default function GenerateDocumentPage() {
 
       {!loadError && result && (
         <Card style={{ borderRadius: 16, marginBottom: 16 }}>
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Space>
               <CheckCircleOutlined style={{ color: '#389e0a', fontSize: 22 }} />
               <Text strong>Document generated successfully</Text>
             </Space>
             <Text type="secondary">id {result.document_id}</Text>
+
+            {result.pdf_available ? (
+              <div
+                style={{
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  background: '#fafafa',
+                  maxHeight: 420,
+                  overflowY: 'auto',
+                }}
+              >
+                {inlineLoading && (
+                  <div style={{ display: 'grid', placeItems: 'center', minHeight: 160 }}>
+                    <Spin tip="Loading preview…" />
+                  </div>
+                )}
+                {!inlineLoading && inlinePages.length > 0 && (
+                  <div>
+                    {inlinePages.map((page) => (
+                      <img
+                        key={page.page}
+                        src={page.image}
+                        alt={`Page ${page.page}`}
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          display: 'block',
+                          borderBottom:
+                            page.page < inlinePages.length
+                              ? `1px solid ${colors.border}`
+                              : undefined,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+                {!inlineLoading && inlinePages.length === 0 && (
+                  <div style={{ padding: 24, textAlign: 'center' }}>
+                    <Text type="secondary">
+                      Preview unavailable — use View to retry, or download the file.
+                    </Text>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Alert
+                type="info"
+                showIcon
+                message="PDF preview unavailable for this run — download DOCX instead."
+              />
+            )}
+
             <Space wrap>
+              {result.pdf_available && (
+                <Button
+                  type="primary"
+                  icon={<EyeOutlined />}
+                  onClick={() => setPreviewOpen(true)}
+                >
+                  View
+                </Button>
+              )}
               <Button
-                type="primary"
                 icon={<DownloadOutlined />}
                 onClick={() => downloadGeneratedDocument(result.document_id, 'docx')}
               >
@@ -810,6 +913,14 @@ export default function GenerateDocumentPage() {
                   Download PDF
                 </Button>
               )}
+              {result.pdf_available && (
+                <Button
+                  icon={<ShareAltOutlined />}
+                  onClick={() => setShareOpen(true)}
+                >
+                  Share
+                </Button>
+              )}
               <Button
                 icon={<FileTextOutlined />}
                 onClick={() => navigate('/platform/generated')}
@@ -819,6 +930,9 @@ export default function GenerateDocumentPage() {
               <Button
                 onClick={() => {
                   setResult(null)
+                  setPreviewOpen(false)
+                  setShareOpen(false)
+                  setInlinePages([])
                   form.resetFields()
                   setPageIndex(0)
                   setSubmitError(null)
@@ -829,6 +943,18 @@ export default function GenerateDocumentPage() {
               </Button>
             </Space>
           </Space>
+
+          <InAppPdfViewerModal
+            open={previewOpen}
+            onClose={() => setPreviewOpen(false)}
+            title={`Document #${result.document_id}`}
+            loadPdf={loadPdfBlob}
+          />
+          <ShareGeneratedDocumentModal
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            documentId={result.document_id}
+          />
         </Card>
       )}
 

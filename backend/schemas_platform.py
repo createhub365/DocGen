@@ -536,3 +536,49 @@ class OrgGenerateResponse(BaseModel):
     pdf_url: Optional[str] = None
     pdf_available: bool = False
     filename: Optional[str] = None
+
+
+# ---- Share / Telegram / Email ----
+
+
+class ShareLinkResponse(BaseModel):
+    token: str
+    share_url: str
+    expires_at: datetime
+
+
+class SendTelegramRequest(BaseModel):
+    telegram_contact_id: int
+
+
+class SendEmailRequest(BaseModel):
+    recipient_email: str
+    message: Optional[str] = None
+
+    @field_validator("recipient_email")
+    @classmethod
+    def _email_required(cls, v: str) -> str:
+        value = (v or "").strip()
+        if not value or "@" not in value:
+            raise ValueError("A valid recipient email is required")
+        return value
+
+
+class TelegramContactCreate(BaseModel):
+    label: str
+    chat_id: str
+
+
+class TelegramContactUpdate(BaseModel):
+    label: Optional[str] = None
+    chat_id: Optional[str] = None
+
+
+class TelegramContactRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    org_id: str
+    label: str
+    chat_id: str
+    created_at: datetime

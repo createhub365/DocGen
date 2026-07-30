@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 import models
-from auth import OrgUserContext, get_current_org_user, require_org_role
+from auth import OrgUserContext, get_current_org_user
 from database import get_db
 from routers.org_templates import _resolve_stored_template_path
 from routers.placeholder_mapping import _mapping_completeness
@@ -26,15 +27,24 @@ from routers.platform_scope import (
     sanitize_token,
     log_audit_event,
 )
-from schemas_platform import OrgGenerateRequest, OrgGenerateResponse
+from schemas_platform import (
+    OrgGenerateRequest,
+    OrgGenerateResponse,
+    SendEmailRequest,
+    SendTelegramRequest,
+    ShareLinkResponse,
+)
 from services.doc_generator import fill_template
+from services.document_email import send_document_email
 from services.org_ref_counter import get_next_ref_number
 from services.pdf_converter import try_convert_to_pdf
+from services.telegram_bot import send_document as telegram_send_document
 from utils.file_utils import safe_join, safe_join_relative
 
 router = APIRouter(tags=["platform-documents"])
 
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "./output")
+SHARE_TOKEN_TTL_HOURS = 48
 
 
 def _should_attempt_pdf_conversion() -> bool:
@@ -327,3 +337,188 @@ def download_generated_document(
         media_type=media,
         filename=os.path.basename(rel),
     )
+
+
+def _read_org_generated_pdf_bytes(
+    doc: models.GeneratedDocument,
+) -> tuple[bytes, str]:
+    if not doc.pdf_filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PDF is not available for this document",
+        )
+    try:
+        path = safe_join_relative(OUTPUT_DIR, doc.pdf_filename)
+    except HTTPException:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Not found")
+    with open(path, "rb") as fh:
+        data = fh.read()
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PDF file is empty or unavailable",
+        )
+    return data, os.path.basename(doc.pdf_filename)
+
+
+@router.post(
+    "/generated/{doc_id}/share-link",
+    response_model=ShareLinkResponse,
+)
+def create_share_link(
+    doc_id: int,
+    request: Request,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Create a reusable-until-expiry public PDF download link (default 48h).
+
+    Any org member who can already access the document may create a share link.
+    """
+    doc = _get_org_generated_document(db, doc_id, current.org_id)
+    if not doc.pdf_filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PDF is not available for this document",
+        )
+    # Confirm file still exists
+    _read_org_generated_pdf_bytes(doc)
+
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(hours=SHARE_TOKEN_TTL_HOURS)
+    row = models.DocumentShareToken(
+        generated_document_id=doc.id,
+        org_id=current.org_id,
+        token=token,
+        expires_at=expires_at,
+        created_by=current.user_id,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+
+    base = str(request.base_url).rstrip("/")
+    share_url = f"{base}/api/public/shared/{token}"
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "share_link.created",
+        "GeneratedDocument",
+        str(doc.id),
+        {"token_id": row.id, "expires_at": expires_at.isoformat()},
+    )
+    return ShareLinkResponse(
+        token=token,
+        share_url=share_url,
+        expires_at=expires_at,
+    )
+
+
+@router.post("/generated/{doc_id}/send-telegram")
+def send_generated_via_telegram(
+    doc_id: int,
+    body: SendTelegramRequest,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    doc = _get_org_generated_document(db, doc_id, current.org_id)
+    contact = (
+        db.query(models.TelegramContact)
+        .filter(
+            models.TelegramContact.id == body.telegram_contact_id,
+            models.TelegramContact.org_id == current.org_id,
+        )
+        .first()
+    )
+    if not contact:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    pdf_bytes, filename = _read_org_generated_pdf_bytes(doc)
+    try:
+        telegram_send_document(
+            chat_id=contact.chat_id,
+            filename=filename,
+            file_bytes=pdf_bytes,
+            caption=f"Document #{doc.id}",
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "document.sent_telegram",
+        "GeneratedDocument",
+        str(doc.id),
+        {
+            "telegram_contact_id": contact.id,
+            "contact_label": contact.label,
+        },
+    )
+    return {"ok": True, "document_id": doc.id, "telegram_contact_id": contact.id}
+
+
+@router.post("/generated/{doc_id}/send-email")
+def send_generated_via_email(
+    doc_id: int,
+    body: SendEmailRequest,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Send the generated PDF as a real attachment.
+
+    Unlike invite email (soft-fail), failures are returned to the client —
+    sending is the purpose of this action.
+    """
+    doc = _get_org_generated_document(db, doc_id, current.org_id)
+    pdf_bytes, filename = _read_org_generated_pdf_bytes(doc)
+
+    org = (
+        db.query(models.Organization)
+        .filter(models.Organization.id == current.org_id)
+        .first()
+    )
+    org_name = org.name if org else "DocGen Pro"
+    note = (body.message or "").strip()
+    lines = [
+        f"Please find the attached document from {org_name}.",
+        "",
+    ]
+    if note:
+        lines.extend([note, ""])
+    lines.append(f"Document id: {doc.id}")
+
+    try:
+        send_document_email(
+            to_email=body.recipient_email,
+            subject=f"Document from {org_name}",
+            body="\n".join(lines),
+            filename=filename,
+            pdf_bytes=pdf_bytes,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "document.sent_email",
+        "GeneratedDocument",
+        str(doc.id),
+        {"recipient_email": body.recipient_email},
+    )
+    return {"ok": True, "document_id": doc.id, "recipient_email": body.recipient_email}

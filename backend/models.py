@@ -188,6 +188,7 @@ class GeneratedDocument(Base):
 # Platform / multi-tenant models (Organization, OrgUser, OrgDocumentType, …)
 from models_platform import (  # noqa: E402,F401
     AuditLog,
+    DocumentShareToken,
     FieldDefinition,
     FieldDefinitionType,
     FlowConfig,
@@ -201,5 +202,6 @@ from models_platform import (  # noqa: E402,F401
     OrgUser,
     OrgUserRole,
     PlaceholderMapping,
+    TelegramContact,
     TemplateFolder,
 )

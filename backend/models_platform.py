@@ -369,3 +369,50 @@ class AuditLog(Base):
 
     organization = relationship("Organization")
     actor = relationship("User", foreign_keys=[actor_user_id])
+
+
+class DocumentShareToken(Base):
+    """Time-limited public download token for a generated document PDF.
+
+    Reusable until expires_at (not single-use) so recipients can re-open links.
+    """
+
+    __tablename__ = "document_share_tokens"
+    __table_args__ = (
+        Index("ix_document_share_tokens_org_id", "org_id"),
+        Index("ix_document_share_tokens_token", "token", unique=True),
+        Index("ix_document_share_tokens_generated_document_id", "generated_document_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    generated_document_id = Column(
+        Integer,
+        ForeignKey("generated_documents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
+    token = Column(String(64), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    organization = relationship("Organization")
+    creator = relationship("User", foreign_keys=[created_by])
+
+
+class TelegramContact(Base):
+    """Org-managed Telegram chat destinations for the shared platform bot."""
+
+    __tablename__ = "telegram_contacts"
+    __table_args__ = (
+        Index("ix_telegram_contacts_org_id", "org_id"),
+        UniqueConstraint("org_id", "chat_id", name="uq_telegram_contacts_org_chat"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
+    label = Column(String(255), nullable=False)
+    chat_id = Column(String(64), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    organization = relationship("Organization")

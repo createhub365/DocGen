@@ -10,14 +10,22 @@ import {
   Spin,
   Typography,
 } from 'antd'
-import { DownloadOutlined, FileWordOutlined } from '@ant-design/icons'
+import {
+  DownloadOutlined,
+  EyeOutlined,
+  FileWordOutlined,
+  ShareAltOutlined,
+} from '@ant-design/icons'
 import {
   downloadGeneratedDocument,
+  fetchGeneratedDocumentBlob,
   listGeneratedDocuments,
   readPlatformErrorDetail,
 } from '../../api/platformClient'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
+import InAppPdfViewerModal from './InAppPdfViewerModal'
+import ShareGeneratedDocumentModal from './ShareGeneratedDocumentModal'
 
 const { Title, Paragraph, Text } = Typography
 
@@ -43,6 +51,8 @@ export default function GeneratedDocumentsPage() {
   const [rows, setRows] = useState([])
   const [loadError, setLoadError] = useState(null)
   const [downloadingId, setDownloadingId] = useState(null)
+  const [previewDocId, setPreviewDocId] = useState(null)
+  const [shareDocId, setShareDocId] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -70,16 +80,21 @@ export default function GeneratedDocumentsPage() {
     load()
   }, [load])
 
-  const onDownload = async (docId) => {
+  const onDownload = async (docId, format = 'docx') => {
     setDownloadingId(docId)
     try {
-      await downloadGeneratedDocument(docId, 'docx')
+      await downloadGeneratedDocument(docId, format)
     } catch (error) {
       message.error((await readPlatformErrorDetail(error)) || 'Download failed')
     } finally {
       setDownloadingId(null)
     }
   }
+
+  const loadPreviewPdf = useCallback(async () => {
+    if (!previewDocId) throw new Error('No document')
+    return fetchGeneratedDocumentBlob(previewDocId, 'pdf')
+  }, [previewDocId])
 
   const header = useMemo(
     () => (
@@ -88,7 +103,7 @@ export default function GeneratedDocumentsPage() {
           Generated documents
         </Title>
         <Paragraph type="secondary" style={{ margin: 0 }}>
-          Download DOCX files from generation runs.
+          Preview in-app, download, or share. Viewing never opens a new browser tab.
         </Paragraph>
       </>
     ),
@@ -119,37 +134,74 @@ export default function GeneratedDocumentsPage() {
         ) : (
           <List
             dataSource={rows}
-            renderItem={(item) => (
-              <List.Item
-                className="platform-generated-list-item"
-                actions={[
-                  <Button
-                    key="dl"
-                    type="link"
-                    className="platform-touch-target"
-                    icon={<DownloadOutlined />}
-                    loading={downloadingId === item.id}
-                    onClick={() => onDownload(item.id)}
-                  >
-                    Download
-                  </Button>,
-                ]}
-              >
-                <List.Item.Meta
-                  avatar={<FileWordOutlined style={{ fontSize: 22, color: '#8B1A1A' }} />}
-                  title={
-                    <Space wrap>
-                      <Text strong>{item.document_type_name}</Text>
-                      <Text type="secondary">#{item.id}</Text>
-                    </Space>
-                  }
-                  description={`${formatDate(item.created_at)} · ${basename(item.docx_filename)}`}
-                />
-              </List.Item>
-            )}
+            renderItem={(item) => {
+              const hasPdf = Boolean(item.pdf_filename)
+              return (
+                <List.Item
+                  className="platform-generated-list-item"
+                  actions={[
+                    hasPdf ? (
+                      <Button
+                        key="view"
+                        type="link"
+                        className="platform-touch-target"
+                        icon={<EyeOutlined />}
+                        onClick={() => setPreviewDocId(item.id)}
+                      >
+                        View
+                      </Button>
+                    ) : null,
+                    <Button
+                      key="dl"
+                      type="link"
+                      className="platform-touch-target"
+                      icon={<DownloadOutlined />}
+                      loading={downloadingId === item.id}
+                      onClick={() => onDownload(item.id, 'docx')}
+                    >
+                      Download
+                    </Button>,
+                    hasPdf ? (
+                      <Button
+                        key="share"
+                        type="link"
+                        className="platform-touch-target"
+                        icon={<ShareAltOutlined />}
+                        onClick={() => setShareDocId(item.id)}
+                      >
+                        Share
+                      </Button>
+                    ) : null,
+                  ].filter(Boolean)}
+                >
+                  <List.Item.Meta
+                    avatar={<FileWordOutlined style={{ fontSize: 22, color: 'var(--primary)' }} />}
+                    title={
+                      <Space wrap>
+                        <Text strong>{item.document_type_name}</Text>
+                        <Text type="secondary">#{item.id}</Text>
+                      </Space>
+                    }
+                    description={`${formatDate(item.created_at)} · ${basename(item.docx_filename || item.pdf_filename)}`}
+                  />
+                </List.Item>
+              )
+            }}
           />
         )}
       </Card>
+
+      <InAppPdfViewerModal
+        open={previewDocId != null}
+        onClose={() => setPreviewDocId(null)}
+        title={previewDocId != null ? `Document #${previewDocId}` : 'Document preview'}
+        loadPdf={loadPreviewPdf}
+      />
+      <ShareGeneratedDocumentModal
+        open={shareDocId != null}
+        onClose={() => setShareDocId(null)}
+        documentId={shareDocId}
+      />
     </div>
   )
 }
