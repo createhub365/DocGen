@@ -350,9 +350,23 @@ def _read_org_generated_pdf_bytes(
     try:
         path = safe_join_relative(OUTPUT_DIR, doc.pdf_filename)
     except HTTPException:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "Generated PDF file is missing on the server. "
+                "Generate the document again, then retry send/share."
+            ),
+        )
     if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Not found")
+        # Common on Render free tier: ./output is ephemeral and cleared on redeploy.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "Generated PDF file is missing on the server "
+                "(often cleared after a redeploy). "
+                "Generate the document again, then retry send/share."
+            ),
+        )
     with open(path, "rb") as fh:
         data = fh.read()
     if not data:
