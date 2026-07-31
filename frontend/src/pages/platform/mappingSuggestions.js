@@ -13,6 +13,12 @@
 export function suggestFieldKeyForPlaceholder(placeholderKey, resolvableKeys) {
   const needle = String(placeholderKey ?? '').toLowerCase()
   if (!needle) return null
+  // Barcode placeholder is driven by the single auto-ref field (ref_number).
+  if (needle === 'ref_number_barcode') {
+    for (const key of resolvableKeys || []) {
+      if (String(key).toLowerCase() === 'ref_number') return key
+    }
+  }
   for (const key of resolvableKeys || []) {
     if (String(key).toLowerCase() === needle) return key
   }

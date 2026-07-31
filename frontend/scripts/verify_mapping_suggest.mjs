@@ -50,6 +50,16 @@ assert.equal(
   'no substring / fuzzy match'
 )
 assert.equal(
+  suggestFieldKeyForPlaceholder('ref_number_barcode', ['ref_number', 'cand_name']),
+  'ref_number',
+  'barcode placeholder suggests the single auto-ref field'
+)
+assert.equal(
+  suggestFieldKeyForPlaceholder('ref_number_barcode', ['cand_name']),
+  null,
+  'barcode has no suggestion without ref_number field'
+)
+assert.equal(
   suggestFieldKeyForPlaceholder('country.name', ['country.name', 'party.email']),
   'country.name',
   'fixed step outputs match'

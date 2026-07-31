@@ -255,7 +255,11 @@ _apply_org_template_thumbnail = apply_org_template_thumbnail
 
 
 def _template_list_item(
-    t: models.Template, is_complete: bool, *, generated_document_count: int = 0
+    t: models.Template,
+    is_complete: bool,
+    *,
+    generated_document_count: int = 0,
+    has_ref_number_barcode: bool = False,
 ) -> dict:
     return {
         "id": t.id,
@@ -269,6 +273,8 @@ def _template_list_item(
         "is_complete": is_complete,
         "generated_document_count": generated_document_count,
         "has_thumbnail": bool(t.thumbnail_path),
+        # Informational for Flow Builder auto-ref editor (barcode is not a separate field).
+        "has_ref_number_barcode": bool(has_ref_number_barcode),
     }
 
 
@@ -404,16 +410,20 @@ def list_org_templates(
         ):
             gen_counts[int(tid)] = int(cnt)
 
-    return [
-        _template_list_item(
-            t,
-            _mapping_completeness(
-                db, t, mapping_rows=mappings_by_tid.get(t.id, [])
-            )[0],
-            generated_document_count=gen_counts.get(t.id, 0),
+    items = []
+    for t in rows:
+        is_complete, detected, _unmapped, _rows = _mapping_completeness(
+            db, t, mapping_rows=mappings_by_tid.get(t.id, [])
         )
-        for t in rows
-    ]
+        items.append(
+            _template_list_item(
+                t,
+                is_complete,
+                generated_document_count=gen_counts.get(t.id, 0),
+                has_ref_number_barcode="ref_number_barcode" in detected,
+            )
+        )
+    return items
 
 
 def _hard_delete_org_template(

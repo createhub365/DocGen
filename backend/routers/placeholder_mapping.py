@@ -31,6 +31,9 @@ from services.placeholder_extractor import extract_placeholders
 router = APIRouter(tags=["platform-placeholder-mappings"])
 
 _FIELD_KEY_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+# Template placeholders that must never become their own FieldDefinitions —
+# they are injected from another field (or logo) at generate/fill time.
+INJECT_ONLY_PLACEHOLDERS = frozenset({"ref_number_barcode", "company_logo"})
 
 
 def _detected_placeholder_ids(template: models.Template) -> list[str]:
@@ -73,10 +76,19 @@ def _mapping_completeness(
 
 
 def _suggest_field_key(placeholder_key: str, resolvable_keys: set[str]) -> str | None:
-    """Case-insensitive exact match — mirrors frontend mappingSuggestions.js."""
+    """
+    Case-insensitive exact match — mirrors frontend mappingSuggestions.js.
+
+    Special case: {{ref_number_barcode}} maps to the auto-ref field_key
+    ``ref_number`` when that key exists (barcode is not its own field).
+    """
     needle = (placeholder_key or "").lower()
     if not needle:
         return None
+    if needle == "ref_number_barcode":
+        for key in resolvable_keys:
+            if str(key).lower() == "ref_number":
+                return key
     for key in resolvable_keys:
         if str(key).lower() == needle:
             return key
@@ -138,10 +150,18 @@ def generate_fields_from_placeholders(
     pending_keys: set[str] = set()
 
     for placeholder in detected:
+        # Never create a FieldDefinition for inject-only placeholders
+        # (barcode image / logo are driven by other fields at fill time).
+        if placeholder.lower() in INJECT_ONLY_PLACEHOLDERS:
+            skipped.append(placeholder)
+            continue
         if _suggest_field_key(placeholder, existing_keys | pending_keys):
             skipped.append(placeholder)
             continue
         field_key = _field_key_from_placeholder(placeholder)
+        if field_key in INJECT_ONLY_PLACEHOLDERS:
+            skipped.append(placeholder)
+            continue
         if field_key in pending_keys or _suggest_field_key(field_key, existing_keys):
             skipped.append(placeholder)
             continue

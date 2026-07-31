@@ -149,9 +149,13 @@ export function collectFieldsPayload(values) {
   return out
 }
 
-/** Fields shown as wizard inputs (hides server-side auto-generated values). */
+/** Fields shown as wizard inputs (hides auto-ref + inject-only barcode keys). */
 export function wizardVisibleFields(fields) {
-  return (fields || []).filter((f) => !f?.is_auto_generated)
+  return (fields || []).filter(
+    (f) =>
+      !f?.is_auto_generated &&
+      String(f?.field_key || '').toLowerCase() !== 'ref_number_barcode'
+  )
 }
 
 /** Field keys owned by a step (for per-page validation). */

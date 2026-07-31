@@ -124,6 +124,57 @@ def test_generate_fields_from_placeholders_creates_custom_fields_step(
     )
 
 
+def test_generate_fields_skips_ref_number_barcode_placeholder(dual_org_clients):
+    """Bulk generate must not create a separate barcode FieldDefinition."""
+    client = dual_org_clients["client_a"]
+    db = dual_org_clients["db"]
+
+    dt = client.post(
+        "/api/platform/document-types/",
+        json={"name": "Barcode Skip", "slug": "barcode-skip"},
+    )
+    assert dt.status_code == 201, dt.text
+    dt_id = dt.json()["id"]
+    flow = client.post(f"/api/platform/{dt_id}/flow", json={})
+    assert flow.status_code == 201
+    flow_id = flow.json()["id"]
+
+    upload = client.post(
+        f"/api/platform/{dt_id}/templates",
+        files={
+            "file": (
+                "ref.docx",
+                _docx_bytes("ref_number", "ref_number_barcode", "cand_name"),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    assert upload.status_code == 201, upload.text
+    template_id = upload.json()["id"]
+
+    gen = client.post(
+        f"/api/platform/templates/{template_id}/generate-fields-from-placeholders"
+    )
+    assert gen.status_code == 200, gen.text
+    body = gen.json()
+    created_keys = {item["field_key"] for item in body["created"]}
+    assert "ref_number_barcode" not in created_keys
+    assert "ref_number_barcode" in body["skipped_placeholders"]
+    assert "ref_number" in created_keys
+    assert "cand_name" in created_keys
+
+    db.expire_all()
+    keys = {
+        row.field_key
+        for row in db.query(FieldDefinition)
+        .join(FlowStep, FlowStep.id == FieldDefinition.flow_step_id)
+        .filter(FlowStep.flow_config_id == flow_id)
+        .all()
+    }
+    assert "ref_number_barcode" not in keys
+    assert "ref_number" in keys
+
+
 def test_generate_fields_requires_draft_flow(dual_org_clients):
     client = dual_org_clients["client_a"]
 

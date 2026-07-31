@@ -378,6 +378,23 @@ def get_published_flow(
 
 # ---- Field definitions (Task 0) ----
 
+# Barcode is an inject-only template placeholder driven by the auto-ref field —
+# never create/rename a FieldDefinition with this key.
+_FORBIDDEN_FIELD_KEYS = frozenset({"ref_number_barcode"})
+
+
+def _reject_forbidden_field_key(field_key: str) -> None:
+    key = (field_key or "").strip().lower()
+    if key in _FORBIDDEN_FIELD_KEYS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "ref_number_barcode is not a separate field. "
+                "Create one Auto reference number field (e.g. ref_number) and map "
+                "both {{ref_number}} and {{ref_number_barcode}} to it."
+            ),
+        )
+
 
 @router.post(
     "/steps/{step_id}/fields",
@@ -392,6 +409,7 @@ def add_field_definition(
 ):
     get_org_flow_step(db, step_id, current.org_id)
     field_key = body.field_key.strip()
+    _reject_forbidden_field_key(field_key)
     existing = (
         db.query(models.FieldDefinition)
         .filter(
@@ -474,6 +492,7 @@ def update_field_definition(
     data = body.model_dump(exclude_unset=True)
     if "field_key" in data and data["field_key"] is not None:
         data["field_key"] = data["field_key"].strip()
+        _reject_forbidden_field_key(data["field_key"])
     if "option_list_id" in data and data["option_list_id"] is not None:
         get_org_option_list(db, data["option_list_id"], current.org_id)
 

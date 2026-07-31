@@ -233,13 +233,53 @@ def test_generate_injects_ref_number_and_barcode(dual_org_clients):
 
 
 def test_wizard_visible_fields_contract():
-    """Mirror frontend wizardVisibleFields — auto fields never render as inputs."""
+    """Mirror frontend wizardVisibleFields — auto + barcode keys never render."""
     fields = [
         {"field_key": "cand_name", "is_auto_generated": False},
         {"field_key": "ref_number", "is_auto_generated": True},
+        {"field_key": "ref_number_barcode", "is_auto_generated": False},
     ]
-    visible = [f for f in fields if not f.get("is_auto_generated")]
+    visible = [
+        f
+        for f in fields
+        if not f.get("is_auto_generated")
+        and str(f.get("field_key") or "").lower() != "ref_number_barcode"
+    ]
     assert [f["field_key"] for f in visible] == ["cand_name"]
+
+
+def test_cannot_create_ref_number_barcode_as_separate_field(dual_org_clients):
+    """Barcode must never be its own FieldDefinition — one auto-ref field only."""
+    client = dual_org_clients["client_a"]
+    setup = _setup_published_flow_with_field(client, slug="no-barcode-fd")
+    step_id = setup["step_id"]
+
+    blocked = client.post(
+        f"/api/platform/steps/{step_id}/fields",
+        json={
+            "field_key": "ref_number_barcode",
+            "field_label": "Ref Number Barcode",
+            "field_type": "text",
+            "is_required": True,
+        },
+    )
+    assert blocked.status_code == 400, blocked.text
+    assert "not a separate field" in blocked.json()["detail"].lower()
+
+    # Creating the single auto-ref field still works
+    ok = client.post(
+        f"/api/platform/steps/{step_id}/fields",
+        json={
+            "field_key": "ref_number",
+            "field_label": "Reference Number",
+            "field_type": "text",
+            "is_auto_generated": True,
+            "auto_config_json": {"kind": "ref_number", "prefix": "OLAW"},
+        },
+    )
+    assert ok.status_code == 201, ok.text
+    assert ok.json()["field_key"] == "ref_number"
+    assert ok.json()["is_auto_generated"] is True
 
 
 def test_auto_field_excluded_from_required_validation(dual_org_clients):

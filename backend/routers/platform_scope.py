@@ -356,6 +356,10 @@ def required_field_keys_for_published_flow(
     ]
     if not step_ids:
         return set()
+    # Inject-only placeholders (barcode) must never be required wizard inputs,
+    # even if an older flow incorrectly created a FieldDefinition for them.
+    from routers.placeholder_mapping import INJECT_ONLY_PLACEHOLDERS
+
     return {
         fd.field_key
         for fd in db.query(models.FieldDefinition)
@@ -365,6 +369,7 @@ def required_field_keys_for_published_flow(
             models.FieldDefinition.is_auto_generated.is_(False),
         )
         .all()
+        if str(fd.field_key or "").lower() not in INJECT_ONLY_PLACEHOLDERS
     }
 
 
