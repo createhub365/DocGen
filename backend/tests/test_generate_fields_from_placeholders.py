@@ -57,6 +57,7 @@ def test_generate_fields_from_placeholders_creates_custom_fields_step(
     assert body["flow_config_id"] == flow_id
     assert len(body["created"]) == 3
     assert body["skipped_placeholders"] == []
+    assert body["possible_duplicates"] == []
 
     by_key = {item["field_key"]: item["field_label"] for item in body["created"]}
     assert by_key["company_name"] == "Company Name"
@@ -108,6 +109,7 @@ def test_generate_fields_from_placeholders_creates_custom_fields_step(
         "Date",
         "Other_Thing",
     }
+    assert again_body["possible_duplicates"] == []
 
     db.expire_all()
     assert (
@@ -122,6 +124,109 @@ def test_generate_fields_from_placeholders_creates_custom_fields_step(
         .count()
         == 2
     )
+
+
+def test_generate_fields_flags_fuzzy_duplicates_for_review(dual_org_clients):
+    """Near-duplicate placeholders are held for review, not auto-created."""
+    client = dual_org_clients["client_a"]
+    db = dual_org_clients["db"]
+
+    dt = client.post(
+        "/api/platform/document-types/",
+        json={"name": "Fuzzy Dup Gen", "slug": "fuzzy-dup-gen"},
+    )
+    assert dt.status_code == 201, dt.text
+    dt_id = dt.json()["id"]
+    flow = client.post(f"/api/platform/{dt_id}/flow", json={})
+    assert flow.status_code == 201
+    flow_id = flow.json()["id"]
+
+    # Seed existing field "position" on a draft custom_fields step
+    step_resp = client.post(
+        f"/api/platform/{flow_id}/steps",
+        json={
+            "step_type": "custom_fields",
+            "order_index": 0,
+            "is_enabled": True,
+            "label": "Details",
+        },
+    )
+    assert step_resp.status_code == 201, step_resp.text
+    step_id = step_resp.json()["id"]
+    field_resp = client.post(
+        f"/api/platform/steps/{step_id}/fields",
+        json={
+            "field_key": "position",
+            "field_label": "Position",
+            "field_type": "text",
+            "is_required": False,
+        },
+    )
+    assert field_resp.status_code == 201, field_resp.text
+
+    upload = client.post(
+        f"/api/platform/{dt_id}/templates",
+        files={
+            "file": (
+                "offer.docx",
+                _docx_bytes(
+                    "position_title",
+                    "employee_email",
+                    "department_code",
+                ),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    assert upload.status_code == 201, upload.text
+    template_id = upload.json()["id"]
+
+    gen = client.post(
+        f"/api/platform/templates/{template_id}/generate-fields-from-placeholders"
+    )
+    assert gen.status_code == 200, gen.text
+    body = gen.json()
+
+    created_keys = {item["field_key"] for item in body["created"]}
+    assert "position_title" not in created_keys
+    assert "employee_email" in created_keys
+    assert "department_code" in created_keys
+    assert "position_title" not in body["skipped_placeholders"]
+
+    possibles = body["possible_duplicates"]
+    assert len(possibles) == 1
+    assert possibles[0]["placeholder"] == "position_title"
+    assert possibles[0]["proposed_field_key"] == "position_title"
+    assert "position" in possibles[0]["similar_field_keys"]
+
+    db.expire_all()
+    keys_before_confirm = {
+        row.field_key
+        for row in db.query(FieldDefinition)
+        .filter(FieldDefinition.flow_step_id == step_id)
+        .all()
+    }
+    assert "position_title" not in keys_before_confirm
+    assert "employee_email" in keys_before_confirm
+
+    # Explicit confirm creates the held field
+    confirm = client.post(
+        f"/api/platform/templates/{template_id}/generate-fields-from-placeholders",
+        json={"create_placeholders": ["position_title"]},
+    )
+    assert confirm.status_code == 200, confirm.text
+    confirm_body = confirm.json()
+    assert any(c["field_key"] == "position_title" for c in confirm_body["created"])
+    assert confirm_body["possible_duplicates"] == []
+
+    db.expire_all()
+    keys_after = {
+        row.field_key
+        for row in db.query(FieldDefinition)
+        .filter(FieldDefinition.flow_step_id == step_id)
+        .all()
+    }
+    assert "position_title" in keys_after
 
 
 def test_generate_fields_skips_ref_number_barcode_placeholder(dual_org_clients):

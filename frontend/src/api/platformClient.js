@@ -418,9 +418,17 @@ export async function savePlaceholderMappings(templateId, mappings) {
   return data
 }
 
-export async function generateFieldsFromPlaceholders(templateId) {
+export async function generateFieldsFromPlaceholders(
+  templateId,
+  { createPlaceholders } = {}
+) {
+  const payload =
+    createPlaceholders && createPlaceholders.length
+      ? { create_placeholders: createPlaceholders }
+      : {}
   const { data } = await platformClient.post(
-    `/templates/${templateId}/generate-fields-from-placeholders`
+    `/templates/${templateId}/generate-fields-from-placeholders`,
+    payload
   )
   return data
 }

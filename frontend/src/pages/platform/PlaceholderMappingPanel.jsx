@@ -3,6 +3,8 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
+  Modal,
   Select,
   Space,
   Spin,
@@ -58,6 +60,9 @@ export default function PlaceholderMappingPanel({
   const [detected, setDetected] = useState([])
   const [unmapped, setUnmapped] = useState([])
   const [isComplete, setIsComplete] = useState(false)
+  const [duplicateReview, setDuplicateReview] = useState(null)
+  const [duplicateSelections, setDuplicateSelections] = useState({})
+  const [confirmingDuplicates, setConfirmingDuplicates] = useState(false)
   const [selections, setSelections] = useState({})
   /** Placeholder keys pre-filled by auto-suggest; not yet saved. */
   const [suggestedKeys, setSuggestedKeys] = useState(() => new Set())
@@ -182,18 +187,40 @@ export default function PlaceholderMappingPanel({
     if (!canEditMappings || !hasDraftFlow) return
     setGeneratingFields(true)
     setBulkSummary(null)
+    setDuplicateReview(null)
     try {
       const result = await generateFieldsFromPlaceholders(template.id)
       const created = result.created?.length || 0
       const skipped = result.skipped_placeholders?.length || 0
-      setBulkSummary({ created, skipped })
-      message.success(
-        `Created ${created} new field${created === 1 ? '' : 's'}` +
-          (skipped ? `, ${skipped} already matched` : '')
-      )
-      onDraftFieldsGenerated?.()
-      // Do not auto-save mappings; draft fields are not on published flow yet.
-      await load()
+      const possibles = result.possible_duplicates || []
+      setBulkSummary({ created, skipped, possibles: possibles.length })
+      if (created || skipped || possibles.length) {
+        message.success(
+          `Created ${created} new field${created === 1 ? '' : 's'}` +
+            (skipped ? `, ${skipped} already matched` : '') +
+            (possibles.length
+              ? `, ${possibles.length} possible duplicate${possibles.length === 1 ? '' : 's'} need review`
+              : '')
+        )
+      }
+      // Hold parent refresh (loadBuilder unmounts this panel) until duplicate
+      // review is finished — otherwise the modal never appears.
+      if (possibles.length) {
+        const initial = {}
+        for (const row of possibles) {
+          // Default: skip (do not create) — admin must opt in per item.
+          initial[row.placeholder] = false
+        }
+        setDuplicateSelections(initial)
+        setDuplicateReview(possibles)
+        await load()
+      } else {
+        onDraftFieldsGenerated?.()
+        await load()
+        if (!created && !skipped) {
+          message.info('No new fields to create')
+        }
+      }
     } catch (error) {
       message.error(
         (await readPlatformErrorDetail(error)) ||
@@ -201,6 +228,50 @@ export default function PlaceholderMappingPanel({
       )
     } finally {
       setGeneratingFields(false)
+    }
+  }
+
+  const finishDuplicateReview = async ({ createdCount = 0, skippedAll = false } = {}) => {
+    setDuplicateReview(null)
+    setDuplicateSelections({})
+    if (skippedAll) {
+      message.info('Skipped all possible duplicates')
+    } else if (createdCount) {
+      message.success(
+        `Created ${createdCount} reviewed field${createdCount === 1 ? '' : 's'}`
+      )
+    }
+    onDraftFieldsGenerated?.()
+    await load()
+  }
+
+  const confirmDuplicateReview = async () => {
+    if (!duplicateReview?.length) {
+      await finishDuplicateReview({ skippedAll: true })
+      return
+    }
+    const toCreate = duplicateReview
+      .filter((row) => duplicateSelections[row.placeholder])
+      .map((row) => row.placeholder)
+    setConfirmingDuplicates(true)
+    try {
+      if (toCreate.length) {
+        const result = await generateFieldsFromPlaceholders(template.id, {
+          createPlaceholders: toCreate,
+        })
+        await finishDuplicateReview({
+          createdCount: result.created?.length || 0,
+        })
+      } else {
+        await finishDuplicateReview({ skippedAll: true })
+      }
+    } catch (error) {
+      message.error(
+        (await readPlatformErrorDetail(error)) ||
+          'Could not create reviewed fields'
+      )
+    } finally {
+      setConfirmingDuplicates(false)
     }
   }
 
@@ -402,6 +473,12 @@ export default function PlaceholderMappingPanel({
             bulkSummary.skipped
               ? `, ${bulkSummary.skipped} already existed`
               : ''
+          }${
+            bulkSummary.possibles
+              ? `, ${bulkSummary.possibles} possible duplicate${
+                  bulkSummary.possibles === 1 ? '' : 's'
+                } held for review`
+              : ''
           }`}
           description={
             <Space direction="vertical" size={6}>
@@ -523,6 +600,59 @@ export default function PlaceholderMappingPanel({
           Save mappings
         </Button>
       )}
+
+      <Modal
+        title="Possible duplicate fields"
+        open={Boolean(duplicateReview?.length)}
+        onCancel={() => {
+          if (!confirmingDuplicates) {
+            void finishDuplicateReview({ skippedAll: true })
+          }
+        }}
+        okText="Create selected"
+        cancelText="Skip all"
+        confirmLoading={confirmingDuplicates}
+        onOk={confirmDuplicateReview}
+        destroyOnHidden
+        width={560}
+      >
+        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+          These placeholders look similar to fields already on the draft flow.
+          Clear matches were created already. Check only the ones you still want
+          as separate fields.
+        </Text>
+        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+          {(duplicateReview || []).map((row) => (
+            <Card key={row.placeholder} size="small" style={{ borderRadius: 10 }}>
+              <Checkbox
+                checked={!!duplicateSelections[row.placeholder]}
+                onChange={(e) =>
+                  setDuplicateSelections((current) => ({
+                    ...current,
+                    [row.placeholder]: e.target.checked,
+                  }))
+                }
+              >
+                <Text>
+                  Create <Text code>{row.proposed_field_key}</Text>
+                  {' from '}
+                  <Text code>{`{{${row.placeholder}}}`}</Text>
+                </Text>
+              </Checkbox>
+              <div style={{ marginTop: 6, marginLeft: 24 }}>
+                <Text type="secondary">
+                  Looks similar to:{' '}
+                  {(row.similar_field_keys || []).map((k) => (
+                    <Tag key={k} style={{ marginInlineEnd: 4 }}>
+                      {k}
+                    </Tag>
+                  ))}
+                </Text>
+              </div>
+            </Card>
+          ))}
+        </Space>
+      </Modal>
     </div>
   )
 }

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -20,8 +20,10 @@ from routers.platform_scope import (
     resolvable_field_keys_for_published_flow,
 )
 from schemas_platform import (
+    GenerateFieldsFromPlaceholdersRequest,
     GenerateFieldsFromPlaceholdersResponse,
     GeneratedFieldFromPlaceholderItem,
+    PossibleDuplicateFieldItem,
     PlaceholderMappingBatchRequest,
     PlaceholderMappingListItem,
     PlaceholderMappingsResponse,
@@ -112,18 +114,81 @@ def _humanize_label(placeholder: str) -> str:
     return " ".join(part.capitalize() for part in text.split()) or "Field"
 
 
+def _normalize_for_similarity(key: str) -> str:
+    """Lowercase alphanumerics only — strips underscores/punctuation for fuzzy compare."""
+    return re.sub(r"[^a-z0-9]", "", (key or "").lower())
+
+
+def _levenshtein(a: str, b: str) -> int:
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        curr = [i]
+        for j, cb in enumerate(b, start=1):
+            ins = curr[j - 1] + 1
+            delete = prev[j] + 1
+            sub = prev[j - 1] + (0 if ca == cb else 1)
+            curr.append(min(ins, delete, sub))
+        prev = curr
+    return prev[-1]
+
+
+def _similar_existing_keys(candidate: str, existing_keys: set[str]) -> list[str]:
+    """
+    Conservative near-duplicate detection vs existing field keys.
+
+    Flags when:
+    - normalized containment / prefix with shared length >= 4
+      (position ⊂ position_title, salary ⊂ annual_salary), or
+    - short edit distance for typos (passort ↔ passport, solutation ↔ salutation).
+    """
+    cand = _normalize_for_similarity(candidate)
+    if not cand:
+        return []
+    hits: list[str] = []
+    for key in sorted(existing_keys, key=lambda k: str(k).lower()):
+        exist = _normalize_for_similarity(str(key))
+        if not exist or exist == cand:
+            continue
+        shorter, longer = (cand, exist) if len(cand) <= len(exist) else (exist, cand)
+        if len(shorter) >= 4 and shorter in longer:
+            hits.append(str(key))
+            continue
+        dist = _levenshtein(cand, exist)
+        max_len = max(len(cand), len(exist))
+        if max_len <= 8 and dist <= 1:
+            hits.append(str(key))
+        elif max_len <= 16 and dist <= 2:
+            hits.append(str(key))
+        elif dist <= 3 and (dist / max_len) <= 0.2:
+            hits.append(str(key))
+    return hits
+
+
 @router.post(
     "/templates/{template_id}/generate-fields-from-placeholders",
     response_model=GenerateFieldsFromPlaceholdersResponse,
 )
 def generate_fields_from_placeholders(
     template_id: int,
+    body: GenerateFieldsFromPlaceholdersRequest = Body(
+        default_factory=GenerateFieldsFromPlaceholdersRequest
+    ),
     current: OrgUserContext = Depends(require_org_role("org_admin")),
     db: Session = Depends(get_db),
 ):
     """
-    Bulk-create draft FieldDefinitions from template placeholders that do not
-    already case-insensitively match a resolvable key on the draft flow.
+    Bulk-create draft FieldDefinitions from template placeholders.
+
+    - Exact key matches are skipped (unchanged).
+    - Near-duplicates are held in ``possible_duplicates`` unless the admin
+      confirms them via ``create_placeholders`` on a follow-up call.
+    - Clear non-duplicates are created immediately on the first call.
     Does not publish and does not write PlaceholderMapping rows.
     """
     template = get_org_template(db, template_id, current.org_id)
@@ -142,11 +207,16 @@ def generate_fields_from_placeholders(
             detail="Create or edit a draft flow first before generating fields from placeholders",
         )
 
+    confirm_raw = body.create_placeholders or []
+    confirm_set = {str(p).strip() for p in confirm_raw if str(p).strip()}
+    confirm_only = bool(confirm_set)
+
     detected = _detected_placeholder_ids(template)
     existing_keys = resolvable_field_keys_for_published_flow(db, draft)
 
     skipped: list[str] = []
     to_create: list[tuple[str, str, str]] = []  # placeholder, field_key, label
+    possible_duplicates: list[PossibleDuplicateFieldItem] = []
     pending_keys: set[str] = set()
 
     for placeholder in detected:
@@ -165,6 +235,30 @@ def generate_fields_from_placeholders(
         if field_key in pending_keys or _suggest_field_key(field_key, existing_keys):
             skipped.append(placeholder)
             continue
+
+        similar = _similar_existing_keys(field_key, existing_keys | pending_keys)
+        confirmed = (
+            placeholder in confirm_set
+            or field_key in confirm_set
+            or placeholder.lower() in {c.lower() for c in confirm_set}
+            or field_key.lower() in {c.lower() for c in confirm_set}
+        )
+
+        if confirm_only and not confirmed:
+            # Follow-up call: only create admin-confirmed placeholders.
+            continue
+
+        if similar and not confirmed:
+            possible_duplicates.append(
+                PossibleDuplicateFieldItem(
+                    placeholder=placeholder,
+                    proposed_field_key=field_key,
+                    proposed_field_label=_humanize_label(placeholder),
+                    similar_field_keys=similar,
+                )
+            )
+            continue
+
         pending_keys.add(field_key)
         to_create.append((placeholder, field_key, _humanize_label(placeholder)))
 
@@ -233,8 +327,18 @@ def generate_fields_from_placeholders(
             "flow_step_id": step_id or None,
             "created_count": len(created_items),
             "skipped_count": len(skipped),
+            "possible_duplicate_count": len(possible_duplicates),
             "created_field_keys": [item.field_key for item in created_items],
             "skipped_placeholders": skipped,
+            "possible_duplicates": [
+                {
+                    "placeholder": item.placeholder,
+                    "proposed_field_key": item.proposed_field_key,
+                    "similar_field_keys": item.similar_field_keys,
+                }
+                for item in possible_duplicates
+            ],
+            "confirm_only": confirm_only,
         },
     )
 
@@ -244,6 +348,7 @@ def generate_fields_from_placeholders(
         flow_step_id=step_id,
         created=created_items,
         skipped_placeholders=skipped,
+        possible_duplicates=possible_duplicates,
     )
 
 

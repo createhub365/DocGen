@@ -517,12 +517,33 @@ class GeneratedFieldFromPlaceholderItem(BaseModel):
     field_label: str
 
 
+class PossibleDuplicateFieldItem(BaseModel):
+    """Placeholder held for admin review — similar to existing field_key(s)."""
+
+    placeholder: str
+    proposed_field_key: str
+    proposed_field_label: str
+    similar_field_keys: list[str]
+
+
+class GenerateFieldsFromPlaceholdersRequest(BaseModel):
+    """
+    Optional follow-up after a preview/create pass.
+
+    When ``create_placeholders`` is set, only those placeholders are created
+    (admin confirmed after fuzzy-duplicate review). Exact matches are still skipped.
+    """
+
+    create_placeholders: Optional[list[str]] = None
+
+
 class GenerateFieldsFromPlaceholdersResponse(BaseModel):
     template_id: int
     flow_config_id: int
     flow_step_id: int
     created: list[GeneratedFieldFromPlaceholderItem]
     skipped_placeholders: list[str]
+    possible_duplicates: list[PossibleDuplicateFieldItem] = []
 
 
 class OrgGenerateRequest(BaseModel):
