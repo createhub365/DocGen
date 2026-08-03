@@ -19,6 +19,7 @@ import {
   listFieldDefinitions,
   listFlowSteps,
   listPlaceholderMappings,
+  listTemplateFlowHistory,
   readPlatformErrorDetail,
   resolvePublishedFlowForTemplate,
   savePlaceholderMappings,
@@ -69,6 +70,7 @@ export default function PlaceholderMappingPanel({
   const [saveError, setSaveError] = useState(null)
   const [invalidKeys, setInvalidKeys] = useState([])
   const [bulkSummary, setBulkSummary] = useState(null)
+  const [templateHasDraft, setTemplateHasDraft] = useState(!!hasDraftFlow)
 
   // Keep parent callback out of load()'s dependency list — an unstable
   // onCompletenessChange (recreated each parent render) was retriggering
@@ -85,12 +87,24 @@ export default function PlaceholderMappingPanel({
     try {
       let published = null
       let options = []
-      const [publishedSettled, mappings] = await Promise.all([
+      const [publishedSettled, mappings, historySettled] = await Promise.all([
         resolvePublishedFlowForTemplate(template.id, documentTypeId)
           .then((value) => ({ ok: true, value: value.flow }))
           .catch((error) => ({ ok: false, error })),
         listPlaceholderMappings(template.id),
+        listTemplateFlowHistory(template.id)
+          .then((rows) => ({ ok: true, rows }))
+          .catch((error) => ({ ok: false, error })),
       ])
+
+      if (historySettled.ok) {
+        const hasDraft = (historySettled.rows || []).some((row) => !row.is_published)
+        setTemplateHasDraft(hasDraft)
+      } else if (historySettled.error?.response?.status === 404) {
+        setTemplateHasDraft(false)
+      } else {
+        setTemplateHasDraft(!!hasDraftFlow)
+      }
 
       if (!publishedSettled.ok) {
         if (publishedSettled.error?.response?.status === 404) {
@@ -151,7 +165,7 @@ export default function PlaceholderMappingPanel({
     } finally {
       setLoading(false)
     }
-  }, [canEditMappings, documentTypeId, template.id])
+  }, [canEditMappings, documentTypeId, hasDraftFlow, template.id])
 
   useEffect(() => {
     load()
@@ -184,7 +198,7 @@ export default function PlaceholderMappingPanel({
   }
 
   const generateMissingFields = async () => {
-    if (!canEditMappings || !hasDraftFlow) return
+    if (!canEditMappings || !templateHasDraft) return
     setGeneratingFields(true)
     setBulkSummary(null)
     setDuplicateReview(null)
@@ -437,15 +451,15 @@ export default function PlaceholderMappingPanel({
               <Space wrap>
                 <Tooltip
                   title={
-                    hasDraftFlow
+                    templateHasDraft
                       ? ''
-                      : 'Create or edit a draft flow on the Flow tab first'
+                      : 'Open this document’s Flow, create or edit a draft, then return here'
                   }
                 >
                   <Button
                     icon={<PlayCircleOutlined />}
                     loading={generatingFields}
-                    disabled={!hasDraftFlow}
+                    disabled={!templateHasDraft}
                     onClick={generateMissingFields}
                   >
                     Generate missing fields from this template
@@ -453,7 +467,7 @@ export default function PlaceholderMappingPanel({
                 </Tooltip>
                 {typeof onGoToFlow === 'function' && (
                   <Button type="link" onClick={onGoToFlow} style={{ paddingInline: 0 }}>
-                    Go to Flow Builder to review
+                    Go to this document’s Flow to review
                   </Button>
                 )}
               </Space>
@@ -483,12 +497,12 @@ export default function PlaceholderMappingPanel({
           description={
             <Space direction="vertical" size={6}>
               <Text>
-                Review the new fields on the Flow tab, then Publish. Return here so
+                Review the new fields on this document’s Flow, then Publish. Return here so
                 auto-suggest can pre-fill matches — then click Save mappings.
               </Text>
               {typeof onGoToFlow === 'function' && (
                 <Button type="primary" size="small" onClick={onGoToFlow}>
-                  Go to Flow Builder to review
+                  Go to this document’s Flow to review
                 </Button>
               )}
             </Space>

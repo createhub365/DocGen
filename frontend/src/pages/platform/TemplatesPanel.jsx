@@ -896,7 +896,14 @@ export default function TemplatesPanel({
         }}
         onCompletenessChange={onCompletenessChange}
         hasDraftFlow={hasDraftFlow}
-        onGoToFlow={onGoToFlow}
+        onGoToFlow={
+          canManage
+            ? () =>
+                navigate(
+                  `/platform/document-types/${documentTypeId}/templates/${mappingTemplate.id}/flow`
+                )
+            : onGoToFlow
+        }
         onDraftFieldsGenerated={onDraftFieldsGenerated}
       />
     )
@@ -1077,7 +1084,9 @@ export default function TemplatesPanel({
         ) : !templates.length && !folders.length ? (
           <Empty
             description={
-              canManage ? 'No documents uploaded yet.' : 'No documents available yet.'
+              canManage
+                ? 'No documents uploaded yet. Upload a Word file first, then open Flow on that document to configure fields.'
+                : 'No documents available yet.'
             }
           />
         ) : activeFolderId == null ? (

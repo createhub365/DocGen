@@ -15,7 +15,6 @@ import {
   Space,
   Spin,
   Switch,
-  Tabs,
   Tag,
   Tooltip,
   Typography,
@@ -52,7 +51,6 @@ import {
   getDocumentType,
   listDocumentTypes,
   listFieldDefinitions,
-  listFlowHistory,
   listFlowSteps,
   listOptionLists,
   listOrgTemplates,
@@ -134,15 +132,6 @@ const STEP_META = {
   file_upload: { label: 'File upload', icon: UploadOutlined },
   rich_text: { label: 'Rich text', icon: FileTextOutlined },
   custom_fields: { label: 'Custom fields', icon: FileAddOutlined },
-}
-
-function statusFor(type) {
-  if (type?.has_published_flow && type?.has_draft_flow) {
-    return { text: 'Draft changes pending', color: 'orange', dot: '#D48806' }
-  }
-  if (type?.has_published_flow) return { text: 'Published', color: 'green', dot: '#389e0a' }
-  if (type?.has_draft_flow) return { text: 'Draft', color: 'blue', dot: '#1677ff' }
-  return { text: 'No flow', color: 'default', dot: '#8c8c8c' }
 }
 
 function optionsToText(options) {
@@ -789,24 +778,25 @@ export default function FlowBuilderPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [addForm] = Form.useForm()
 
-  // Documents is the primary tab; ?tab=flow opens the shared doc-type flow (org_admin).
+  // Documents-only at document-type scope (shared flow tab removed — Phase C).
   // Template-scoped route always shows the per-template flow editor.
-  const requestedTab = searchParams.get('tab') === 'flow' ? 'flow' : 'documents'
-  const activeTab = isTemplateScope
-    ? 'flow'
-    : isOrgAdmin
-      ? requestedTab
-      : 'documents'
-  const staffBlockedFromFlow =
-    !isOrgAdmin && (isTemplateScope || requestedTab === 'flow')
+  const requestedTab = searchParams.get('tab')
+  const activeTab = isTemplateScope ? 'flow' : 'documents'
+  const staffBlockedFromFlow = !isOrgAdmin && isTemplateScope
   const setActiveTab = (key) => {
     if (isTemplateScope) return
-    if (key === 'flow' && isOrgAdmin) {
-      setSearchParams({ tab: 'flow' }, { replace: true })
-    } else {
+    // Doc-type scope has Documents only; clear vestigial ?tab=flow
+    if (key === 'documents' || requestedTab) {
       setSearchParams({}, { replace: true })
     }
   }
+
+  useEffect(() => {
+    // Drop legacy ?tab=flow deep-links to the removed shared editor
+    if (!isTemplateScope && requestedTab === 'flow') {
+      setSearchParams({}, { replace: true })
+    }
+  }, [isTemplateScope, requestedTab, setSearchParams])
 
   const hydrateSteps = useCallback(async (flowId) => {
     const rows = await listFlowSteps(flowId)
@@ -830,11 +820,16 @@ export default function FlowBuilderPage() {
         listDocumentTypes(),
         isTemplateScope
           ? listTemplateFlowHistory(templateId)
-          : listFlowHistory(documentTypeId),
-        isTemplateScope ? listOrgTemplates(documentTypeId) : Promise.resolve(null),
+          : Promise.resolve([]),
+        listOrgTemplates(documentTypeId),
       ])
       const statusDetail = types.find((item) => item.id === documentTypeId) || detail
-      setDocumentType({ ...detail, ...statusDetail })
+      setDocumentType({
+        ...detail,
+        ...statusDetail,
+        // Used for empty-state messaging on the Documents tab
+        _template_count: (templates || []).length,
+      })
 
       if (isTemplateScope) {
         const match = (templates || []).find((t) => t.id === templateId)
@@ -848,6 +843,10 @@ export default function FlowBuilderPage() {
         setTemplateMeta(match)
       } else {
         setTemplateMeta(null)
+        setFlow(null)
+        setSteps([])
+        setEditable(false)
+        return
       }
 
       const published = history.find((item) => item.is_published) || null
@@ -884,8 +883,9 @@ export default function FlowBuilderPage() {
       }
       return { text: 'Not set up', dot: '#8c8c8c' }
     }
-    return statusFor(documentType)
-  }, [documentType, flow, isTemplateScope])
+    // Doc-type page no longer hosts a shared flow editor
+    return null
+  }, [flow, isTemplateScope])
 
   const startFlow = async () => {
     setBusy(true)
@@ -1204,202 +1204,163 @@ export default function FlowBuilderPage() {
             </Button>
           }
         />
+      ) : !isTemplateScope ? (
+        <>
+          {(documentType?._template_count ?? 0) === 0 ? (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="Upload a document first, then configure its flow"
+              description="Each document has its own Flow (open Flow on the document card after upload). There is no shared flow for this document type."
+            />
+          ) : null}
+          <TemplatesPanel
+            documentTypeId={documentTypeId}
+            documentTypeName={documentType?.name || 'this document type'}
+            hasDraftFlow={false}
+            hasPublishedFlow={!!documentType?.has_published_flow}
+            canManage={isOrgAdmin}
+            onDraftFieldsGenerated={loadBuilder}
+          />
+        </>
       ) : (
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={[
-          ...(!isTemplateScope
-            ? [
-                {
-                  key: 'documents',
-                  label: 'Documents',
-                  children: (
-                    <TemplatesPanel
-                      documentTypeId={documentTypeId}
-                      documentTypeName={documentType?.name || 'this document type'}
-                      hasDraftFlow={!!documentType?.has_draft_flow}
-                      hasPublishedFlow={!!documentType?.has_published_flow}
-                      canManage={isOrgAdmin}
-                      onGoToFlow={
-                        isOrgAdmin ? () => setActiveTab('flow') : undefined
-                      }
-                      onDraftFieldsGenerated={loadBuilder}
-                    />
-                  ),
-                },
-              ]
-            : []),
-          ...(isOrgAdmin
-            ? [
-                {
-                  key: 'flow',
-                  label: isTemplateScope ? 'Flow' : 'Shared flow',
-                  children: (
-              <div>
-                {!isTemplateScope ? (
-                  <Alert
-                    type="info"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    message="Per-document flows are preferred"
-                    description="Open a document’s own Flow from its card. This shared flow remains for documents that do not yet have their own."
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 16,
+              marginBottom: 16,
+            }}
+          >
+            <Paragraph type="secondary" style={{ margin: 0 }}>
+              {flow
+                ? `Flow version ${flow.version} · this document only`
+                : 'Add the steps users complete for this document'}
+            </Paragraph>
+            {flow?.is_published && !editable ? (
+              <Button icon={<EditOutlined />} onClick={editPublished} loading={busy}>
+                Edit
+              </Button>
+            ) : null}
+          </div>
+
+          {loadError && <Alert type="error" showIcon message={loadError} />}
+
+          {!loadError && !flow && (
+            <Card style={{ borderRadius: 16 }}>
+              <Empty description="This document has no flow yet.">
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={startFlow}
+                  loading={busy}
+                >
+                  Create flow
+                </Button>
+              </Empty>
+            </Card>
+          )}
+
+          {!loadError && flow && (
+            <>
+              {editable ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                  message={
+                    flow.version > 1
+                      ? `Editing draft v${flow.version}; the published version remains live until you publish this draft.`
+                      : `Editing first draft v${flow.version}; nothing is live yet.`
+                  }
+                />
+              ) : (
+                <Alert
+                  type="success"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                  message={`Published v${flow.version} is live. Click Edit to create a separate draft.`}
+                />
+              )}
+
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                {steps.map((step, index) => (
+                  <StepCard
+                    key={step.id}
+                    step={step}
+                    index={index}
+                    count={steps.length}
+                    editable={editable}
+                    busy={busy}
+                    documentTypeId={documentTypeId}
+                    onPatch={patchStep}
+                    onDelete={removeStep}
+                    onMove={moveStep}
+                    onReload={() => hydrateSteps(flow.id)}
                   />
-                ) : null}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 16,
-                    marginBottom: 16,
-                  }}
+                ))}
+              </Space>
+
+              {!steps.length && (
+                <Card style={{ borderRadius: 12 }}>
+                  <Empty
+                    description={
+                      editable ? 'No steps yet.' : 'This live flow has no steps.'
+                    }
+                  />
+                </Card>
+              )}
+
+              {editable && (
+                <Button
+                  className="platform-touch-target"
+                  icon={<PlusOutlined />}
+                  onClick={() => setAddOpen(true)}
+                  style={{ marginTop: 16 }}
+                  disabled={busy}
+                  block
                 >
-                  <Paragraph type="secondary" style={{ margin: 0 }}>
-                    {flow
-                      ? isTemplateScope
-                        ? `Flow version ${flow.version} · this document only`
-                        : `Flow version ${flow.version}`
-                      : isTemplateScope
-                        ? 'Add the steps users complete for this document'
-                        : 'Add the steps users complete'}
-                  </Paragraph>
-                  {(isTemplateScope
-                    ? flow?.is_published && !editable
-                    : documentType?.has_published_flow &&
-                      !documentType?.has_draft_flow) && (
-                    <Button icon={<EditOutlined />} onClick={editPublished} loading={busy}>
-                      Edit
-                    </Button>
-                  )}
-                </div>
+                  Add step
+                </Button>
+              )}
+            </>
+          )}
 
-                {loadError && <Alert type="error" showIcon message={loadError} />}
-
-                {!loadError && !flow && (
-                  <Card style={{ borderRadius: 16 }}>
-                    <Empty
-                      description={
-                        isTemplateScope
-                          ? 'This document has no flow yet.'
-                          : 'This document type has no flow yet.'
-                      }
-                    >
-                      <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={startFlow}
-                        loading={busy}
-                      >
-                        Create flow
-                      </Button>
-                    </Empty>
-                  </Card>
-                )}
-
-                {!loadError && flow && (
-                  <>
-                    {editable ? (
-                      <Alert
-                        type="info"
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                        message={
-                          flow.version > 1
-                            ? `Editing draft v${flow.version}; the published version remains live until you publish this draft.`
-                            : `Editing first draft v${flow.version}; nothing is live yet.`
-                        }
-                      />
-                    ) : (
-                      <Alert
-                        type="success"
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                        message={`Published v${flow.version} is live. Click Edit to create a separate draft.`}
-                      />
-                    )}
-
-                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                      {steps.map((step, index) => (
-                        <StepCard
-                          key={step.id}
-                          step={step}
-                          index={index}
-                          count={steps.length}
-                          editable={editable}
-                          busy={busy}
-                          documentTypeId={documentTypeId}
-                          onPatch={patchStep}
-                          onDelete={removeStep}
-                          onMove={moveStep}
-                          onReload={() => hydrateSteps(flow.id)}
-                        />
-                      ))}
-                    </Space>
-
-                    {!steps.length && (
-                      <Card style={{ borderRadius: 12 }}>
-                        <Empty
-                          description={
-                            editable ? 'No steps yet.' : 'This live flow has no steps.'
-                          }
-                        />
-                      </Card>
-                    )}
-
-                    {editable && (
-                      <Button
-                        className="platform-touch-target"
-                        icon={<PlusOutlined />}
-                        onClick={() => setAddOpen(true)}
-                        style={{ marginTop: 16 }}
-                        disabled={busy}
-                        block
-                      >
-                        Add step
-                      </Button>
-                    )}
-                  </>
-                )}
-
-                <Modal
-                  title="Add step"
-                  open={addOpen}
-                  onCancel={() => setAddOpen(false)}
-                  footer={null}
-                  destroyOnHidden
-                >
-                  <Form
-                    form={addForm}
-                    layout="vertical"
-                    requiredMark={false}
-                    onFinish={addStep}
-                    initialValues={{ step_type: 'text_field' }}
-                  >
-                    <Form.Item name="step_type" label="Step type">
-                      <Select
-                        options={STEP_TYPES.map(([value, label]) => ({ value, label }))}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="label"
-                      label="Label"
-                      rules={[{ required: true, message: 'Label is required' }]}
-                    >
-                      <Input placeholder="Candidate details" />
-                    </Form.Item>
-                    <Button type="primary" htmlType="submit" loading={busy} block>
-                      Add step
-                    </Button>
-                  </Form>
-                </Modal>
-              </div>
-                  ),
-                },
-              ]
-            : []),
-        ]}
-      />
+          <Modal
+            title="Add step"
+            open={addOpen}
+            onCancel={() => setAddOpen(false)}
+            footer={null}
+            destroyOnHidden
+          >
+            <Form
+              form={addForm}
+              layout="vertical"
+              requiredMark={false}
+              onFinish={addStep}
+              initialValues={{ step_type: 'text_field' }}
+            >
+              <Form.Item name="step_type" label="Step type">
+                <Select
+                  options={STEP_TYPES.map(([value, label]) => ({ value, label }))}
+                />
+              </Form.Item>
+              <Form.Item
+                name="label"
+                label="Label"
+                rules={[{ required: true, message: 'Label is required' }]}
+              >
+                <Input placeholder="Candidate details" />
+              </Form.Item>
+              <Button type="primary" htmlType="submit" loading={busy} block>
+                Add step
+              </Button>
+            </Form>
+          </Modal>
+        </div>
       )}
     </FlowBuilderChrome>
   )
@@ -1480,7 +1441,7 @@ function FlowBuilderChrome({
               {!isMobile ? 'Edit' : null}
             </Button>
           ) : null}
-          {isOrgAdmin ? (
+          {isOrgAdmin && status ? (
             <span
               style={{
                 display: 'inline-flex',
@@ -1553,8 +1514,8 @@ function FlowBuilderChrome({
       onEdit,
       onDelete,
       deleting,
-      status.dot,
-      status.text,
+      status?.dot,
+      status?.text,
       isMobile,
       isOrgAdmin,
     ]
