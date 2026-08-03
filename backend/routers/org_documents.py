@@ -21,7 +21,7 @@ from routers.placeholder_mapping import _mapping_completeness
 from routers.platform_scope import (
     auto_ref_field_definitions_for_flow,
     get_org_document_type,
-    get_published_flow_for_org_doc_type,
+    get_published_flow_for_template_or_doc_type,
     org_output_dir,
     required_field_keys_for_published_flow,
     sanitize_token,
@@ -121,10 +121,10 @@ def generate_org_document(
     db: Session = Depends(get_db),
 ):
     org_doc_type = get_org_document_type(db, document_type_id, current.org_id)
-    flow = get_published_flow_for_org_doc_type(db, org_doc_type.id, current.org_id)
     template = _resolve_org_template_for_doc_type(
         db, org_doc_type.id, current.org_id, body.template_id
     )
+    flow = get_published_flow_for_template_or_doc_type(db, template, current.org_id)
 
     is_complete, _detected, unmapped, mappings = _mapping_completeness(db, template)
     if not is_complete:

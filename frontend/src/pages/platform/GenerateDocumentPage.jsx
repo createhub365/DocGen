@@ -29,11 +29,11 @@ import {
   fetchGeneratedDocumentBlob,
   generateOrgDocument,
   getDocumentType,
-  getPublishedFlow,
   listFieldDefinitions,
   listFlowSteps,
   listOrgTemplates,
   readPlatformErrorDetail,
+  resolvePublishedFlowForTemplate,
 } from '../../api/platformClient'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import { useAppMessage } from '../../hooks/useAppMessage'
@@ -261,23 +261,11 @@ export default function GenerateDocumentPage() {
     setPageIndex(0)
     setPageError(null)
     try {
-      const [detail, publishedSettled, templates] = await Promise.all([
+      const [detail, templates] = await Promise.all([
         getDocumentType(documentTypeId),
-        getPublishedFlow(documentTypeId)
-          .then((published) => ({ ok: true, published }))
-          .catch((error) => ({ ok: false, error })),
         listOrgTemplates(documentTypeId),
       ])
       setDocumentType(detail)
-
-      if (!publishedSettled.ok) {
-        if (publishedSettled.error?.response?.status === 404) {
-          setLoadError('Publish a flow first before generating.')
-          return
-        }
-        throw publishedSettled.error
-      }
-      const published = publishedSettled.published
 
       const complete = (templates || []).filter((t) => t.is_complete)
 
@@ -309,6 +297,21 @@ export default function GenerateDocumentPage() {
             : 'Upload and map a document before generating.'
         )
         return
+      }
+
+      let published
+      try {
+        const resolved = await resolvePublishedFlowForTemplate(
+          resolvedId,
+          documentTypeId
+        )
+        published = resolved.flow
+      } catch (error) {
+        if (error?.response?.status === 404) {
+          setLoadError('Publish a flow first before generating.')
+          return
+        }
+        throw error
       }
 
       const flowSteps = await listFlowSteps(published.id)

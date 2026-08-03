@@ -13,9 +13,9 @@ from auth import OrgUserContext, get_current_org_user, require_org_role
 from database import get_db
 from routers.org_templates import _resolve_stored_template_path
 from routers.platform_scope import (
-    get_draft_flow_for_org_doc_type,
+    get_draft_flow_for_template_or_doc_type,
     get_org_template,
-    get_published_flow_for_org_doc_type,
+    get_published_flow_for_template_or_doc_type,
     log_audit_event,
     resolvable_field_keys_for_published_flow,
 )
@@ -198,9 +198,7 @@ def generate_fields_from_placeholders(
             detail="Template is not linked to an org document type",
         )
 
-    draft = get_draft_flow_for_org_doc_type(
-        db, template.org_document_type_id, current.org_id
-    )
+    draft = get_draft_flow_for_template_or_doc_type(db, template, current.org_id)
     if not draft:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -369,9 +367,7 @@ def upsert_placeholder_mappings(
             detail="Template is not linked to an org document type",
         )
 
-    flow = get_published_flow_for_org_doc_type(
-        db, template.org_document_type_id, current.org_id
-    )
+    flow = get_published_flow_for_template_or_doc_type(db, template, current.org_id)
     allowed = resolvable_field_keys_for_published_flow(db, flow)
 
     failed: list[str] = []

@@ -366,3 +366,185 @@ def test_copy_flow_steps_and_fields_preserves_keys(dual_org_clients):
     db.expire_all()
     assert n == 2
     assert resolvable_field_keys_for_published_flow(db, dest) == keys
+
+
+def _publish_template_owned_flow(client, template_id: int, field_key: str, label: str):
+    created = client.post(f"/api/platform/templates/{template_id}/flow", json={})
+    assert created.status_code == 201, created.text
+    flow_id = created.json()["id"]
+    step = client.post(
+        f"/api/platform/{flow_id}/steps",
+        json={
+            "step_type": "custom_fields",
+            "order_index": 0,
+            "label": label,
+            "is_enabled": True,
+        },
+    )
+    assert step.status_code == 201, step.text
+    fd = client.post(
+        f"/api/platform/steps/{step.json()['id']}/fields",
+        json={
+            "field_key": field_key,
+            "field_label": label,
+            "field_type": "text",
+            "is_required": True,
+        },
+    )
+    assert fd.status_code == 201, fd.text
+    assert client.post(f"/api/platform/{flow_id}/publish").status_code == 200
+    return flow_id
+
+
+def test_generate_prefers_template_owned_flow_over_shared(dual_org_clients):
+    """Wizard/backend must require template-owned fields when that flow exists."""
+    client = dual_org_clients["client_a"]
+
+    setup = _publish_shared_flow_with_fields(client, slug="gen-prefer")
+    tid = _upload_template(client, setup["dt_id"], "gen-prefer.docx")
+
+    # Map against shared keys first (pre-migration style)
+    mapped = client.post(
+        f"/api/platform/templates/{tid}/mappings",
+        json={
+            "mappings": [
+                {"placeholder_key": "Company_Name", "field_key": "company_name"},
+                {"placeholder_key": "Employee_Name", "field_key": "employee_name"},
+            ]
+        },
+    )
+    assert mapped.status_code == 200, mapped.text
+
+    # Template gets its own published flow with a DIFFERENT required field
+    tpl_flow_id = _publish_template_owned_flow(
+        client, tid, "template_only_name", "Template Only"
+    )
+
+    # Shared keys are no longer the active required set
+    miss = client.post(
+        f"/api/platform/{setup['dt_id']}/generate",
+        json={
+            "template_id": tid,
+            "fields": {
+                "company_name": "Acme",
+                "employee_name": "Ada",
+            },
+        },
+    )
+    assert miss.status_code == 400, miss.text
+    detail = miss.json()["detail"]
+    assert "template_only_name" in (detail.get("missing_fields") or [])
+
+    # Remap to template-owned key, then generate succeeds
+    remap = client.post(
+        f"/api/platform/templates/{tid}/mappings",
+        json={
+            "mappings": [
+                {
+                    "placeholder_key": "Company_Name",
+                    "field_key": "template_only_name",
+                },
+                {"placeholder_key": "Employee_Name", "field_key": "template_only_name"},
+            ]
+        },
+    )
+    assert remap.status_code == 200, remap.text
+
+    ok = client.post(
+        f"/api/platform/{setup['dt_id']}/generate",
+        json={
+            "template_id": tid,
+            "fields": {"template_only_name": "FromTemplateFlow"},
+        },
+    )
+    assert ok.status_code == 201, ok.text
+    assert ok.json()["document_id"]
+
+
+def test_generate_falls_back_to_shared_doc_type_flow(dual_org_clients):
+    """Unmigrated templates keep today's behavior via the shared published flow."""
+    client = dual_org_clients["client_a"]
+
+    setup = _publish_shared_flow_with_fields(client, slug="gen-fallback")
+    tid = _upload_template(client, setup["dt_id"], "gen-fallback.docx")
+
+    mapped = client.post(
+        f"/api/platform/templates/{tid}/mappings",
+        json={
+            "mappings": [
+                {"placeholder_key": "Company_Name", "field_key": "company_name"},
+                {"placeholder_key": "Employee_Name", "field_key": "employee_name"},
+            ]
+        },
+    )
+    assert mapped.status_code == 200, mapped.text
+    assert (
+        client.get(f"/api/platform/templates/{tid}/flow/published").status_code == 404
+    )
+
+    gen = client.post(
+        f"/api/platform/{setup['dt_id']}/generate",
+        json={
+            "template_id": tid,
+            "fields": {
+                "company_name": "Acme",
+                "employee_name": "Ada",
+            },
+        },
+    )
+    assert gen.status_code == 201, gen.text
+
+
+def test_mapping_resolves_against_template_owned_flow(dual_org_clients):
+    client = dual_org_clients["client_a"]
+
+    setup = _publish_shared_flow_with_fields(client, slug="map-prefer")
+    tid = _upload_template(client, setup["dt_id"], "map-prefer.docx")
+    _publish_template_owned_flow(client, tid, "template_only_name", "Template Only")
+
+    # Shared key is invalid once template owns a published flow
+    bad = client.post(
+        f"/api/platform/templates/{tid}/mappings",
+        json={
+            "mappings": [
+                {"placeholder_key": "Company_Name", "field_key": "company_name"},
+            ]
+        },
+    )
+    assert bad.status_code == 400, bad.text
+    assert "company_name" in bad.json()["detail"]["invalid_field_keys"]
+
+    good = client.post(
+        f"/api/platform/templates/{tid}/mappings",
+        json={
+            "mappings": [
+                {
+                    "placeholder_key": "Company_Name",
+                    "field_key": "template_only_name",
+                },
+            ]
+        },
+    )
+    assert good.status_code == 200, good.text
+
+
+def test_mapping_falls_back_to_shared_doc_type_flow(dual_org_clients):
+    client = dual_org_clients["client_a"]
+
+    setup = _publish_shared_flow_with_fields(client, slug="map-fallback")
+    tid = _upload_template(client, setup["dt_id"], "map-fallback.docx")
+    assert (
+        client.get(f"/api/platform/templates/{tid}/flow/published").status_code == 404
+    )
+
+    ok = client.post(
+        f"/api/platform/templates/{tid}/mappings",
+        json={
+            "mappings": [
+                {"placeholder_key": "Company_Name", "field_key": "company_name"},
+                {"placeholder_key": "Employee_Name", "field_key": "employee_name"},
+            ]
+        },
+    )
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["is_complete"] is True

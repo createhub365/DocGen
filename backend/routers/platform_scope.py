@@ -390,6 +390,71 @@ def get_draft_flow_for_template(
     )
 
 
+def get_published_flow_for_template_or_doc_type(
+    db: Session, template: models.Template, org_id: str
+) -> models.FlowConfig:
+    """
+    Prefer this template's own published FlowConfig; fall back to the shared
+    org document-type published flow (Phase A migration compatibility).
+    """
+    if template.org_id != org_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    owned = (
+        db.query(models.FlowConfig)
+        .filter(
+            models.FlowConfig.template_id == template.id,
+            models.FlowConfig.is_published.is_(True),
+        )
+        .first()
+    )
+    if owned:
+        return owned
+    if not template.org_document_type_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return get_published_flow_for_org_doc_type(
+        db, template.org_document_type_id, org_id
+    )
+
+
+def get_draft_flow_for_template_or_doc_type(
+    db: Session, template: models.Template, org_id: str
+) -> models.FlowConfig | None:
+    """
+    Prefer template-owned draft; fall back to shared document-type draft only
+    when this template has no owned flow at all (not yet migrated).
+    """
+    if template.org_id != org_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    owned_draft = (
+        db.query(models.FlowConfig)
+        .filter(
+            models.FlowConfig.template_id == template.id,
+            models.FlowConfig.is_published.is_(False),
+        )
+        .order_by(models.FlowConfig.version.desc())
+        .first()
+    )
+    if owned_draft:
+        return owned_draft
+    # Migrated templates keep their own published flow — do not write into the
+    # shared doc-type draft when the template simply has no draft open yet.
+    owned_published = (
+        db.query(models.FlowConfig)
+        .filter(
+            models.FlowConfig.template_id == template.id,
+            models.FlowConfig.is_published.is_(True),
+        )
+        .first()
+    )
+    if owned_published:
+        return None
+    if not template.org_document_type_id:
+        return None
+    return get_draft_flow_for_org_doc_type(
+        db, template.org_document_type_id, org_id
+    )
+
+
 def copy_flow_steps_and_fields(
     db: Session,
     *,

@@ -16,11 +16,11 @@ import { ArrowLeftOutlined, PlayCircleOutlined, SaveOutlined } from '@ant-design
 import {
   buildResolvableFieldKeyOptions,
   generateFieldsFromPlaceholders,
-  getPublishedFlow,
   listFieldDefinitions,
   listFlowSteps,
   listPlaceholderMappings,
   readPlatformErrorDetail,
+  resolvePublishedFlowForTemplate,
   savePlaceholderMappings,
 } from '../../api/platformClient'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
@@ -86,8 +86,8 @@ export default function PlaceholderMappingPanel({
       let published = null
       let options = []
       const [publishedSettled, mappings] = await Promise.all([
-        getPublishedFlow(documentTypeId)
-          .then((value) => ({ ok: true, value }))
+        resolvePublishedFlowForTemplate(template.id, documentTypeId)
+          .then((value) => ({ ok: true, value: value.flow }))
           .catch((error) => ({ ok: false, error })),
         listPlaceholderMappings(template.id),
       ])
@@ -400,7 +400,7 @@ export default function PlaceholderMappingPanel({
           message="Publish a flow first before mapping placeholders"
           description={
             canEditMappings
-              ? 'Mapping options come from the published flow’s field definitions and fixed step outputs (country.*, party.*). Create and publish a flow on the Flow tab, then return here.'
+              ? 'Mapping options come from the published flow’s field definitions and fixed step outputs (country.*, party.*). Create and publish this document’s Flow (or the shared flow if it has none yet), then return here.'
               : 'Mapping options come from the published flow. Ask an organization admin to publish a flow before mapping can be completed.'
           }
         />
@@ -414,8 +414,8 @@ export default function PlaceholderMappingPanel({
           message="Published flow has no mappable field keys"
           description={
             canEditMappings
-              ? 'On the Flow tab, click Edit (opens a draft). On each text/number/date/dropdown/rich-text/custom-fields step, use Add field and set a field_key (lowercase, e.g. company_name). Or add a Country / Party selector. Then Publish and return here.'
-              : 'Ask an organization admin to add field keys on the Flow tab and publish before mapping can be completed.'
+              ? 'Open this document’s Flow, click Edit (opens a draft). On each text/number/date/dropdown/rich-text/custom-fields step, use Add field and set a field_key (lowercase, e.g. company_name). Or add a Country / Party selector. Then Publish and return here.'
+              : 'Ask an organization admin to add field keys on this document’s Flow and publish before mapping can be completed.'
           }
         />
       )}

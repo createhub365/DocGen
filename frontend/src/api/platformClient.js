@@ -138,6 +138,49 @@ export async function createDraftFromPublished(documentTypeId) {
   return data
 }
 
+/** Phase A — per-template flow (parallel to document-type helpers). */
+export async function listTemplateFlowHistory(templateId) {
+  const { data } = await platformClient.get(`/templates/${templateId}/flow/history`)
+  return data
+}
+
+export async function createTemplateFlow(templateId) {
+  const { data } = await platformClient.post(`/templates/${templateId}/flow`, {})
+  return data
+}
+
+export async function createTemplateDraftFromPublished(templateId) {
+  const { data } = await platformClient.post(
+    `/templates/${templateId}/flow/new-draft`
+  )
+  return data
+}
+
+export async function getTemplatePublishedFlow(templateId) {
+  const { data } = await platformClient.get(
+    `/templates/${templateId}/flow/published`
+  )
+  return data
+}
+
+/**
+ * Prefer template-owned published flow; fall back to document-type shared flow.
+ * @returns {{ flow: object, source: 'template' | 'document_type' }}
+ */
+export async function resolvePublishedFlowForTemplate(
+  templateId,
+  documentTypeId
+) {
+  try {
+    const flow = await getTemplatePublishedFlow(templateId)
+    return { flow, source: 'template' }
+  } catch (error) {
+    if (error?.response?.status !== 404) throw error
+  }
+  const flow = await getPublishedFlow(documentTypeId)
+  return { flow, source: 'document_type' }
+}
+
 export async function listFlowSteps(flowConfigId) {
   const { data } = await platformClient.get(`/${flowConfigId}/steps`)
   return data

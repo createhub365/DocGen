@@ -32,6 +32,7 @@ import {
   InboxOutlined,
   FormOutlined,
   MoreOutlined,
+  PartitionOutlined,
   PlayCircleOutlined,
 } from '@ant-design/icons'
 import {
@@ -834,6 +835,20 @@ export default function TemplatesPanel({
                   </Button>
                 </span>
               </Tooltip>
+              {canManage ? (
+                <Button
+                  className="platform-touch-target"
+                  size="small"
+                  icon={<PartitionOutlined />}
+                  onClick={() =>
+                    navigate(
+                      `/platform/document-types/${documentTypeId}/templates/${item.id}/flow`
+                    )
+                  }
+                >
+                  Flow
+                </Button>
+              ) : null}
               {canManage ? (
                 <Dropdown
                   menu={{

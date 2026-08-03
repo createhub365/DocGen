@@ -95,6 +95,10 @@ function AppRoutes() {
           <Route path="/platform/document-types" element={<DocumentTypesPage />} />
           <Route path="/platform/document-types/:id" element={<FlowBuilderPage />} />
           <Route
+            path="/platform/document-types/:id/templates/:templateId/flow"
+            element={<FlowBuilderPage />}
+          />
+          <Route
             path="/platform/document-types/:id/generate/:templateId"
             element={<GenerateDocumentPage />}
           />

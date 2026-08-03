@@ -45,6 +45,8 @@ import {
   addFlowStep,
   createDraftFromPublished,
   createFlow,
+  createTemplateDraftFromPublished,
+  createTemplateFlow,
   deleteFieldDefinition,
   deleteFlowStep,
   getDocumentType,
@@ -54,6 +56,7 @@ import {
   listFlowSteps,
   listOptionLists,
   listOrgTemplates,
+  listTemplateFlowHistory,
   publishFlow,
   readPlatformErrorDetail,
   updateDocumentType,
@@ -762,14 +765,21 @@ function StepCard({
 }
 
 export default function FlowBuilderPage() {
-  const { id } = useParams()
+  const { id, templateId: templateIdParam } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const message = useAppMessage()
   const { isOrgAdmin } = usePlatformAuth()
   const documentTypeId = Number(id)
+  const templateId =
+    templateIdParam != null && templateIdParam !== ''
+      ? Number(templateIdParam)
+      : null
+  const isTemplateScope =
+    Number.isFinite(templateId) && templateId > 0
 
   const [documentType, setDocumentType] = useState(null)
+  const [templateMeta, setTemplateMeta] = useState(null)
   const [flow, setFlow] = useState(null)
   const [steps, setSteps] = useState([])
   const [editable, setEditable] = useState(false)
@@ -779,11 +789,18 @@ export default function FlowBuilderPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [addForm] = Form.useForm()
 
-  // Documents is the primary tab; ?tab=flow opens the flow editor (org_admin only)
+  // Documents is the primary tab; ?tab=flow opens the shared doc-type flow (org_admin).
+  // Template-scoped route always shows the per-template flow editor.
   const requestedTab = searchParams.get('tab') === 'flow' ? 'flow' : 'documents'
-  const activeTab = isOrgAdmin ? requestedTab : 'documents'
-  const staffBlockedFromFlow = !isOrgAdmin && requestedTab === 'flow'
+  const activeTab = isTemplateScope
+    ? 'flow'
+    : isOrgAdmin
+      ? requestedTab
+      : 'documents'
+  const staffBlockedFromFlow =
+    !isOrgAdmin && (isTemplateScope || requestedTab === 'flow')
   const setActiveTab = (key) => {
+    if (isTemplateScope) return
     if (key === 'flow' && isOrgAdmin) {
       setSearchParams({ tab: 'flow' }, { replace: true })
     } else {
@@ -808,13 +825,30 @@ export default function FlowBuilderPage() {
     setLoading(true)
     setLoadError(null)
     try {
-      const [detail, types, history] = await Promise.all([
+      const [detail, types, history, templates] = await Promise.all([
         getDocumentType(documentTypeId),
         listDocumentTypes(),
-        listFlowHistory(documentTypeId),
+        isTemplateScope
+          ? listTemplateFlowHistory(templateId)
+          : listFlowHistory(documentTypeId),
+        isTemplateScope ? listOrgTemplates(documentTypeId) : Promise.resolve(null),
       ])
       const statusDetail = types.find((item) => item.id === documentTypeId) || detail
       setDocumentType({ ...detail, ...statusDetail })
+
+      if (isTemplateScope) {
+        const match = (templates || []).find((t) => t.id === templateId)
+        if (!match) {
+          setLoadError('That document was not found for this type.')
+          setTemplateMeta(null)
+          setFlow(null)
+          setSteps([])
+          return
+        }
+        setTemplateMeta(match)
+      } else {
+        setTemplateMeta(null)
+      }
 
       const published = history.find((item) => item.is_published) || null
       const drafts = history
@@ -834,18 +868,33 @@ export default function FlowBuilderPage() {
     } finally {
       setLoading(false)
     }
-  }, [documentTypeId, hydrateSteps, isOrgAdmin])
+  }, [documentTypeId, hydrateSteps, isOrgAdmin, isTemplateScope, templateId])
 
   useEffect(() => {
     loadBuilder()
   }, [loadBuilder])
 
-  const status = useMemo(() => statusFor(documentType), [documentType])
+  const status = useMemo(() => {
+    if (isTemplateScope) {
+      if (flow?.is_published) {
+        return { text: 'Live', dot: '#52c41a' }
+      }
+      if (flow && !flow.is_published) {
+        return { text: 'Draft', dot: '#faad14' }
+      }
+      return { text: 'Not set up', dot: '#8c8c8c' }
+    }
+    return statusFor(documentType)
+  }, [documentType, flow, isTemplateScope])
 
   const startFlow = async () => {
     setBusy(true)
     try {
-      await createFlow(documentTypeId)
+      if (isTemplateScope) {
+        await createTemplateFlow(templateId)
+      } else {
+        await createFlow(documentTypeId)
+      }
       message.success('Draft flow created')
       await loadBuilder()
     } catch (error) {
@@ -858,7 +907,11 @@ export default function FlowBuilderPage() {
   const editPublished = async () => {
     setBusy(true)
     try {
-      await createDraftFromPublished(documentTypeId)
+      if (isTemplateScope) {
+        await createTemplateDraftFromPublished(templateId)
+      } else {
+        await createDraftFromPublished(documentTypeId)
+      }
       message.success('New draft created from the live version')
       await loadBuilder()
     } catch (error) {
@@ -1081,14 +1134,27 @@ export default function FlowBuilderPage() {
     )
   }
 
+  const chromeTitle = isTemplateScope
+    ? templateMeta?.display_name ||
+      templateMeta?.docx_filename ||
+      'Document'
+    : documentType?.name || 'Document type'
+
   return (
     <FlowBuilderChrome
-      documentName={documentType?.name || 'Document type'}
-      iconKey={documentType?.icon}
+      documentName={chromeTitle}
+      iconKey={isTemplateScope ? undefined : documentType?.icon}
       status={status}
-      onBack={() => navigate('/platform/document-types')}
-      onEdit={isOrgAdmin ? openEdit : null}
-      onDelete={isOrgAdmin ? confirmDelete : null}
+      onBack={() =>
+        navigate(
+          isTemplateScope
+            ? `/platform/document-types/${documentTypeId}`
+            : '/platform/document-types'
+        )
+      }
+      backLabel={isTemplateScope ? 'Documents' : 'Document types'}
+      onEdit={!isTemplateScope && isOrgAdmin ? openEdit : null}
+      onDelete={!isTemplateScope && isOrgAdmin ? confirmDelete : null}
       deleting={deleting}
       editable={editable}
       busy={busy}
@@ -1128,7 +1194,12 @@ export default function FlowBuilderPage() {
           title="Not available for your role"
           subTitle="Flow setup is only available to organization admins."
           extra={
-            <Button type="primary" onClick={() => setActiveTab('documents')}>
+            <Button
+              type="primary"
+              onClick={() =>
+                navigate(`/platform/document-types/${documentTypeId}`)
+              }
+            >
               Back to Documents
             </Button>
           }
@@ -1138,28 +1209,43 @@ export default function FlowBuilderPage() {
         activeKey={activeTab}
         onChange={setActiveTab}
         items={[
-          {
-            key: 'documents',
-            label: 'Documents',
-            children: (
-              <TemplatesPanel
-                documentTypeId={documentTypeId}
-                documentTypeName={documentType?.name || 'this document type'}
-                hasDraftFlow={!!documentType?.has_draft_flow}
-                hasPublishedFlow={!!documentType?.has_published_flow}
-                canManage={isOrgAdmin}
-                onGoToFlow={isOrgAdmin ? () => setActiveTab('flow') : undefined}
-                onDraftFieldsGenerated={loadBuilder}
-              />
-            ),
-          },
+          ...(!isTemplateScope
+            ? [
+                {
+                  key: 'documents',
+                  label: 'Documents',
+                  children: (
+                    <TemplatesPanel
+                      documentTypeId={documentTypeId}
+                      documentTypeName={documentType?.name || 'this document type'}
+                      hasDraftFlow={!!documentType?.has_draft_flow}
+                      hasPublishedFlow={!!documentType?.has_published_flow}
+                      canManage={isOrgAdmin}
+                      onGoToFlow={
+                        isOrgAdmin ? () => setActiveTab('flow') : undefined
+                      }
+                      onDraftFieldsGenerated={loadBuilder}
+                    />
+                  ),
+                },
+              ]
+            : []),
           ...(isOrgAdmin
             ? [
                 {
                   key: 'flow',
-                  label: 'Flow',
+                  label: isTemplateScope ? 'Flow' : 'Shared flow',
                   children: (
               <div>
+                {!isTemplateScope ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message="Per-document flows are preferred"
+                    description="Open a document’s own Flow from its card. This shared flow remains for documents that do not yet have their own."
+                  />
+                ) : null}
                 <div
                   style={{
                     display: 'flex',
@@ -1171,11 +1257,17 @@ export default function FlowBuilderPage() {
                 >
                   <Paragraph type="secondary" style={{ margin: 0 }}>
                     {flow
-                      ? `Flow version ${flow.version}`
-                      : 'Add the steps users complete'}
+                      ? isTemplateScope
+                        ? `Flow version ${flow.version} · this document only`
+                        : `Flow version ${flow.version}`
+                      : isTemplateScope
+                        ? 'Add the steps users complete for this document'
+                        : 'Add the steps users complete'}
                   </Paragraph>
-                  {documentType?.has_published_flow &&
-                    !documentType?.has_draft_flow && (
+                  {(isTemplateScope
+                    ? flow?.is_published && !editable
+                    : documentType?.has_published_flow &&
+                      !documentType?.has_draft_flow) && (
                     <Button icon={<EditOutlined />} onClick={editPublished} loading={busy}>
                       Edit
                     </Button>
@@ -1186,7 +1278,13 @@ export default function FlowBuilderPage() {
 
                 {!loadError && !flow && (
                   <Card style={{ borderRadius: 16 }}>
-                    <Empty description="This document type has no flow yet.">
+                    <Empty
+                      description={
+                        isTemplateScope
+                          ? 'This document has no flow yet.'
+                          : 'This document type has no flow yet.'
+                      }
+                    >
                       <Button
                         type="primary"
                         icon={<PlusOutlined />}
@@ -1207,7 +1305,7 @@ export default function FlowBuilderPage() {
                         showIcon
                         style={{ marginBottom: 16 }}
                         message={
-                          documentType?.has_published_flow
+                          flow.version > 1
                             ? `Editing draft v${flow.version}; the published version remains live until you publish this draft.`
                             : `Editing first draft v${flow.version}; nothing is live yet.`
                         }
@@ -1312,6 +1410,7 @@ function FlowBuilderChrome({
   iconKey,
   status,
   onBack,
+  backLabel = 'Document types',
   onEdit,
   onDelete,
   deleting,
@@ -1338,7 +1437,7 @@ function FlowBuilderChrome({
             paddingInline: 8,
           }}
         >
-          {isMobile ? 'Back' : 'Document types'}
+          {isMobile ? 'Back' : backLabel}
         </Button>
         <Space align="center" wrap style={{ maxWidth: '100%' }} size={10}>
           {onEdit ? (
@@ -1420,9 +1519,13 @@ function FlowBuilderChrome({
         >
           {!isMobile ? (
             <Paragraph type="secondary" style={{ margin: 0 }}>
-              {isOrgAdmin
-                ? 'Documents and generation flow for this type.'
-                : 'View and generate documents for this type.'}
+              {onEdit
+                ? isOrgAdmin
+                  ? 'Documents and generation flow for this type.'
+                  : 'View and generate documents for this type.'
+                : isOrgAdmin
+                  ? 'Generation flow for this document.'
+                  : 'View the generation flow for this document.'}
             </Paragraph>
           ) : (
             <span />
@@ -1446,6 +1549,7 @@ function FlowBuilderChrome({
       documentName,
       iconKey,
       onBack,
+      backLabel,
       onEdit,
       onDelete,
       deleting,
