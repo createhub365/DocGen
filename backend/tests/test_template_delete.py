@@ -176,3 +176,63 @@ def test_delete_template_sibling_unaffected(dual_org_clients):
     db.expire_all()
     assert db.query(Template).filter(Template.id == keep_id).first() is not None
     assert db.query(Template).filter(Template.id == drop_id).first() is None
+
+
+def test_delete_template_with_owned_flows(dual_org_clients):
+    """Phase A+: deleting a template must remove its owned FlowConfig tree."""
+    from models import FieldDefinition, FlowConfig, FlowStep
+
+    client_a = dual_org_clients["client_a"]
+    db = dual_org_clients["db"]
+
+    dt = client_a.post(
+        "/api/platform/document-types/",
+        json={"name": "Owned Flow Del", "slug": "owned-flow-del"},
+    )
+    assert dt.status_code == 201, dt.text
+    dt_id = dt.json()["id"]
+
+    up = _upload(
+        client_a,
+        dt_id,
+        filename="owned.docx",
+        display_name="Has Own Flow",
+        placeholder="cand_name",
+    )
+    assert up.status_code == 201, up.text
+    tmpl_id = up.json()["id"]
+
+    created = client_a.post(f"/api/platform/templates/{tmpl_id}/flow", json={})
+    assert created.status_code == 201, created.text
+    flow_id = created.json()["id"]
+
+    step = client_a.post(
+        f"/api/platform/{flow_id}/steps",
+        json={
+            "step_type": "text_field",
+            "order_index": 0,
+            "label": "Name",
+            "is_enabled": True,
+        },
+    )
+    assert step.status_code == 201, step.text
+    step_id = step.json()["id"]
+
+    # Shared flow for same DT — must survive template delete
+    shared = client_a.post(f"/api/platform/{dt_id}/flow", json={})
+    assert shared.status_code == 201, shared.text
+    shared_id = shared.json()["id"]
+
+    resp = client_a.delete(f"/api/platform/{dt_id}/templates/{tmpl_id}")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["deleted"] is True
+
+    db.expire_all()
+    assert db.query(Template).filter(Template.id == tmpl_id).first() is None
+    assert db.query(FlowConfig).filter(FlowConfig.id == flow_id).first() is None
+    assert db.query(FlowStep).filter(FlowStep.id == step_id).first() is None
+    assert (
+        db.query(FieldDefinition).filter(FieldDefinition.flow_step_id == step_id).count()
+        == 0
+    )
+    assert db.query(FlowConfig).filter(FlowConfig.id == shared_id).first() is not None

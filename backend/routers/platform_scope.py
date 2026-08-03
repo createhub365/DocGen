@@ -510,6 +510,45 @@ def copy_flow_steps_and_fields(
     return field_count
 
 
+def delete_template_owned_flows(db: Session, template_id: int) -> int:
+    """
+    Hard-delete all FlowConfig rows owned by a template (and their steps/fields).
+
+    Required before deleting the template: flow_configs.template_id is
+    ON DELETE NO ACTION. Shared (document_type_id) flows are never touched.
+    Returns the number of flow_config rows removed.
+    """
+    flow_ids = [
+        row.id
+        for row in db.query(models.FlowConfig.id)
+        .filter(models.FlowConfig.template_id == template_id)
+        .all()
+    ]
+    if not flow_ids:
+        return 0
+
+    step_ids = [
+        row.id
+        for row in db.query(models.FlowStep.id)
+        .filter(models.FlowStep.flow_config_id.in_(flow_ids))
+        .all()
+    ]
+    if step_ids:
+        db.query(models.FieldDefinition).filter(
+            models.FieldDefinition.flow_step_id.in_(step_ids)
+        ).delete(synchronize_session=False)
+        db.query(models.FlowStep).filter(models.FlowStep.id.in_(step_ids)).delete(
+            synchronize_session=False
+        )
+
+    deleted = (
+        db.query(models.FlowConfig)
+        .filter(models.FlowConfig.id.in_(flow_ids))
+        .delete(synchronize_session=False)
+    )
+    return int(deleted or 0)
+
+
 def resolvable_field_keys_for_published_flow(
     db: Session, flow: models.FlowConfig
 ) -> set[str]:

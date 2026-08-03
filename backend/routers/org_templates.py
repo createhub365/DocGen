@@ -16,6 +16,7 @@ import models
 from auth import OrgUserContext, get_current_org_user, require_org_role
 from database import get_db
 from routers.platform_scope import (
+    delete_template_owned_flows,
     ensure_platform_legacy_template_fks,
     get_org_document_type,
     get_org_template,
@@ -436,7 +437,7 @@ def _hard_delete_org_template(
     audit: bool = True,
 ) -> dict:
     """
-    Hard-delete one org template + mappings + stored file.
+    Hard-delete one org template + mappings + owned flows + stored file.
 
     GeneratedDocument rows that referenced this template keep their files;
     template_id is SET NULL via FK (historical downloads remain available).
@@ -471,6 +472,10 @@ def _hard_delete_org_template(
     db.query(models.PlaceholderMapping).filter(
         models.PlaceholderMapping.template_id == template.id
     ).delete(synchronize_session=False)
+
+    # Phase A+: template-owned FlowConfig rows block DELETE (NO ACTION FK).
+    # Remove fields → steps → configs before the template row.
+    delete_template_owned_flows(db, template.id)
 
     # Clear FK before delete so SQLite (tests) and Postgres SET NULL both work;
     # Postgres ON DELETE SET NULL would also handle this after migration.
