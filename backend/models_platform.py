@@ -13,6 +13,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
@@ -136,10 +137,25 @@ class OrgDocumentType(Base):
 class FlowConfig(Base):
     __tablename__ = "flow_configs"
     __table_args__ = (
+        # Exactly one owner: document-type (legacy shared) XOR template (per-doc).
+        CheckConstraint(
+            "(document_type_id IS NOT NULL AND template_id IS NULL) OR "
+            "(document_type_id IS NULL AND template_id IS NOT NULL)",
+            name="ck_flow_configs_owner_xor",
+        ),
         UniqueConstraint(
             "document_type_id",
             "version",
             name="uq_flow_configs_document_type_version",
+        ),
+        # Partial unique: (template_id, version) when template-owned.
+        Index(
+            "uq_flow_configs_template_version",
+            "template_id",
+            "version",
+            unique=True,
+            sqlite_where=text("template_id IS NOT NULL"),
+            postgresql_where=text("template_id IS NOT NULL"),
         ),
         # At most one published flow per document type (app + DB enforced).
         Index(
@@ -149,18 +165,33 @@ class FlowConfig(Base):
             sqlite_where=text("is_published = 1"),
             postgresql_where=text("is_published IS TRUE"),
         ),
+        # At most one published flow per template.
+        Index(
+            "uq_flow_configs_one_published_template",
+            "template_id",
+            unique=True,
+            sqlite_where=text("is_published = 1 AND template_id IS NOT NULL"),
+            postgresql_where=text(
+                "is_published IS TRUE AND template_id IS NOT NULL"
+            ),
+        ),
         Index("ix_flow_configs_document_type_id", "document_type_id"),
+        Index("ix_flow_configs_template_id", "template_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
+    # Legacy shared flow owner (nullable after Phase A — XOR with template_id).
     document_type_id = Column(
-        Integer, ForeignKey("org_document_types.id"), nullable=False
+        Integer, ForeignKey("org_document_types.id"), nullable=True
     )
+    # Per-template flow owner (Phase A additive).
+    template_id = Column(Integer, ForeignKey("templates.id"), nullable=True)
     version = Column(Integer, nullable=False, default=1)
     is_published = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     document_type = relationship("OrgDocumentType", back_populates="flow_configs")
+    template = relationship("Template", foreign_keys=[template_id])
     steps = relationship(
         "FlowStep",
         back_populates="flow_config",

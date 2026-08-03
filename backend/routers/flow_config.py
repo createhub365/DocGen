@@ -13,12 +13,16 @@ import models
 from auth import OrgUserContext, get_current_org_user, require_org_role
 from database import get_db
 from routers.platform_scope import (
+    copy_flow_steps_and_fields,
     field_definition_read,
     get_org_document_type,
     get_org_field_definition,
     get_org_flow_config,
     get_org_flow_step,
     get_org_option_list,
+    get_org_template,
+    get_draft_flow_for_template,
+    get_published_flow_for_template,
     log_audit_event,
 )
 from schemas_platform import (
@@ -59,6 +63,7 @@ def create_flow_config(
 
     row = models.FlowConfig(
         document_type_id=document_type_id,
+        template_id=None,
         version=next_version,
         is_published=False,
     )
@@ -177,15 +182,26 @@ def publish_flow_config(
     # FieldDefinition FKs), so republishing a new version does not invalidate
     # existing template mappings that still resolve by key on the new flow.
     try:
-        (
-            db.query(models.FlowConfig)
-            .filter(
-                models.FlowConfig.document_type_id == flow.document_type_id,
-                models.FlowConfig.is_published.is_(True),
-                models.FlowConfig.id != flow.id,
+        if flow.template_id is not None:
+            (
+                db.query(models.FlowConfig)
+                .filter(
+                    models.FlowConfig.template_id == flow.template_id,
+                    models.FlowConfig.is_published.is_(True),
+                    models.FlowConfig.id != flow.id,
+                )
+                .update({"is_published": False}, synchronize_session=False)
             )
-            .update({"is_published": False}, synchronize_session=False)
-        )
+        else:
+            (
+                db.query(models.FlowConfig)
+                .filter(
+                    models.FlowConfig.document_type_id == flow.document_type_id,
+                    models.FlowConfig.is_published.is_(True),
+                    models.FlowConfig.id != flow.id,
+                )
+                .update({"is_published": False}, synchronize_session=False)
+            )
         flow.is_published = True
         db.commit()
         db.refresh(flow)
@@ -193,7 +209,11 @@ def publish_flow_config(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Another published flow already exists for this document type",
+            detail=(
+                "Another published flow already exists for this template"
+                if flow.template_id is not None
+                else "Another published flow already exists for this document type"
+            ),
         )
     log_audit_event(
         db,
@@ -202,7 +222,11 @@ def publish_flow_config(
         "flow.published",
         "FlowConfig",
         flow.id,
-        {"document_type_id": flow.document_type_id, "version": flow.version},
+        {
+            "document_type_id": flow.document_type_id,
+            "template_id": flow.template_id,
+            "version": flow.version,
+        },
     )
     return flow
 
@@ -265,48 +289,16 @@ def create_flow_draft_from_published(
 
     draft = models.FlowConfig(
         document_type_id=document_type_id,
+        template_id=None,
         version=next_version,
         is_published=False,
     )
     db.add(draft)
     db.flush()
 
-    source_steps = (
-        db.query(models.FlowStep)
-        .filter(models.FlowStep.flow_config_id == published.id)
-        .order_by(models.FlowStep.order_index.asc())
-        .all()
+    copy_flow_steps_and_fields(
+        db, source_flow_id=published.id, dest_flow=draft
     )
-    for step in source_steps:
-        new_step = models.FlowStep(
-            flow_config_id=draft.id,
-            step_type=step.step_type,
-            order_index=step.order_index,
-            is_enabled=step.is_enabled,
-            label=step.label,
-            config_json=step.config_json,
-        )
-        db.add(new_step)
-        db.flush()
-        fields = (
-            db.query(models.FieldDefinition)
-            .filter(models.FieldDefinition.flow_step_id == step.id)
-            .all()
-        )
-        for fd in fields:
-            db.add(
-                models.FieldDefinition(
-                    flow_step_id=new_step.id,
-                    field_key=fd.field_key,
-                    field_label=fd.field_label,
-                    field_type=fd.field_type,
-                    is_required=fd.is_required,
-                    options_json=fd.options_json,
-                    option_list_id=fd.option_list_id,
-                    is_auto_generated=bool(getattr(fd, "is_auto_generated", False)),
-                    auto_config_json=getattr(fd, "auto_config_json", None),
-                )
-            )
 
     db.commit()
     db.refresh(draft)
@@ -319,6 +311,171 @@ def create_flow_draft_from_published(
         draft.id,
         {
             "document_type_id": document_type_id,
+            "source_flow_config_id": published.id,
+            "version": draft.version,
+        },
+    )
+    return draft
+
+
+# ---------------------------------------------------------------------------
+# Per-template flow endpoints (Phase A — additive; doc-type routes unchanged)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/templates/{template_id}/flow",
+    response_model=FlowConfigRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_template_flow_config(
+    template_id: int,
+    body: FlowConfigCreateRequest = Body(default_factory=FlowConfigCreateRequest),
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """Create an empty draft flow owned by this template (start empty)."""
+    get_org_template(db, template_id, current.org_id)
+
+    next_version = body.version
+    if next_version is None:
+        max_v = (
+            db.query(func.max(models.FlowConfig.version))
+            .filter(models.FlowConfig.template_id == template_id)
+            .scalar()
+        )
+        next_version = int(max_v or 0) + 1
+
+    row = models.FlowConfig(
+        document_type_id=None,
+        template_id=template_id,
+        version=next_version,
+        is_published=False,
+    )
+    db.add(row)
+    try:
+        db.commit()
+        db.refresh(row)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Flow config version already exists for this template",
+        )
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "flow.template_created",
+        "FlowConfig",
+        row.id,
+        {"template_id": template_id, "version": row.version},
+    )
+    return row
+
+
+@router.get(
+    "/templates/{template_id}/flow/published",
+    response_model=FlowConfigRead,
+)
+def get_template_published_flow(
+    template_id: int,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    return get_published_flow_for_template(db, template_id, current.org_id)
+
+
+@router.get(
+    "/templates/{template_id}/flow/draft",
+    response_model=FlowConfigRead,
+)
+def get_template_draft_flow(
+    template_id: int,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    draft = get_draft_flow_for_template(db, template_id, current.org_id)
+    if not draft:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return draft
+
+
+@router.get(
+    "/templates/{template_id}/flow/history",
+    response_model=List[FlowConfigRead],
+)
+def list_template_flow_history(
+    template_id: int,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    get_org_template(db, template_id, current.org_id)
+    return (
+        db.query(models.FlowConfig)
+        .filter(models.FlowConfig.template_id == template_id)
+        .order_by(models.FlowConfig.version.asc())
+        .all()
+    )
+
+
+@router.post(
+    "/templates/{template_id}/flow/new-draft",
+    response_model=FlowConfigRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_template_flow_draft_from_published(
+    template_id: int,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """Deep-copy this template's published flow into a new unpublished draft."""
+    get_org_template(db, template_id, current.org_id)
+
+    published = (
+        db.query(models.FlowConfig)
+        .filter(
+            models.FlowConfig.template_id == template_id,
+            models.FlowConfig.is_published.is_(True),
+        )
+        .first()
+    )
+    if not published:
+        draft = get_draft_flow_for_template(db, template_id, current.org_id)
+        if not draft:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+            )
+        return draft
+
+    max_v = (
+        db.query(func.max(models.FlowConfig.version))
+        .filter(models.FlowConfig.template_id == template_id)
+        .scalar()
+    )
+    next_version = int(max_v or 0) + 1
+    draft = models.FlowConfig(
+        document_type_id=None,
+        template_id=template_id,
+        version=next_version,
+        is_published=False,
+    )
+    db.add(draft)
+    db.flush()
+    copy_flow_steps_and_fields(
+        db, source_flow_id=published.id, dest_flow=draft
+    )
+    db.commit()
+    db.refresh(draft)
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "flow.draft_created",
+        "FlowConfig",
+        draft.id,
+        {
+            "template_id": template_id,
             "source_flow_config_id": published.id,
             "version": draft.version,
         },

@@ -96,6 +96,7 @@ def get_org_document_type(
 def get_org_flow_config(
     db: Session, flow_config_id: int, org_id: str
 ) -> models.FlowConfig:
+    """Resolve a flow owned by this org via document-type OR template."""
     row = (
         db.query(models.FlowConfig)
         .join(
@@ -105,6 +106,21 @@ def get_org_flow_config(
         .filter(
             models.FlowConfig.id == flow_config_id,
             models.OrgDocumentType.org_id == org_id,
+        )
+        .first()
+    )
+    if row:
+        return row
+    row = (
+        db.query(models.FlowConfig)
+        .join(
+            models.Template,
+            models.FlowConfig.template_id == models.Template.id,
+        )
+        .filter(
+            models.FlowConfig.id == flow_config_id,
+            models.Template.org_id == org_id,
+            models.Template.is_active.is_(True),
         )
         .first()
     )
@@ -120,13 +136,23 @@ def get_org_flow_step(db: Session, step_id: int, org_id: str) -> models.FlowStep
             models.FlowConfig,
             models.FlowStep.flow_config_id == models.FlowConfig.id,
         )
-        .join(
+        .outerjoin(
             models.OrgDocumentType,
             models.FlowConfig.document_type_id == models.OrgDocumentType.id,
         )
+        .outerjoin(
+            models.Template,
+            models.FlowConfig.template_id == models.Template.id,
+        )
         .filter(
             models.FlowStep.id == step_id,
-            models.OrgDocumentType.org_id == org_id,
+            (
+                (models.OrgDocumentType.org_id == org_id)
+                | (
+                    (models.Template.org_id == org_id)
+                    & (models.Template.is_active.is_(True))
+                )
+            ),
         )
         .first()
     )
@@ -148,13 +174,23 @@ def get_org_field_definition(
             models.FlowConfig,
             models.FlowStep.flow_config_id == models.FlowConfig.id,
         )
-        .join(
+        .outerjoin(
             models.OrgDocumentType,
             models.FlowConfig.document_type_id == models.OrgDocumentType.id,
         )
+        .outerjoin(
+            models.Template,
+            models.FlowConfig.template_id == models.Template.id,
+        )
         .filter(
             models.FieldDefinition.id == field_id,
-            models.OrgDocumentType.org_id == org_id,
+            (
+                (models.OrgDocumentType.org_id == org_id)
+                | (
+                    (models.Template.org_id == org_id)
+                    & (models.Template.is_active.is_(True))
+                )
+            ),
         )
         .first()
     )
@@ -320,6 +356,93 @@ def get_draft_flow_for_org_doc_type(
         .order_by(models.FlowConfig.version.desc())
         .first()
     )
+
+
+def get_published_flow_for_template(
+    db: Session, template_id: int, org_id: str
+) -> models.FlowConfig:
+    get_org_template(db, template_id, org_id)
+    row = (
+        db.query(models.FlowConfig)
+        .filter(
+            models.FlowConfig.template_id == template_id,
+            models.FlowConfig.is_published.is_(True),
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return row
+
+
+def get_draft_flow_for_template(
+    db: Session, template_id: int, org_id: str
+) -> models.FlowConfig | None:
+    get_org_template(db, template_id, org_id)
+    return (
+        db.query(models.FlowConfig)
+        .filter(
+            models.FlowConfig.template_id == template_id,
+            models.FlowConfig.is_published.is_(False),
+        )
+        .order_by(models.FlowConfig.version.desc())
+        .first()
+    )
+
+
+def copy_flow_steps_and_fields(
+    db: Session,
+    *,
+    source_flow_id: int,
+    dest_flow: models.FlowConfig,
+) -> int:
+    """
+    Deep-copy FlowSteps + FieldDefinitions from source onto dest (already flushed).
+
+    Preserves field_key strings exactly — PlaceholderMapping rows that reference
+    those keys continue to resolve against the destination flow without rewrite.
+    Returns the number of FieldDefinition rows copied.
+    """
+    field_count = 0
+    source_steps = (
+        db.query(models.FlowStep)
+        .filter(models.FlowStep.flow_config_id == source_flow_id)
+        .order_by(models.FlowStep.order_index.asc())
+        .all()
+    )
+    for step in source_steps:
+        new_step = models.FlowStep(
+            flow_config_id=dest_flow.id,
+            step_type=step.step_type,
+            order_index=step.order_index,
+            is_enabled=step.is_enabled,
+            label=step.label,
+            config_json=step.config_json,
+        )
+        db.add(new_step)
+        db.flush()
+        fields = (
+            db.query(models.FieldDefinition)
+            .filter(models.FieldDefinition.flow_step_id == step.id)
+            .all()
+        )
+        for fd in fields:
+            db.add(
+                models.FieldDefinition(
+                    flow_step_id=new_step.id,
+                    field_key=fd.field_key,
+                    field_label=fd.field_label,
+                    field_type=fd.field_type,
+                    is_required=fd.is_required,
+                    options_json=fd.options_json,
+                    option_list_id=fd.option_list_id,
+                    is_auto_generated=bool(getattr(fd, "is_auto_generated", False)),
+                    auto_config_json=getattr(fd, "auto_config_json", None),
+                )
+            )
+            field_count += 1
+    db.flush()
+    return field_count
 
 
 def resolvable_field_keys_for_published_flow(

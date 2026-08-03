@@ -228,7 +228,8 @@ class FlowConfigRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    document_type_id: int
+    document_type_id: Optional[int] = None
+    template_id: Optional[int] = None
     version: int
     is_published: bool
     created_at: datetime
