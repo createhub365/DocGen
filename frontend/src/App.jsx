@@ -20,6 +20,7 @@ const PlatformSignupPage = lazy(() => import('./pages/platform/SignupPage'))
 const PlatformDashboard = lazy(() => import('./pages/platform/PlatformDashboard'))
 const DocumentTypesPage = lazy(() => import('./pages/platform/DocumentTypesPage'))
 const FlowBuilderPage = lazy(() => import('./pages/platform/FlowBuilderPage'))
+const TemplateWorkspacePage = lazy(() => import('./pages/platform/TemplateWorkspacePage'))
 const GenerateDocumentPage = lazy(() => import('./pages/platform/GenerateDocumentPage'))
 const GeneratedDocumentsPage = lazy(() => import('./pages/platform/GeneratedDocumentsPage'))
 const OptionListsPage = lazy(() => import('./pages/platform/OptionListsPage'))
@@ -94,6 +95,10 @@ function AppRoutes() {
           <Route path="/platform/dashboard" element={<Navigate to="/platform" replace />} />
           <Route path="/platform/document-types" element={<DocumentTypesPage />} />
           <Route path="/platform/document-types/:id" element={<FlowBuilderPage />} />
+          <Route
+            path="/platform/document-types/:id/templates/:templateId"
+            element={<TemplateWorkspacePage />}
+          />
           <Route
             path="/platform/document-types/:id/templates/:templateId/flow"
             element={<FlowBuilderPage />}

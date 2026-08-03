@@ -32,7 +32,6 @@ import {
   InboxOutlined,
   FormOutlined,
   MoreOutlined,
-  PartitionOutlined,
   PlayCircleOutlined,
 } from '@ant-design/icons'
 import {
@@ -55,7 +54,6 @@ import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import AsyncBusyBar from '../../components/ui/AsyncBusyBar'
 import OrgDocumentPreviewModal from './OrgDocumentPreviewModal'
-import PlaceholderMappingPanel from './PlaceholderMappingPanel'
 
 const { Text, Paragraph } = Typography
 const { Dragger } = Upload
@@ -226,7 +224,6 @@ export default function TemplatesPanel({
   hasDraftFlow = false,
   hasPublishedFlow = false,
   canManage: canManageProp,
-  onGoToFlow,
   onDraftFieldsGenerated,
 }) {
   const navigate = useNavigate()
@@ -246,7 +243,6 @@ export default function TemplatesPanel({
   const [uploadError, setUploadError] = useState(null)
   const [fileList, setFileList] = useState([])
   const [lastUpload, setLastUpload] = useState(null)
-  const [mappingTemplate, setMappingTemplate] = useState(null)
   const [previewTemplate, setPreviewTemplate] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
   const [addForm] = Form.useForm()
@@ -813,7 +809,11 @@ export default function TemplatesPanel({
                 className="platform-touch-target"
                 size="small"
                 icon={<FormOutlined />}
-                onClick={() => setMappingTemplate(item)}
+                onClick={() =>
+                  navigate(
+                    `/platform/document-types/${documentTypeId}/templates/${item.id}`
+                  )
+                }
               >
                 Open
               </Button>
@@ -835,20 +835,6 @@ export default function TemplatesPanel({
                   </Button>
                 </span>
               </Tooltip>
-              {canManage ? (
-                <Button
-                  className="platform-touch-target"
-                  size="small"
-                  icon={<PartitionOutlined />}
-                  onClick={() =>
-                    navigate(
-                      `/platform/document-types/${documentTypeId}/templates/${item.id}/flow`
-                    )
-                  }
-                >
-                  Flow
-                </Button>
-              ) : null}
               {canManage ? (
                 <Dropdown
                   menu={{
@@ -884,30 +870,6 @@ export default function TemplatesPanel({
       })}
     </div>
   )
-
-  if (mappingTemplate) {
-    return (
-      <PlaceholderMappingPanel
-        documentTypeId={documentTypeId}
-        template={mappingTemplate}
-        onBack={() => {
-          setMappingTemplate(null)
-          loadTemplates()
-        }}
-        onCompletenessChange={onCompletenessChange}
-        hasDraftFlow={hasDraftFlow}
-        onGoToFlow={
-          canManage
-            ? () =>
-                navigate(
-                  `/platform/document-types/${documentTypeId}/templates/${mappingTemplate.id}/flow`
-                )
-            : onGoToFlow
-        }
-        onDraftFieldsGenerated={onDraftFieldsGenerated}
-      />
-    )
-  }
 
   if (loading) {
     return (
@@ -1048,7 +1010,14 @@ export default function TemplatesPanel({
               : 'No {{placeholders}} were found in this file.'
           }
           action={
-            <Button size="small" onClick={() => setMappingTemplate(lastUpload)}>
+            <Button
+              size="small"
+              onClick={() =>
+                navigate(
+                  `/platform/document-types/${documentTypeId}/templates/${lastUpload.id}`
+                )
+              }
+            >
               Map now
             </Button>
           }
@@ -1085,7 +1054,7 @@ export default function TemplatesPanel({
           <Empty
             description={
               canManage
-                ? 'No documents uploaded yet. Upload a Word file first, then open Flow on that document to configure fields.'
+                ? 'No documents uploaded yet. Upload a Word file first, then Open that document to map placeholders and configure its flow.'
                 : 'No documents available yet.'
             }
           />

@@ -47,6 +47,7 @@ export default function PlaceholderMappingPanel({
   hasDraftFlow = false,
   onGoToFlow,
   onDraftFieldsGenerated,
+  hideBack = false,
 }) {
   const message = useAppMessage()
   const { isOrgAdmin } = usePlatformAuth()
@@ -349,14 +350,16 @@ export default function PlaceholderMappingPanel({
 
   return (
     <div>
-      <Button
-        type="text"
-        icon={<ArrowLeftOutlined />}
-        onClick={onBack}
-        style={{ marginBottom: 12 }}
-      >
-        Back to documents
-      </Button>
+      {!hideBack ? (
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={onBack}
+          style={{ marginBottom: 12 }}
+        >
+          Back to documents
+        </Button>
+      ) : null}
 
       <Space align="center" style={{ marginBottom: 8 }} wrap>
         <Title level={4} style={{ margin: 0 }}>
@@ -413,9 +416,18 @@ export default function PlaceholderMappingPanel({
           style={{ marginBottom: 16 }}
           message="Publish a flow first before mapping placeholders"
           description={
-            canEditMappings
-              ? 'Mapping options come from the published flow’s field definitions and fixed step outputs (country.*, party.*). Create and publish this document’s Flow (or the shared flow if it has none yet), then return here.'
-              : 'Mapping options come from the published flow. Ask an organization admin to publish a flow before mapping can be completed.'
+            <Space direction="vertical" size={8}>
+              <span>
+                {canEditMappings
+                  ? 'Mapping options come from the published flow’s field definitions and fixed step outputs (country.*, party.*). Create and publish this document’s Flow, then return here.'
+                  : 'Mapping options come from the published flow. Ask an organization admin to publish a flow before mapping can be completed.'}
+              </span>
+              {typeof onGoToFlow === 'function' && canEditMappings ? (
+                <Button type="primary" size="small" onClick={onGoToFlow}>
+                  Go to Flow
+                </Button>
+              ) : null}
+            </Space>
           }
         />
       )}

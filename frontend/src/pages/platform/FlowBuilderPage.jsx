@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Alert,
   Button,
@@ -753,7 +753,15 @@ function StepCard({
   )
 }
 
-export default function FlowBuilderPage() {
+/**
+ * Per-template flow editor.
+ * - Standalone legacy route `/templates/:id/flow` redirects to the combined workspace.
+ * - `embedded` mode: hosted inside TemplateWorkspacePage Flow tab (no page chrome).
+ */
+export default function FlowBuilderPage({
+  embedded = false,
+  onChromeChange = null,
+} = {}) {
   const { id, templateId: templateIdParam } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -779,17 +787,9 @@ export default function FlowBuilderPage() {
   const [addForm] = Form.useForm()
 
   // Documents-only at document-type scope (shared flow tab removed — Phase C).
-  // Template-scoped route always shows the per-template flow editor.
+  // Standalone template flow URL redirects to the combined Mapping|Flow workspace.
   const requestedTab = searchParams.get('tab')
-  const activeTab = isTemplateScope ? 'flow' : 'documents'
-  const staffBlockedFromFlow = !isOrgAdmin && isTemplateScope
-  const setActiveTab = (key) => {
-    if (isTemplateScope) return
-    // Doc-type scope has Documents only; clear vestigial ?tab=flow
-    if (key === 'documents' || requestedTab) {
-      setSearchParams({}, { replace: true })
-    }
-  }
+  const staffBlockedFromFlow = !isOrgAdmin && isTemplateScope && !embedded
 
   useEffect(() => {
     // Drop legacy ?tab=flow deep-links to the removed shared editor
@@ -1012,7 +1012,7 @@ export default function FlowBuilderPage() {
     }
   }
 
-  const publish = async () => {
+  const publish = useCallback(async () => {
     if (!editable || !flow) return
     setBusy(true)
     try {
@@ -1024,7 +1024,29 @@ export default function FlowBuilderPage() {
     } finally {
       setBusy(false)
     }
-  }
+  }, [editable, flow, loadBuilder, message])
+
+  useEffect(() => {
+    if (!embedded || typeof onChromeChange !== 'function') return
+    onChromeChange({
+      editable,
+      busy,
+      status,
+      onPublish: isOrgAdmin ? publish : null,
+      templateMeta,
+      loading,
+    })
+  }, [
+    embedded,
+    onChromeChange,
+    editable,
+    busy,
+    status,
+    publish,
+    isOrgAdmin,
+    templateMeta,
+    loading,
+  ])
 
   const [editOpen, setEditOpen] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
@@ -1126,6 +1148,15 @@ export default function FlowBuilderPage() {
     })
   }
 
+  if (isTemplateScope && !embedded) {
+    return (
+      <Navigate
+        to={`/platform/document-types/${documentTypeId}/templates/${templateId}?tab=flow`}
+        replace
+      />
+    )
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'grid', placeItems: 'center', minHeight: 360 }}>
@@ -1140,91 +1171,7 @@ export default function FlowBuilderPage() {
       'Document'
     : documentType?.name || 'Document type'
 
-  return (
-    <FlowBuilderChrome
-      documentName={chromeTitle}
-      iconKey={isTemplateScope ? undefined : documentType?.icon}
-      status={status}
-      onBack={() =>
-        navigate(
-          isTemplateScope
-            ? `/platform/document-types/${documentTypeId}`
-            : '/platform/document-types'
-        )
-      }
-      backLabel={isTemplateScope ? 'Documents' : 'Document types'}
-      onEdit={!isTemplateScope && isOrgAdmin ? openEdit : null}
-      onDelete={!isTemplateScope && isOrgAdmin ? confirmDelete : null}
-      deleting={deleting}
-      editable={editable}
-      busy={busy}
-      onPublish={isOrgAdmin ? publish : null}
-    >
-      <Modal
-        title="Edit document type"
-        open={editOpen}
-        onCancel={() => setEditOpen(false)}
-        onOk={saveEdit}
-        confirmLoading={editSaving}
-        okText="Save"
-        destroyOnHidden
-      >
-        <Form form={editForm} layout="vertical" requiredMark={false}>
-          <Form.Item name="icon" label="Icon">
-            <DocTypeIconPicker />
-          </Form.Item>
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Name is required' }]}
-          >
-            <Input placeholder="Offer Letter" />
-          </Form.Item>
-          <Form.Item label="Slug">
-            <Input value={documentType?.slug || ''} disabled />
-          </Form.Item>
-          <Form.Item name="description" label="Description">
-            <Input.TextArea rows={2} placeholder="Optional" />
-          </Form.Item>
-        </Form>
-      </Modal>
-      {staffBlockedFromFlow ? (
-        <Result
-          status="403"
-          title="Not available for your role"
-          subTitle="Flow setup is only available to organization admins."
-          extra={
-            <Button
-              type="primary"
-              onClick={() =>
-                navigate(`/platform/document-types/${documentTypeId}`)
-              }
-            >
-              Back to Documents
-            </Button>
-          }
-        />
-      ) : !isTemplateScope ? (
-        <>
-          {(documentType?._template_count ?? 0) === 0 ? (
-            <Alert
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-              message="Upload a document first, then configure its flow"
-              description="Each document has its own Flow (open Flow on the document card after upload). There is no shared flow for this document type."
-            />
-          ) : null}
-          <TemplatesPanel
-            documentTypeId={documentTypeId}
-            documentTypeName={documentType?.name || 'this document type'}
-            hasDraftFlow={false}
-            hasPublishedFlow={!!documentType?.has_published_flow}
-            canManage={isOrgAdmin}
-            onDraftFieldsGenerated={loadBuilder}
-          />
-        </>
-      ) : (
+  const templateFlowBody = (
         <div>
           <div
             style={{
@@ -1361,6 +1308,98 @@ export default function FlowBuilderPage() {
             </Form>
           </Modal>
         </div>
+  )
+
+  if (embedded && isTemplateScope) {
+    return templateFlowBody
+  }
+
+  return (
+    <FlowBuilderChrome
+      documentName={chromeTitle}
+      iconKey={isTemplateScope ? undefined : documentType?.icon}
+      status={status}
+      onBack={() =>
+        navigate(
+          isTemplateScope
+            ? `/platform/document-types/${documentTypeId}`
+            : '/platform/document-types'
+        )
+      }
+      backLabel={isTemplateScope ? 'Documents' : 'Document types'}
+      onEdit={!isTemplateScope && isOrgAdmin ? openEdit : null}
+      onDelete={!isTemplateScope && isOrgAdmin ? confirmDelete : null}
+      deleting={deleting}
+      editable={editable}
+      busy={busy}
+      onPublish={isOrgAdmin ? publish : null}
+    >
+      <Modal
+        title="Edit document type"
+        open={editOpen}
+        onCancel={() => setEditOpen(false)}
+        onOk={saveEdit}
+        confirmLoading={editSaving}
+        okText="Save"
+        destroyOnHidden
+      >
+        <Form form={editForm} layout="vertical" requiredMark={false}>
+          <Form.Item name="icon" label="Icon">
+            <DocTypeIconPicker />
+          </Form.Item>
+          <Form.Item
+            name="name"
+            label="Name"
+            rules={[{ required: true, message: 'Name is required' }]}
+          >
+            <Input placeholder="Offer Letter" />
+          </Form.Item>
+          <Form.Item label="Slug">
+            <Input value={documentType?.slug || ''} disabled />
+          </Form.Item>
+          <Form.Item name="description" label="Description">
+            <Input.TextArea rows={2} placeholder="Optional" />
+          </Form.Item>
+        </Form>
+      </Modal>
+      {staffBlockedFromFlow ? (
+        <Result
+          status="403"
+          title="Not available for your role"
+          subTitle="Flow setup is only available to organization admins."
+          extra={
+            <Button
+              type="primary"
+              onClick={() =>
+                navigate(`/platform/document-types/${documentTypeId}`)
+              }
+            >
+              Back to Documents
+            </Button>
+          }
+        />
+      ) : !isTemplateScope ? (
+        <>
+          {(documentType?._template_count ?? 0) === 0 ? (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="Upload a document first, then configure its flow"
+              description="Each document has its own Flow (open the document, then use the Flow tab). There is no shared flow for this document type."
+            />
+          ) : null}
+          <TemplatesPanel
+            documentTypeId={documentTypeId}
+            documentTypeName={documentType?.name || 'this document type'}
+            hasDraftFlow={false}
+            hasPublishedFlow={!!documentType?.has_published_flow}
+            canManage={isOrgAdmin}
+            onDraftFieldsGenerated={loadBuilder}
+          />
+        </>
+      ) : (
+        templateFlowBody
       )}
     </FlowBuilderChrome>
   )
