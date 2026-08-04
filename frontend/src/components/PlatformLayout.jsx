@@ -17,6 +17,7 @@ import {
   SettingOutlined,
   TeamOutlined,
   UnorderedListOutlined,
+  ToolOutlined,
 } from '@ant-design/icons'
 import { Button, Drawer } from 'antd'
 import { fetchOrgLogoUrl } from '../api/platformClient'
@@ -32,6 +33,12 @@ const NAV_ITEMS = [
     key: '/platform/option-lists',
     icon: UnorderedListOutlined,
     label: 'Option Lists',
+    adminOnly: true,
+  },
+  {
+    key: '/platform/trades',
+    icon: ToolOutlined,
+    label: 'Trade Bank',
     adminOnly: true,
   },
   {

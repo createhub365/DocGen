@@ -24,6 +24,7 @@ const TemplateWorkspacePage = lazy(() => import('./pages/platform/TemplateWorksp
 const GenerateDocumentPage = lazy(() => import('./pages/platform/GenerateDocumentPage'))
 const GeneratedDocumentsPage = lazy(() => import('./pages/platform/GeneratedDocumentsPage'))
 const OptionListsPage = lazy(() => import('./pages/platform/OptionListsPage'))
+const TradesPage = lazy(() => import('./pages/platform/TradesPage'))
 const SettingsPage = lazy(() => import('./pages/platform/SettingsPage'))
 const PlatformPlaceholderPage = lazy(() => import('./pages/platform/PlatformPlaceholderPage'))
 const UsersPage = lazy(() => import('./pages/platform/UsersPage'))
@@ -117,6 +118,14 @@ function AppRoutes() {
             element={
               <RequireOrgAdmin>
                 <OptionListsPage />
+              </RequireOrgAdmin>
+            }
+          />
+          <Route
+            path="/platform/trades"
+            element={
+              <RequireOrgAdmin>
+                <TradesPage />
               </RequireOrgAdmin>
             }
           />

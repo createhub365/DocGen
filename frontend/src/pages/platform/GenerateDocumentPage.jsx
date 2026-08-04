@@ -34,6 +34,7 @@ import {
   listOrgTemplates,
   readPlatformErrorDetail,
   resolvePublishedFlowForTemplate,
+  listOrgTrades,
 } from '../../api/platformClient'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import { useAppMessage } from '../../hooks/useAppMessage'
@@ -132,6 +133,79 @@ function FieldInput({ field, disabled, value, onChange, ...rest }) {
   }
   return (
     <Input disabled={disabled} value={value} onChange={onChange} {...rest} />
+  )
+}
+
+/** Trade Bank linked duties — separate from FieldInput / other field types. */
+export function isTradeLinkedDutiesField(field) {
+  return field?.auto_config_json?.kind === 'trade_linked_duties'
+}
+
+function TradeLinkedDutiesInput({ value, onChange, disabled }) {
+  const [trades, setTrades] = useState([])
+  const [loadError, setLoadError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    listOrgTrades()
+      .then((rows) => {
+        if (!cancelled) {
+          setTrades(rows || [])
+          setLoadError(null)
+        }
+      })
+      .catch(async (error) => {
+        if (!cancelled) {
+          setTrades([])
+          setLoadError(
+            (await readPlatformErrorDetail(error)) || 'Could not load trades'
+          )
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const options = useMemo(
+    () =>
+      (trades || []).map((t) => ({
+        value: t.id,
+        label: t.name,
+        duties: t.duties_text || '',
+      })),
+    [trades]
+  )
+
+  return (
+    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+      {loadError ? (
+        <Alert type="warning" showIcon message={loadError} />
+      ) : null}
+      <Select
+        showSearch
+        allowClear
+        disabled={disabled}
+        placeholder="Select a trade to auto-fill duties"
+        optionFilterProp="label"
+        options={options}
+        onChange={(tradeId) => {
+          if (tradeId == null) return
+          const match = options.find((o) => o.value === tradeId)
+          if (match && typeof onChange === 'function') {
+            onChange(match.duties)
+          }
+        }}
+        style={{ width: '100%' }}
+      />
+      <Input.TextArea
+        rows={6}
+        disabled={disabled}
+        value={value}
+        onChange={onChange}
+        placeholder="Duties / job responsibilities (editable)"
+      />
+    </Space>
   )
 }
 
@@ -629,7 +703,11 @@ export default function GenerateDocumentPage() {
               }
               validateStatus={missingFields.includes(field.field_key) ? 'error' : undefined}
             >
-              <FieldInput field={field} />
+              {isTradeLinkedDutiesField(field) ? (
+                <TradeLinkedDutiesInput />
+              ) : (
+                <FieldInput field={field} />
+              )}
             </Form.Item>
           ))}
           {!wizardVisibleFields(step.fields).length && (
@@ -655,7 +733,9 @@ export default function GenerateDocumentPage() {
               }
               validateStatus={missingFields.includes(field.field_key) ? 'error' : undefined}
             >
-              {step.step_type === 'rich_text' && field.field_type === 'text' ? (
+              {isTradeLinkedDutiesField(field) ? (
+                <TradeLinkedDutiesInput />
+              ) : step.step_type === 'rich_text' && field.field_type === 'text' ? (
                 <TextArea rows={4} />
               ) : (
                 <FieldInput field={field} />

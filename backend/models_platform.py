@@ -284,6 +284,24 @@ class OrgRefCounter(Base):
     document_type = relationship("OrgDocumentType")
 
 
+class OrgTrade(Base):
+    """Org-scoped Trade Bank entry (occupation + duties text)."""
+
+    __tablename__ = "org_trades"
+    __table_args__ = (
+        UniqueConstraint("org_id", "name", name="uq_org_trades_org_name"),
+        Index("ix_org_trades_org_id", "org_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
+    name = Column(String, nullable=False)
+    duties_text = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    organization = relationship("Organization")
+
+
 class OrgOptionList(Base):
     """Org-scoped reusable dropdown option list (Phase 12)."""
 

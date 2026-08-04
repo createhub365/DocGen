@@ -630,6 +630,35 @@ export async function deleteOptionListItem(itemId) {
   await platformClient.delete(`/option-list-items/${itemId}`)
 }
 
+export async function listOrgTrades() {
+  const { data } = await platformClient.get('/trades')
+  return data
+}
+
+export async function getOrgTrade(tradeId) {
+  const { data } = await platformClient.get(`/trades/${tradeId}`)
+  return data
+}
+
+export async function createOrgTrade(payload) {
+  const { data } = await platformClient.post('/trades', payload)
+  return data
+}
+
+export async function updateOrgTrade(tradeId, payload) {
+  const { data } = await platformClient.patch(`/trades/${tradeId}`, payload)
+  return data
+}
+
+export async function deleteOrgTrade(tradeId) {
+  await platformClient.delete(`/trades/${tradeId}`)
+}
+
+export async function seedOrgTradesFromLegacy() {
+  const { data } = await platformClient.post('/trades/seed-from-legacy')
+  return data
+}
+
 export async function listOrgUsers() {
   const { data } = await platformClient.get('/users')
   return data

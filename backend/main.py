@@ -28,6 +28,7 @@ from routers import (
     org_settings,
     template_folders,
     org_telegram_contacts,
+    org_trades,
 )
 from limiter import limiter
 
@@ -117,6 +118,7 @@ app.include_router(template_folders.router, prefix="/api/platform")
 app.include_router(placeholder_mapping.router, prefix="/api/platform")
 app.include_router(org_documents.router, prefix="/api/platform")
 app.include_router(org_option_lists.router, prefix="/api/platform")
+app.include_router(org_trades.router, prefix="/api/platform")
 app.include_router(org_settings.router, prefix="/api/platform")
 app.include_router(org_telegram_contacts.router, prefix="/api/platform")
 

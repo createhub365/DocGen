@@ -597,6 +597,10 @@ def add_field_definition(
                 detail="auto_config_json.prefix is required for auto-generated fields",
             )
         auto_config = {"kind": "ref_number", "prefix": prefix}
+    elif isinstance(auto_config, dict) and auto_config.get("kind") == "trade_linked_duties":
+        auto_config = {"kind": "trade_linked_duties"}
+    else:
+        auto_config = None
 
     row = models.FieldDefinition(
         flow_step_id=step_id,
@@ -607,7 +611,7 @@ def add_field_definition(
         options_json=body.options_json,
         option_list_id=option_list_id,
         is_auto_generated=is_auto,
-        auto_config_json=auto_config if is_auto else None,
+        auto_config_json=auto_config,
     )
     db.add(row)
     try:
@@ -667,8 +671,21 @@ def update_field_definition(
         data["auto_config_json"] = {"kind": "ref_number", "prefix": prefix}
         data["is_required"] = False
         data["is_auto_generated"] = True
+    elif "auto_config_json" in data:
+        cfg = data.get("auto_config_json")
+        if isinstance(cfg, dict) and cfg.get("kind") == "trade_linked_duties":
+            data["auto_config_json"] = {"kind": "trade_linked_duties"}
+            data["is_auto_generated"] = False
+        else:
+            data["auto_config_json"] = None
     elif "is_auto_generated" in data and data["is_auto_generated"] is False:
-        data["auto_config_json"] = None
+        # Turning off auto-ref clears config unless a trade-linked kind remains
+        # on the row (handled when auto_config_json is explicitly patched).
+        existing = row.auto_config_json
+        if not (
+            isinstance(existing, dict) and existing.get("kind") == "trade_linked_duties"
+        ):
+            data["auto_config_json"] = None
 
     for key, value in data.items():
         setattr(row, key, value)
