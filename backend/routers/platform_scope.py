@@ -229,6 +229,22 @@ def get_org_trade(db: Session, trade_id: int, org_id: str) -> models.OrgTrade:
     return row
 
 
+def get_org_trade_industry(
+    db: Session, industry_id: int, org_id: str
+) -> models.OrgTradeIndustry:
+    row = (
+        db.query(models.OrgTradeIndustry)
+        .filter(
+            models.OrgTradeIndustry.id == industry_id,
+            models.OrgTradeIndustry.org_id == org_id,
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return row
+
+
 def get_org_template_folder(
     db: Session,
     folder_id: int,

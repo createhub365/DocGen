@@ -200,6 +200,7 @@ from models_platform import (  # noqa: E402,F401
     OrgOptionListItem,
     OrgRefCounter,
     OrgTrade,
+    OrgTradeIndustry,
     OrgUser,
     OrgUserRole,
     PlaceholderMapping,

@@ -659,6 +659,28 @@ export async function seedOrgTradesFromLegacy() {
   return data
 }
 
+export async function listOrgTradeIndustries() {
+  const { data } = await platformClient.get('/trade-industries')
+  return data
+}
+
+export async function createOrgTradeIndustry(payload) {
+  const { data } = await platformClient.post('/trade-industries', payload)
+  return data
+}
+
+export async function updateOrgTradeIndustry(industryId, payload) {
+  const { data } = await platformClient.patch(
+    `/trade-industries/${industryId}`,
+    payload
+  )
+  return data
+}
+
+export async function deleteOrgTradeIndustry(industryId) {
+  await platformClient.delete(`/trade-industries/${industryId}`)
+}
+
 export async function listOrgUsers() {
   const { data } = await platformClient.get('/users')
   return data

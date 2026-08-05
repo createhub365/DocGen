@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -609,14 +609,35 @@ class TelegramContactRead(BaseModel):
 # ---- Org Trade Bank ----
 
 
+class OrgTradeIndustryCreate(BaseModel):
+    name: str
+
+
+class OrgTradeIndustryUpdate(BaseModel):
+    name: Optional[str] = None
+
+
+class OrgTradeIndustryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    org_id: str
+    name: str
+    created_at: datetime
+
+
 class OrgTradeCreate(BaseModel):
     name: str
     duties_text: str = ""
+    industry_id: Optional[int] = None
+    synonyms: List[str] = []
 
 
 class OrgTradeUpdate(BaseModel):
     name: Optional[str] = None
     duties_text: Optional[str] = None
+    industry_id: Optional[int] = None
+    synonyms: Optional[List[str]] = None
 
 
 class OrgTradeRead(BaseModel):
@@ -626,6 +647,9 @@ class OrgTradeRead(BaseModel):
     org_id: str
     name: str
     duties_text: str
+    industry_id: Optional[int] = None
+    industry_name: Optional[str] = None
+    synonyms: List[str] = []
     created_at: datetime
 
 
@@ -633,3 +657,5 @@ class OrgTradeSeedResult(BaseModel):
     created: int
     skipped: int
     total_legacy: int
+    industries_created: int = 0
+    industries_skipped: int = 0

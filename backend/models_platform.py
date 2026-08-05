@@ -284,6 +284,23 @@ class OrgRefCounter(Base):
     document_type = relationship("OrgDocumentType")
 
 
+class OrgTradeIndustry(Base):
+    """Org-scoped Trade Bank industry grouping (e.g. Construction)."""
+
+    __tablename__ = "org_trade_industries"
+    __table_args__ = (
+        UniqueConstraint("org_id", "name", name="uq_org_trade_industries_org_name"),
+        Index("ix_org_trade_industries_org_id", "org_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    organization = relationship("Organization")
+
+
 class OrgTrade(Base):
     """Org-scoped Trade Bank entry (occupation + duties text)."""
 
@@ -291,15 +308,24 @@ class OrgTrade(Base):
     __table_args__ = (
         UniqueConstraint("org_id", "name", name="uq_org_trades_org_name"),
         Index("ix_org_trades_org_id", "org_id"),
+        Index("ix_org_trades_industry_id", "industry_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False)
+    industry_id = Column(
+        Integer,
+        ForeignKey("org_trade_industries.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     name = Column(String, nullable=False)
     duties_text = Column(Text, nullable=False, default="")
+    # JSON array of alternate names (same pattern as FieldDefinition.options_json)
+    synonyms = Column(JSON, nullable=False, default=list)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     organization = relationship("Organization")
+    industry = relationship("OrgTradeIndustry")
 
 
 class OrgOptionList(Base):

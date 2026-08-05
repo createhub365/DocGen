@@ -167,15 +167,48 @@ function TradeLinkedDutiesInput({ value, onChange, disabled }) {
     }
   }, [])
 
-  const options = useMemo(
-    () =>
-      (trades || []).map((t) => ({
+  const tradeById = useMemo(() => {
+    const map = new Map()
+    for (const t of trades || []) {
+      map.set(t.id, t)
+    }
+    return map
+  }, [trades])
+
+  // AntD Select nested options = OptGroup; search matches name OR synonyms.
+  const groupedOptions = useMemo(() => {
+    const groups = new Map()
+    const ungrouped = []
+    for (const t of trades || []) {
+      const synonyms = Array.isArray(t.synonyms) ? t.synonyms : []
+      const searchText = [t.name, ...synonyms].filter(Boolean).join(' ')
+      const option = {
         value: t.id,
         label: t.name,
-        duties: t.duties_text || '',
-      })),
-    [trades]
-  )
+        searchText,
+      }
+      const industryName = (t.industry_name || '').trim()
+      if (!industryName) {
+        ungrouped.push(option)
+        continue
+      }
+      if (!groups.has(industryName)) groups.set(industryName, [])
+      groups.get(industryName).push(option)
+    }
+    const ordered = [...groups.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([label, options]) => ({
+        label,
+        options: options.sort((a, b) => a.label.localeCompare(b.label)),
+      }))
+    if (ungrouped.length) {
+      ordered.push({
+        label: 'Ungrouped',
+        options: ungrouped.sort((a, b) => a.label.localeCompare(b.label)),
+      })
+    }
+    return ordered
+  }, [trades])
 
   return (
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -187,13 +220,19 @@ function TradeLinkedDutiesInput({ value, onChange, disabled }) {
         allowClear
         disabled={disabled}
         placeholder="Select a trade to auto-fill duties"
-        optionFilterProp="label"
-        options={options}
+        optionFilterProp="searchText"
+        filterOption={(input, option) => {
+          const hay = String(
+            option?.searchText || option?.label || ''
+          ).toLowerCase()
+          return hay.includes(String(input || '').toLowerCase())
+        }}
+        options={groupedOptions}
         onChange={(tradeId) => {
           if (tradeId == null) return
-          const match = options.find((o) => o.value === tradeId)
+          const match = tradeById.get(tradeId)
           if (match && typeof onChange === 'function') {
-            onChange(match.duties)
+            onChange(match.duties_text || '')
           }
         }}
         style={{ width: '100%' }}
