@@ -671,6 +671,22 @@ export async function generateOrgTradeSynonyms({ max_trades } = {}) {
   return data
 }
 
+export async function checkOrgTradeName({ industry_id, name }) {
+  const { data } = await platformClient.get('/trades/check', {
+    params: { industry_id, name },
+  })
+  return data
+}
+
+export async function generateNewOrgTrade({ industry_id, name }) {
+  const { data } = await platformClient.post(
+    '/trades/generate-new',
+    { industry_id, name },
+    { timeout: 90 * 1000 }
+  )
+  return data
+}
+
 export async function listOrgTradeIndustries() {
   const { data } = await platformClient.get('/trade-industries')
   return data

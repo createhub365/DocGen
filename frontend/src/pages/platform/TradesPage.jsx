@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Button,
@@ -23,10 +23,12 @@ import {
   ImportOutlined,
 } from '@ant-design/icons'
 import {
+  checkOrgTradeName,
   createOrgTrade,
   createOrgTradeIndustry,
   deleteOrgTrade,
   deleteOrgTradeIndustry,
+  generateNewOrgTrade,
   generateOrgTradeSynonyms,
   listOrgTradeIndustries,
   listOrgTrades,
@@ -76,8 +78,16 @@ export default function TradesPage() {
   const [savingIndustry, setSavingIndustry] = useState(false)
   const [synonymSummary, setSynonymSummary] = useState(null)
   const [synonymMaxTrades, setSynonymMaxTrades] = useState(20)
+  const [nameCheck, setNameCheck] = useState(null)
+  const [nameCheckLoading, setNameCheckLoading] = useState(false)
+  const [aiGenerating, setAiGenerating] = useState(false)
+  const [aiDraftReady, setAiDraftReady] = useState(false)
+  const [confirmDifferent, setConfirmDifferent] = useState(false)
+  const checkTimerRef = useRef(null)
   const [form] = Form.useForm()
   const [industryForm] = Form.useForm()
+  const watchedName = Form.useWatch('name', form)
+  const watchedIndustryId = Form.useWatch('industry_id', form)
   const { runNamed, isLoading } = useAsyncAction()
   const generatingSynonyms = isLoading('generateSynonyms')
 
@@ -141,6 +151,10 @@ export default function TradesPage() {
 
   const openCreate = () => {
     setEditing(null)
+    setNameCheck(null)
+    setAiDraftReady(false)
+    setConfirmDifferent(false)
+    setAiGenerating(false)
     form.setFieldsValue({
       name: '',
       duties_text: '',
@@ -152,6 +166,9 @@ export default function TradesPage() {
 
   const openEdit = (row) => {
     setEditing(row)
+    setNameCheck(null)
+    setAiDraftReady(false)
+    setConfirmDifferent(false)
     form.setFieldsValue({
       name: row.name,
       duties_text: row.duties_text || '',
@@ -161,9 +178,85 @@ export default function TradesPage() {
     setModalOpen(true)
   }
 
+  // Debounced existence check while adding a trade
+  useEffect(() => {
+    if (!modalOpen || editing) {
+      setNameCheck(null)
+      setNameCheckLoading(false)
+      return undefined
+    }
+    const name = String(watchedName || '').trim()
+    const industryId = watchedIndustryId
+    if (checkTimerRef.current) clearTimeout(checkTimerRef.current)
+    if (!name || industryId == null) {
+      setNameCheck(null)
+      setNameCheckLoading(false)
+      return undefined
+    }
+    setNameCheckLoading(true)
+    checkTimerRef.current = setTimeout(async () => {
+      try {
+        const result = await checkOrgTradeName({
+          industry_id: industryId,
+          name,
+        })
+        setNameCheck(result)
+        setConfirmDifferent(false)
+      } catch {
+        setNameCheck(null)
+      } finally {
+        setNameCheckLoading(false)
+      }
+    }, 350)
+    return () => {
+      if (checkTimerRef.current) clearTimeout(checkTimerRef.current)
+    }
+  }, [modalOpen, editing, watchedName, watchedIndustryId])
+
+  const generateTradeWithAi = async () => {
+    try {
+      const values = await form.validateFields(['name', 'industry_id'])
+      setAiGenerating(true)
+      const draft = await generateNewOrgTrade({
+        industry_id: values.industry_id,
+        name: String(values.name || '').trim(),
+      })
+      form.setFieldsValue({
+        name: draft.name,
+        industry_id: draft.industry_id,
+        duties_text: draft.duties_text || '',
+        synonyms_text: synonymsToText(draft.synonyms),
+      })
+      setAiDraftReady(true)
+      message.success('AI draft ready — review and edit before saving')
+    } catch (error) {
+      if (error?.errorFields) return
+      message.error(
+        (await readPlatformErrorDetail(error)) || 'Could not generate trade with AI'
+      )
+    } finally {
+      setAiGenerating(false)
+    }
+  }
+
   const saveTrade = async () => {
     try {
       const values = await form.validateFields()
+      if (!editing && nameCheck?.exact_match) {
+        message.warning('This trade already exists — open it instead of creating a duplicate')
+        return
+      }
+      if (
+        !editing &&
+        nameCheck?.similar_matches?.length &&
+        !confirmDifferent &&
+        !aiDraftReady
+      ) {
+        message.warning(
+          'Similar trades found — confirm this is a different trade, or open a suggestion'
+        )
+        return
+      }
       setSaving(true)
       const payload = {
         name: String(values.name || '').trim(),
@@ -555,33 +648,152 @@ export default function TradesPage() {
         onOk={saveTrade}
         confirmLoading={saving}
         okText="Save"
+        okButtonProps={{
+          disabled: Boolean(!editing && nameCheck?.exact_match) || aiGenerating,
+        }}
         destroyOnHidden
         width={560}
       >
         <Form form={form} layout="vertical" requiredMark={false}>
           <Form.Item
+            name="industry_id"
+            label="Industry"
+            rules={
+              editing
+                ? []
+                : [{ required: true, message: 'Select an industry first' }]
+            }
+          >
+            <Select
+              allowClear={Boolean(editing)}
+              placeholder="Select industry"
+              options={industryOptions}
+              disabled={aiGenerating}
+            />
+          </Form.Item>
+          <Form.Item
             name="name"
             label="Trade name"
             rules={[{ required: true, message: 'Name is required' }]}
+            extra={
+              !editing && nameCheckLoading ? (
+                <Text type="secondary">Checking for existing trades…</Text>
+              ) : null
+            }
           >
-            <Input placeholder="Building Inspector / Certifier" />
-          </Form.Item>
-          <Form.Item name="industry_id" label="Industry">
-            <Select
-              allowClear
-              placeholder="Optional industry"
-              options={industryOptions}
+            <Input
+              placeholder="Building Inspector / Certifier"
+              disabled={aiGenerating}
             />
           </Form.Item>
+
+          {!editing && nameCheck?.exact_match ? (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message={`This trade already exists in ${
+                nameCheck.exact_match.industry_name || 'this industry'
+              }: ${nameCheck.exact_match.name}`}
+              action={
+                <Button
+                  size="small"
+                  type="primary"
+                  onClick={() => openEdit(nameCheck.exact_match)}
+                >
+                  Open existing
+                </Button>
+              }
+            />
+          ) : null}
+
+          {!editing &&
+          !nameCheck?.exact_match &&
+          nameCheck?.similar_matches?.length ? (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="Did you mean one of these?"
+              description={
+                <div>
+                  <ul style={{ margin: '8px 0', paddingLeft: 18 }}>
+                    {nameCheck.similar_matches.slice(0, 5).map((row) => (
+                      <li key={row.trade.id}>
+                        <Button
+                          type="link"
+                          size="small"
+                          style={{ padding: 0, height: 'auto' }}
+                          onClick={() => openEdit(row.trade)}
+                        >
+                          {row.trade.name}
+                        </Button>
+                        <Text type="secondary">
+                          {' '}
+                          (matched on {row.matched_on})
+                        </Text>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    size="small"
+                    type={confirmDifferent ? 'primary' : 'default'}
+                    onClick={() => setConfirmDifferent(true)}
+                  >
+                    {confirmDifferent
+                      ? 'Confirmed — different trade'
+                      : 'This is a different trade'}
+                  </Button>
+                </div>
+              }
+            />
+          ) : null}
+
+          {!editing &&
+          !nameCheck?.exact_match &&
+          String(watchedName || '').trim() &&
+          watchedIndustryId != null &&
+          !nameCheckLoading ? (
+            <Space style={{ marginBottom: 16 }} wrap>
+              <Button
+                onClick={generateTradeWithAi}
+                loading={aiGenerating}
+                disabled={
+                  aiGenerating ||
+                  (nameCheck?.similar_matches?.length && !confirmDifferent)
+                }
+              >
+                Generate this trade with AI
+              </Button>
+              {aiDraftReady ? (
+                <Text type="success">Draft ready — review below, then Save</Text>
+              ) : (
+                <Text type="secondary">
+                  Or fill duties and synonyms yourself
+                </Text>
+              )}
+            </Space>
+          ) : null}
+
+          {aiGenerating ? (
+            <div style={{ marginBottom: 16, textAlign: 'center' }}>
+              <Spin tip="Generating duties and synonyms…" />
+            </div>
+          ) : null}
+
           <Form.Item
             name="synonyms_text"
             label="Synonyms"
             extra="Comma-separated alternate names (matched in Generate search)."
           >
-            <Input placeholder="Builder, Site inspector" />
+            <Input placeholder="Builder, Site inspector" disabled={aiGenerating} />
           </Form.Item>
           <Form.Item name="duties_text" label="Duties / job responsibilities">
-            <TextArea rows={8} placeholder="One duty per line" />
+            <TextArea
+              rows={8}
+              placeholder="One duty per line"
+              disabled={aiGenerating}
+            />
           </Form.Item>
         </Form>
       </Modal>

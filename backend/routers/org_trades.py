@@ -17,7 +17,10 @@ from routers.platform_scope import (
     log_audit_event,
 )
 from schemas_platform import (
+    OrgTradeCheckResult,
     OrgTradeCreate,
+    OrgTradeGenerateNewRequest,
+    OrgTradeGenerateNewResult,
     OrgTradeGenerateSynonymsRequest,
     OrgTradeGenerateSynonymsResult,
     OrgTradeIndustryCreate,
@@ -25,11 +28,14 @@ from schemas_platform import (
     OrgTradeIndustryUpdate,
     OrgTradeRead,
     OrgTradeSeedResult,
+    OrgTradeSimilarMatch,
     OrgTradeSynonymFail,
     OrgTradeUpdate,
 )
+from services.trade_name_match import match_trade_against_query
 from services.trade_synonym_generator import (
     GroqNotConfiguredError,
+    generate_full_trade_entry,
     generate_synonyms_for_trades,
     trade_has_synonyms,
 )
@@ -279,6 +285,61 @@ def list_org_trades(
         .all()
     )
     return [_trade_to_read(row, names) for row in rows]
+
+
+@router.get("/trades/check", response_model=OrgTradeCheckResult)
+def check_org_trade_name(
+    industry_id: int,
+    name: str,
+    current: OrgUserContext = Depends(get_current_org_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Org-scoped existence check within an industry.
+
+    Exact: case-insensitive name equality.
+    Similar: same normalized containment + Levenshtein tiers as the
+    flow-field fuzzy duplicate detector, against name and synonyms.
+    """
+    query = (name or "").strip()
+    if not query:
+        raise HTTPException(status_code=422, detail="name is required")
+    get_org_trade_industry(db, industry_id, current.org_id)
+
+    names = _industry_name_map(db, current.org_id)
+    rows = (
+        db.query(models.OrgTrade)
+        .filter(
+            models.OrgTrade.org_id == current.org_id,
+            models.OrgTrade.industry_id == industry_id,
+        )
+        .order_by(models.OrgTrade.name.asc())
+        .all()
+    )
+
+    exact: Optional[models.OrgTrade] = None
+    for row in rows:
+        if (row.name or "").strip().lower() == query.lower():
+            exact = row
+            break
+
+    similar: list[OrgTradeSimilarMatch] = []
+    for row in rows:
+        if exact is not None and row.id == exact.id:
+            continue
+        matched_on = match_trade_against_query(query, row)
+        if matched_on:
+            similar.append(
+                OrgTradeSimilarMatch(
+                    trade=_trade_to_read(row, names),
+                    matched_on=matched_on,
+                )
+            )
+
+    return OrgTradeCheckResult(
+        exact_match=_trade_to_read(exact, names) if exact else None,
+        similar_matches=similar,
+    )
 
 
 @router.post(
@@ -554,6 +615,79 @@ def generate_org_trade_synonyms(
         skipped_already_had=len(already),
         failed=failed,
         remaining_without_synonyms=remaining,
+    )
+
+
+@router.post(
+    "/trades/generate-new",
+    response_model=OrgTradeGenerateNewResult,
+)
+def generate_new_org_trade(
+    body: OrgTradeGenerateNewRequest,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    AI-draft a new trade (duties + synonyms) for review.
+
+    Does not persist — admin reviews/edits then POST /trades to save.
+    """
+    name = (body.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name is required")
+    industry = get_org_trade_industry(db, body.industry_id, current.org_id)
+
+    # Block exact duplicates in this industry before calling Groq
+    existing = (
+        db.query(models.OrgTrade)
+        .filter(
+            models.OrgTrade.org_id == current.org_id,
+            models.OrgTrade.industry_id == body.industry_id,
+        )
+        .all()
+    )
+    for row in existing:
+        if (row.name or "").strip().lower() == name.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Trade already exists in this industry: {row.name}",
+            )
+
+    try:
+        draft = generate_full_trade_entry(
+            name=name,
+            industry_name=industry.name,
+        )
+    except GroqNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "org_trades.generate_new_draft",
+        "Organization",
+        None,
+        metadata={
+            "name": name,
+            "industry_id": body.industry_id,
+            "synonym_count": len(draft["synonyms"]),
+        },
+    )
+    return OrgTradeGenerateNewResult(
+        name=name,
+        industry_id=body.industry_id,
+        industry_name=industry.name,
+        duties_text=draft["duties_text"],
+        synonyms=draft["synonyms"],
     )
 
 

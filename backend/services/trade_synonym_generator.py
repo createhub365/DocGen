@@ -277,3 +277,85 @@ def generate_synonyms_for_trades(
         all_failed.extend(failed)
 
     return all_updates, all_failed
+
+
+def generate_full_trade_entry(
+    *,
+    name: str,
+    industry_name: str,
+) -> dict[str, Any]:
+    """
+    Ask Groq for duties_text + synonyms for a new trade title.
+
+    Returns {"duties_text": str, "synonyms": list[str]}.
+    Raises GroqNotConfiguredError or ValueError on failure / malformed output.
+    Does not persist — caller reviews then saves.
+    """
+    trade_name = (name or "").strip()
+    industry = (industry_name or "").strip()
+    if not trade_name:
+        raise ValueError("name is required")
+    if not industry:
+        raise ValueError("industry is required")
+
+    if not groq_configured():
+        raise GroqNotConfiguredError(
+            "AI synonym generation is not configured (GROQ_API_KEY)."
+        )
+
+    system = (
+        "You write immigration / skilled-migration job descriptions for a Trade Bank. "
+        "Return STRICT JSON only with this exact shape: "
+        '{"duties_text": "...", "synonyms": ["alt1", "alt2", "alt3"]}. '
+        "duties_text: 4 to 8 short responsibility lines separated by newline characters, "
+        "imperative/professional tone similar to: "
+        "'Carry out core <role> tasks as directed by work orders, specifications, "
+        "and supervisor instructions.' "
+        "Include role-specific practical duties, quality/compliance, and safe use of tools "
+        "where appropriate. No bullet markers, no numbering, no markdown. "
+        "synonyms: 3 to 6 short alternate job titles people might type when searching "
+        "(not the exact trade name). No explanations."
+    )
+    user = json.dumps(
+        {
+            "industry": industry,
+            "trade_name": trade_name,
+            "instruction": (
+                f"Generate duties_text and synonyms for the job title "
+                f'"{trade_name}" in the "{industry}" industry.'
+            ),
+        },
+        ensure_ascii=False,
+    )
+
+    content = _chat_completions(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+    )
+    try:
+        parsed = _extract_json_object(content)
+    except Exception as exc:
+        raise ValueError("AI response was not valid JSON") from exc
+
+    duties_raw = parsed.get("duties_text")
+    if not isinstance(duties_raw, str):
+        raise ValueError("AI response missing duties_text")
+    duties_text = duties_raw.replace("\r\n", "\n").strip()
+    # Normalize bullet-ish prefixes if the model adds them anyway
+    lines = []
+    for line in duties_text.split("\n"):
+        cleaned = re.sub(r"^[\s\-•*]+", "", line).strip()
+        if cleaned:
+            lines.append(cleaned)
+    duties_text = "\n".join(lines)
+    if len(duties_text) < 40 or len(lines) < 2:
+        raise ValueError("AI response duties_text too short or empty")
+
+    syns = _normalize_synonyms(parsed.get("synonyms"))
+    syns = [s for s in syns if s.lower() != trade_name.lower()][:6]
+    if len(syns) < 2:
+        raise ValueError("AI response synonyms missing or incomplete")
+
+    return {"duties_text": duties_text, "synonyms": syns}

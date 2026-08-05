@@ -679,3 +679,28 @@ class OrgTradeGenerateSynonymsResult(BaseModel):
     skipped_already_had: int
     failed: List[OrgTradeSynonymFail] = []
     remaining_without_synonyms: int = 0
+
+
+class OrgTradeSimilarMatch(BaseModel):
+    trade: OrgTradeRead
+    matched_on: str  # "name" | "synonym"
+
+
+class OrgTradeCheckResult(BaseModel):
+    exact_match: Optional[OrgTradeRead] = None
+    similar_matches: List[OrgTradeSimilarMatch] = []
+
+
+class OrgTradeGenerateNewRequest(BaseModel):
+    industry_id: int
+    name: str
+
+
+class OrgTradeGenerateNewResult(BaseModel):
+    """AI draft for review — not persisted until POST /trades."""
+
+    name: str
+    industry_id: int
+    industry_name: str
+    duties_text: str
+    synonyms: List[str] = []
