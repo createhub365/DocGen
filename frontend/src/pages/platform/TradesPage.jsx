@@ -7,6 +7,7 @@ import {
   Empty,
   Form,
   Input,
+  InputNumber,
   Modal,
   Popconfirm,
   Select,
@@ -26,6 +27,7 @@ import {
   createOrgTradeIndustry,
   deleteOrgTrade,
   deleteOrgTradeIndustry,
+  generateOrgTradeSynonyms,
   listOrgTradeIndustries,
   listOrgTrades,
   readPlatformErrorDetail,
@@ -35,8 +37,10 @@ import {
 } from '../../api/platformClient'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
+import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
+import AsyncBusyBar from '../../components/ui/AsyncBusyBar'
 
 const { Title, Paragraph, Text } = Typography
 const { TextArea } = Input
@@ -70,8 +74,12 @@ export default function TradesPage() {
   const [industryModalOpen, setIndustryModalOpen] = useState(false)
   const [editingIndustry, setEditingIndustry] = useState(null)
   const [savingIndustry, setSavingIndustry] = useState(false)
+  const [synonymSummary, setSynonymSummary] = useState(null)
+  const [synonymMaxTrades, setSynonymMaxTrades] = useState(20)
   const [form] = Form.useForm()
   const [industryForm] = Form.useForm()
+  const { runNamed, isLoading } = useAsyncAction()
+  const generatingSynonyms = isLoading('generateSynonyms')
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -261,6 +269,42 @@ export default function TradesPage() {
     }
   }
 
+  const generateSynonyms = async () => {
+    setSynonymSummary(null)
+    try {
+      const max =
+        synonymMaxTrades != null && synonymMaxTrades !== ''
+          ? Number(synonymMaxTrades)
+          : null
+      const result = await runNamed('generateSynonyms', () =>
+        generateOrgTradeSynonyms({ max_trades: max })
+      )
+      setSynonymSummary(result)
+      if (result.updated > 0) {
+        const rem = result.remaining_without_synonyms || 0
+        message.success(
+          rem > 0
+            ? `Generated synonyms for ${result.updated} trade${
+                result.updated === 1 ? '' : 's'
+              } (${rem} still empty — run again to continue)`
+            : `Generated synonyms for ${result.updated} trade${
+                result.updated === 1 ? '' : 's'
+              }`
+        )
+        await loadAll()
+      } else if (result.skipped_already_had === result.total_checked) {
+        message.info('All trades already have synonyms')
+      } else {
+        message.warning('No synonyms were generated')
+      }
+    } catch (error) {
+      const detail =
+        (await readPlatformErrorDetail(error)) ||
+        'Could not generate synonyms with AI'
+      message.error(detail)
+    }
+  }
+
   const header = useMemo(
     () => (
       <>
@@ -373,7 +417,70 @@ export default function TradesPage() {
               Seed from legacy trade bank
             </Button>
           </Popconfirm>
+          <Space wrap align="center">
+            <Text type="secondary">Max trades / run</Text>
+            <InputNumber
+              min={1}
+              max={500}
+              value={synonymMaxTrades}
+              onChange={setSynonymMaxTrades}
+              disabled={generatingSynonyms}
+              style={{ width: 88 }}
+            />
+            <Popconfirm
+              title="Generate synonyms with AI?"
+              description="Fills empty synonyms via Groq (chunked by Max trades / run). Already-filled trades are skipped."
+              okText="Generate"
+              onConfirm={generateSynonyms}
+            >
+              <Button loading={generatingSynonyms} disabled={generatingSynonyms}>
+                Generate synonyms with AI
+              </Button>
+            </Popconfirm>
+          </Space>
         </Space>
+      ) : null}
+
+      <AsyncBusyBar
+        active={generatingSynonyms}
+        label="Generating synonyms with AI… stay on this page until it finishes."
+      />
+
+      {synonymSummary ? (
+        <Alert
+          type={synonymSummary.failed?.length ? 'warning' : 'success'}
+          showIcon
+          closable
+          onClose={() => setSynonymSummary(null)}
+          style={{ marginBottom: 16 }}
+          message="Synonym generation finished"
+          description={
+            <div>
+              <div>
+                Checked {synonymSummary.total_checked}, updated{' '}
+                {synonymSummary.updated}, skipped (already had){' '}
+                {synonymSummary.skipped_already_had}, failed{' '}
+                {synonymSummary.failed?.length || 0}
+                {synonymSummary.remaining_without_synonyms
+                  ? `, remaining empty ${synonymSummary.remaining_without_synonyms}`
+                  : ''}
+                .
+              </div>
+              {synonymSummary.failed?.length ? (
+                <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                  {synonymSummary.failed.slice(0, 8).map((row) => (
+                    <li key={row.trade_id}>
+                      {row.name}: {row.reason}
+                    </li>
+                  ))}
+                  {synonymSummary.failed.length > 8 ? (
+                    <li>…and {synonymSummary.failed.length - 8} more</li>
+                  ) : null}
+                </ul>
+              ) : null}
+            </div>
+          }
+        />
       ) : null}
 
       {isAdmin && industries.length ? (

@@ -18,12 +18,20 @@ from routers.platform_scope import (
 )
 from schemas_platform import (
     OrgTradeCreate,
+    OrgTradeGenerateSynonymsRequest,
+    OrgTradeGenerateSynonymsResult,
     OrgTradeIndustryCreate,
     OrgTradeIndustryRead,
     OrgTradeIndustryUpdate,
     OrgTradeRead,
     OrgTradeSeedResult,
+    OrgTradeSynonymFail,
     OrgTradeUpdate,
+)
+from services.trade_synonym_generator import (
+    GroqNotConfiguredError,
+    generate_synonyms_for_trades,
+    trade_has_synonyms,
 )
 
 router = APIRouter(tags=["platform-trades"])
@@ -421,6 +429,131 @@ def seed_org_trades_from_legacy(
         total_legacy=len(legacy),
         industries_created=industries_created,
         industries_skipped=industries_skipped,
+    )
+
+
+@router.post(
+    "/trades/generate-synonyms",
+    response_model=OrgTradeGenerateSynonymsResult,
+)
+def generate_org_trade_synonyms(
+    body: OrgTradeGenerateSynonymsRequest | None = None,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Bulk-fill empty synonyms via Groq for this org's trades.
+
+    Idempotent: skips trades that already have synonyms. Optional
+    max_trades chunks the work for free-tier / timeout safety.
+    """
+    body = body or OrgTradeGenerateSynonymsRequest()
+    if body.max_trades is not None and body.max_trades < 1:
+        raise HTTPException(status_code=422, detail="max_trades must be >= 1")
+
+    rows = (
+        db.query(models.OrgTrade)
+        .filter(models.OrgTrade.org_id == current.org_id)
+        .order_by(models.OrgTrade.name.asc())
+        .all()
+    )
+    total_checked = len(rows)
+    already = [r for r in rows if trade_has_synonyms(r)]
+    needs = [r for r in rows if not trade_has_synonyms(r)]
+    deferred = 0
+    if body.max_trades is not None and len(needs) > body.max_trades:
+        deferred = len(needs) - body.max_trades
+        needs = needs[: body.max_trades]
+
+    if not needs:
+        log_audit_event(
+            db,
+            current.org_id,
+            current.user_id,
+            "org_trades.generate_synonyms",
+            "Organization",
+            None,
+            metadata={
+                "total_checked": total_checked,
+                "updated": 0,
+                "skipped_already_had": len(already),
+                "failed": 0,
+                "max_trades": body.max_trades,
+                "remaining_without_synonyms": deferred,
+            },
+        )
+        return OrgTradeGenerateSynonymsResult(
+            total_checked=total_checked,
+            updated=0,
+            skipped_already_had=len(already),
+            failed=[],
+            remaining_without_synonyms=deferred,
+        )
+
+    try:
+        updates, failed_raw = generate_synonyms_for_trades(needs)
+    except GroqNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    updated = 0
+    by_id = {r.id: r for r in needs}
+    for trade_id, syns in updates.items():
+        row = by_id.get(trade_id)
+        if not row or not syns:
+            continue
+        row.synonyms = syns
+        updated += 1
+
+    if updated:
+        db.commit()
+
+    failed = [
+        OrgTradeSynonymFail(
+            trade_id=int(item["trade_id"]),
+            name=str(item.get("name") or ""),
+            reason=str(item.get("reason") or "failed"),
+        )
+        for item in failed_raw
+    ]
+
+    # Still-empty after this chunk (deferred + failed/unupdated in chunk)
+    still_empty = (
+        db.query(models.OrgTrade)
+        .filter(models.OrgTrade.org_id == current.org_id)
+        .all()
+    )
+    remaining = sum(1 for r in still_empty if not trade_has_synonyms(r))
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "org_trades.generate_synonyms",
+        "Organization",
+        None,
+        metadata={
+            "total_checked": total_checked,
+            "updated": updated,
+            "skipped_already_had": len(already),
+            "failed": len(failed),
+            "max_trades": body.max_trades,
+            "remaining_without_synonyms": remaining,
+        },
+    )
+    return OrgTradeGenerateSynonymsResult(
+        total_checked=total_checked,
+        updated=updated,
+        skipped_already_had=len(already),
+        failed=failed,
+        remaining_without_synonyms=remaining,
     )
 
 

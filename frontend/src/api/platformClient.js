@@ -659,6 +659,18 @@ export async function seedOrgTradesFromLegacy() {
   return data
 }
 
+export async function generateOrgTradeSynonyms({ max_trades } = {}) {
+  // Chunked runs stay under free-tier / proxy timeouts; full bank can take ~7–10+ min.
+  const body =
+    max_trades != null && max_trades !== ''
+      ? { max_trades: Number(max_trades) }
+      : {}
+  const { data } = await platformClient.post('/trades/generate-synonyms', body, {
+    timeout: 15 * 60 * 1000,
+  })
+  return data
+}
+
 export async function listOrgTradeIndustries() {
   const { data } = await platformClient.get('/trade-industries')
   return data

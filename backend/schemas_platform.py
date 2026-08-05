@@ -659,3 +659,23 @@ class OrgTradeSeedResult(BaseModel):
     total_legacy: int
     industries_created: int = 0
     industries_skipped: int = 0
+
+
+class OrgTradeSynonymFail(BaseModel):
+    trade_id: int
+    name: str
+    reason: str
+
+
+class OrgTradeGenerateSynonymsRequest(BaseModel):
+    """Optional chunking — omit max_trades (or null) to process all empty trades."""
+
+    max_trades: Optional[int] = None
+
+
+class OrgTradeGenerateSynonymsResult(BaseModel):
+    total_checked: int
+    updated: int
+    skipped_already_had: int
+    failed: List[OrgTradeSynonymFail] = []
+    remaining_without_synonyms: int = 0
