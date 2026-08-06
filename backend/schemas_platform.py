@@ -704,3 +704,41 @@ class OrgTradeGenerateNewResult(BaseModel):
     industry_name: str
     duties_text: str
     synonyms: List[str] = []
+
+
+class OrgTradeSuggestIndustryRequest(BaseModel):
+    industry_id: int
+    count: int = 30
+
+
+class OrgTradeSuggestedName(BaseModel):
+    name: str
+    already_exists: bool = False
+    existing_trade_id: Optional[int] = None
+
+
+class OrgTradeSuggestIndustryResult(BaseModel):
+    industry_id: int
+    industry_name: str
+    suggestions: List[OrgTradeSuggestedName] = []
+    disclaimer: str = (
+        "AI best-effort common list — not an authoritative or complete registry."
+    )
+
+
+class OrgTradeGenerateIndustryBatchRequest(BaseModel):
+    industry_id: int
+    trade_names: List[str]
+    max_trades: Optional[int] = 10
+
+
+class OrgTradeGenerateIndustryBatchFail(BaseModel):
+    name: str
+    reason: str
+
+
+class OrgTradeGenerateIndustryBatchResult(BaseModel):
+    created: int
+    failed: List[OrgTradeGenerateIndustryBatchFail] = []
+    remaining_names: List[str] = []
+    created_trades: List[OrgTradeRead] = []

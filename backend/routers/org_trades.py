@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,6 +20,9 @@ from routers.platform_scope import (
 from schemas_platform import (
     OrgTradeCheckResult,
     OrgTradeCreate,
+    OrgTradeGenerateIndustryBatchFail,
+    OrgTradeGenerateIndustryBatchRequest,
+    OrgTradeGenerateIndustryBatchResult,
     OrgTradeGenerateNewRequest,
     OrgTradeGenerateNewResult,
     OrgTradeGenerateSynonymsRequest,
@@ -29,14 +33,19 @@ from schemas_platform import (
     OrgTradeRead,
     OrgTradeSeedResult,
     OrgTradeSimilarMatch,
+    OrgTradeSuggestIndustryRequest,
+    OrgTradeSuggestIndustryResult,
+    OrgTradeSuggestedName,
     OrgTradeSynonymFail,
     OrgTradeUpdate,
 )
 from services.trade_name_match import match_trade_against_query
 from services.trade_synonym_generator import (
     GroqNotConfiguredError,
+    INTER_BATCH_DELAY_SEC,
     generate_full_trade_entry,
     generate_synonyms_for_trades,
+    suggest_industry_trade_names,
     trade_has_synonyms,
 )
 
@@ -688,6 +697,205 @@ def generate_new_org_trade(
         industry_name=industry.name,
         duties_text=draft["duties_text"],
         synonyms=draft["synonyms"],
+    )
+
+
+@router.post(
+    "/trades/suggest-industry-trades",
+    response_model=OrgTradeSuggestIndustryResult,
+)
+def suggest_industry_trades(
+    body: OrgTradeSuggestIndustryRequest,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    AI candidate trade-name list for an industry (names only).
+
+    Flags names that already exist in this org+industry. Does not create rows.
+    """
+    count = body.count if body.count is not None else 30
+    if count < 1 or count > 50:
+        raise HTTPException(status_code=422, detail="count must be between 1 and 50")
+    industry = get_org_trade_industry(db, body.industry_id, current.org_id)
+
+    try:
+        names = suggest_industry_trade_names(
+            industry_name=industry.name,
+            count=count,
+        )
+    except GroqNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    existing_rows = (
+        db.query(models.OrgTrade)
+        .filter(
+            models.OrgTrade.org_id == current.org_id,
+            models.OrgTrade.industry_id == body.industry_id,
+        )
+        .all()
+    )
+    by_lower = {
+        (r.name or "").strip().lower(): r
+        for r in existing_rows
+        if (r.name or "").strip()
+    }
+
+    suggestions: list[OrgTradeSuggestedName] = []
+    for name in names:
+        hit = by_lower.get(name.strip().lower())
+        suggestions.append(
+            OrgTradeSuggestedName(
+                name=name,
+                already_exists=hit is not None,
+                existing_trade_id=hit.id if hit else None,
+            )
+        )
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "org_trades.suggest_industry_trades",
+        "Organization",
+        None,
+        metadata={
+            "industry_id": body.industry_id,
+            "suggested": len(suggestions),
+            "already_exists": sum(1 for s in suggestions if s.already_exists),
+        },
+    )
+    return OrgTradeSuggestIndustryResult(
+        industry_id=body.industry_id,
+        industry_name=industry.name,
+        suggestions=suggestions,
+    )
+
+
+@router.post(
+    "/trades/generate-industry-batch",
+    response_model=OrgTradeGenerateIndustryBatchResult,
+)
+def generate_industry_trade_batch(
+    body: OrgTradeGenerateIndustryBatchRequest,
+    current: OrgUserContext = Depends(require_org_role("org_admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Create OrgTrade rows for confirmed new names with AI duties+synonyms.
+
+    Chunked via max_trades (default 10) with inter-item delay to respect
+    Groq free-tier limits — same pattern as bulk synonym generation.
+    """
+    industry = get_org_trade_industry(db, body.industry_id, current.org_id)
+    max_trades = body.max_trades if body.max_trades is not None else 10
+    if max_trades < 1:
+        raise HTTPException(status_code=422, detail="max_trades must be >= 1")
+
+    # Dedupe requested names (preserve order)
+    seen: set[str] = set()
+    requested: list[str] = []
+    for raw in body.trade_names or []:
+        name = str(raw or "").strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        requested.append(name)
+
+    existing_rows = (
+        db.query(models.OrgTrade)
+        .filter(
+            models.OrgTrade.org_id == current.org_id,
+            models.OrgTrade.industry_id == body.industry_id,
+        )
+        .all()
+    )
+    existing_lower = {(r.name or "").strip().lower() for r in existing_rows}
+
+    # Skip names that already exist
+    to_create = [n for n in requested if n.lower() not in existing_lower]
+    deferred = to_create[max_trades:]
+    chunk = to_create[:max_trades]
+
+    created_rows: list[models.OrgTrade] = []
+    failed: list[OrgTradeGenerateIndustryBatchFail] = []
+    names_map = _industry_name_map(db, current.org_id)
+
+    for idx, name in enumerate(chunk):
+        if idx > 0 and INTER_BATCH_DELAY_SEC > 0:
+            time.sleep(INTER_BATCH_DELAY_SEC)
+        try:
+            draft = generate_full_trade_entry(
+                name=name,
+                industry_name=industry.name,
+            )
+        except GroqNotConfiguredError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
+        except ValueError as exc:
+            failed.append(
+                OrgTradeGenerateIndustryBatchFail(
+                    name=name,
+                    reason=str(exc) or "generation failed",
+                )
+            )
+            continue
+
+        row = models.OrgTrade(
+            org_id=current.org_id,
+            name=name,
+            duties_text=draft["duties_text"],
+            industry_id=body.industry_id,
+            synonyms=_normalize_synonyms(draft["synonyms"]),
+        )
+        db.add(row)
+        try:
+            db.commit()
+            db.refresh(row)
+            created_rows.append(row)
+            existing_lower.add(name.lower())
+        except IntegrityError:
+            db.rollback()
+            failed.append(
+                OrgTradeGenerateIndustryBatchFail(
+                    name=name,
+                    reason="duplicate name in this organization",
+                )
+            )
+
+    log_audit_event(
+        db,
+        current.org_id,
+        current.user_id,
+        "org_trades.generate_industry_batch",
+        "Organization",
+        None,
+        metadata={
+            "industry_id": body.industry_id,
+            "created": len(created_rows),
+            "failed": len(failed),
+            "remaining": len(deferred),
+            "max_trades": max_trades,
+        },
+    )
+    return OrgTradeGenerateIndustryBatchResult(
+        created=len(created_rows),
+        failed=failed,
+        remaining_names=deferred,
+        created_trades=[_trade_to_read(r, names_map) for r in created_rows],
     )
 
 

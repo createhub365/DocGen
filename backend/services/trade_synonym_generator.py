@@ -359,3 +359,76 @@ def generate_full_trade_entry(
         raise ValueError("AI response synonyms missing or incomplete")
 
     return {"duties_text": duties_text, "synonyms": syns}
+
+
+def suggest_industry_trade_names(
+    *,
+    industry_name: str,
+    count: int = 30,
+) -> list[str]:
+    """
+    Ask Groq for a best-effort list of common trade/job titles in an industry.
+
+    Returns unique trimmed names (no duties). Raises GroqNotConfiguredError /
+    ValueError on failure.
+    """
+    industry = (industry_name or "").strip()
+    if not industry:
+        raise ValueError("industry is required")
+    n = max(1, min(int(count), 50))
+
+    if not groq_configured():
+        raise GroqNotConfiguredError(
+            "AI synonym generation is not configured (GROQ_API_KEY)."
+        )
+
+    system = (
+        "You list common skilled / trade job titles used in immigration and "
+        "employment paperwork. Return STRICT JSON only: "
+        '{"trades": ["Title One", "Title Two"]}. '
+        "Titles should be realistic occupation names (not duties). "
+        "No numbering, no explanations, no duplicates."
+    )
+    user = json.dumps(
+        {
+            "industry": industry,
+            "count": n,
+            "instruction": (
+                f"Suggest about {n} common job-title trades for the "
+                f'"{industry}" industry. Prefer widely recognized titles.'
+            ),
+        },
+        ensure_ascii=False,
+    )
+
+    content = _chat_completions(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+    )
+    try:
+        parsed = _extract_json_object(content)
+    except Exception as exc:
+        raise ValueError("AI response was not valid JSON") from exc
+
+    raw = parsed.get("trades")
+    if not isinstance(raw, list):
+        raise ValueError("AI response missing trades list")
+
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in raw:
+        name = str(item or "").strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(name)
+        if len(out) >= n:
+            break
+    if len(out) < 3:
+        raise ValueError("AI response trades list too short or empty")
+    return out

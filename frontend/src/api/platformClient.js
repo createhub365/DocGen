@@ -687,6 +687,28 @@ export async function generateNewOrgTrade({ industry_id, name }) {
   return data
 }
 
+export async function suggestIndustryTrades({ industry_id, count = 30 }) {
+  const { data } = await platformClient.post(
+    '/trades/suggest-industry-trades',
+    { industry_id, count },
+    { timeout: 90 * 1000 }
+  )
+  return data
+}
+
+export async function generateIndustryTradeBatch({
+  industry_id,
+  trade_names,
+  max_trades = 10,
+}) {
+  const { data } = await platformClient.post(
+    '/trades/generate-industry-batch',
+    { industry_id, trade_names, max_trades },
+    { timeout: 15 * 60 * 1000 }
+  )
+  return data
+}
+
 export async function listOrgTradeIndustries() {
   const { data } = await platformClient.get('/trade-industries')
   return data

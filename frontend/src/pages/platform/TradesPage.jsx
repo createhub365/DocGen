@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   Collapse,
   Empty,
   Form,
@@ -23,17 +24,17 @@ import {
   ImportOutlined,
 } from '@ant-design/icons'
 import {
-  checkOrgTradeName,
   createOrgTrade,
   createOrgTradeIndustry,
   deleteOrgTrade,
   deleteOrgTradeIndustry,
-  generateNewOrgTrade,
+  generateIndustryTradeBatch,
   generateOrgTradeSynonyms,
   listOrgTradeIndustries,
   listOrgTrades,
   readPlatformErrorDetail,
   seedOrgTradesFromLegacy,
+  suggestIndustryTrades,
   updateOrgTrade,
   updateOrgTradeIndustry,
 } from '../../api/platformClient'
@@ -43,20 +44,13 @@ import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import AsyncBusyBar from '../../components/ui/AsyncBusyBar'
+import TradeCascadeForm from '../../components/platform/TradeCascadeForm'
 
 const { Title, Paragraph, Text } = Typography
-const { TextArea } = Input
 
 function synonymsToText(synonyms) {
   if (!Array.isArray(synonyms) || !synonyms.length) return ''
   return synonyms.join(', ')
-}
-
-function textToSynonyms(text) {
-  return String(text || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
 }
 
 export default function TradesPage() {
@@ -78,18 +72,21 @@ export default function TradesPage() {
   const [savingIndustry, setSavingIndustry] = useState(false)
   const [synonymSummary, setSynonymSummary] = useState(null)
   const [synonymMaxTrades, setSynonymMaxTrades] = useState(20)
-  const [nameCheck, setNameCheck] = useState(null)
-  const [nameCheckLoading, setNameCheckLoading] = useState(false)
-  const [aiGenerating, setAiGenerating] = useState(false)
-  const [aiDraftReady, setAiDraftReady] = useState(false)
-  const [confirmDifferent, setConfirmDifferent] = useState(false)
-  const checkTimerRef = useRef(null)
-  const [form] = Form.useForm()
   const [industryForm] = Form.useForm()
-  const watchedName = Form.useWatch('name', form)
-  const watchedIndustryId = Form.useWatch('industry_id', form)
+  const cascadeRef = useRef(null)
   const { runNamed, isLoading } = useAsyncAction()
   const generatingSynonyms = isLoading('generateSynonyms')
+
+  // Bulk industry generate
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [bulkIndustryId, setBulkIndustryId] = useState(undefined)
+  const [bulkCount, setBulkCount] = useState(30)
+  const [bulkSuggesting, setBulkSuggesting] = useState(false)
+  const [bulkSuggestions, setBulkSuggestions] = useState(null)
+  const [bulkSelected, setBulkSelected] = useState([])
+  const [bulkMaxPerRun, setBulkMaxPerRun] = useState(10)
+  const [bulkGenerating, setBulkGenerating] = useState(false)
+  const [bulkSummary, setBulkSummary] = useState(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -151,130 +148,47 @@ export default function TradesPage() {
 
   const openCreate = () => {
     setEditing(null)
-    setNameCheck(null)
-    setAiDraftReady(false)
-    setConfirmDifferent(false)
-    setAiGenerating(false)
-    form.setFieldsValue({
-      name: '',
-      duties_text: '',
-      industry_id: undefined,
-      synonyms_text: '',
-    })
     setModalOpen(true)
   }
 
   const openEdit = (row) => {
     setEditing(row)
-    setNameCheck(null)
-    setAiDraftReady(false)
-    setConfirmDifferent(false)
-    form.setFieldsValue({
-      name: row.name,
-      duties_text: row.duties_text || '',
-      industry_id: row.industry_id ?? undefined,
-      synonyms_text: synonymsToText(row.synonyms),
-    })
     setModalOpen(true)
   }
 
-  // Debounced existence check while adding a trade
-  useEffect(() => {
-    if (!modalOpen || editing) {
-      setNameCheck(null)
-      setNameCheckLoading(false)
-      return undefined
-    }
-    const name = String(watchedName || '').trim()
-    const industryId = watchedIndustryId
-    if (checkTimerRef.current) clearTimeout(checkTimerRef.current)
-    if (!name || industryId == null) {
-      setNameCheck(null)
-      setNameCheckLoading(false)
-      return undefined
-    }
-    setNameCheckLoading(true)
-    checkTimerRef.current = setTimeout(async () => {
-      try {
-        const result = await checkOrgTradeName({
-          industry_id: industryId,
-          name,
-        })
-        setNameCheck(result)
-        setConfirmDifferent(false)
-      } catch {
-        setNameCheck(null)
-      } finally {
-        setNameCheckLoading(false)
-      }
-    }, 350)
-    return () => {
-      if (checkTimerRef.current) clearTimeout(checkTimerRef.current)
-    }
-  }, [modalOpen, editing, watchedName, watchedIndustryId])
-
-  const generateTradeWithAi = async () => {
-    try {
-      const values = await form.validateFields(['name', 'industry_id'])
-      setAiGenerating(true)
-      const draft = await generateNewOrgTrade({
-        industry_id: values.industry_id,
-        name: String(values.name || '').trim(),
-      })
-      form.setFieldsValue({
-        name: draft.name,
-        industry_id: draft.industry_id,
-        duties_text: draft.duties_text || '',
-        synonyms_text: synonymsToText(draft.synonyms),
-      })
-      setAiDraftReady(true)
-      message.success('AI draft ready — review and edit before saving')
-    } catch (error) {
-      if (error?.errorFields) return
-      message.error(
-        (await readPlatformErrorDetail(error)) || 'Could not generate trade with AI'
-      )
-    } finally {
-      setAiGenerating(false)
-    }
-  }
-
   const saveTrade = async () => {
+    const payload = cascadeRef.current?.getPayload?.()
+    if (!payload) {
+      message.error('Form not ready')
+      return
+    }
+    if (payload.error) {
+      message.warning(payload.error)
+      return
+    }
+    if (cascadeRef.current?.isBusy?.()) {
+      message.warning('Wait for the current AI/industry action to finish')
+      return
+    }
     try {
-      const values = await form.validateFields()
-      if (!editing && nameCheck?.exact_match) {
-        message.warning('This trade already exists — open it instead of creating a duplicate')
-        return
-      }
-      if (
-        !editing &&
-        nameCheck?.similar_matches?.length &&
-        !confirmDifferent &&
-        !aiDraftReady
-      ) {
-        message.warning(
-          'Similar trades found — confirm this is a different trade, or open a suggestion'
-        )
-        return
-      }
       setSaving(true)
-      const payload = {
-        name: String(values.name || '').trim(),
-        duties_text: values.duties_text ?? '',
-        industry_id: values.industry_id ?? null,
-        synonyms: textToSynonyms(values.synonyms_text),
+      const body = {
+        name: payload.name,
+        duties_text: payload.duties_text ?? '',
+        industry_id: payload.industry_id ?? null,
+        synonyms: Array.isArray(payload.synonyms) ? payload.synonyms : [],
       }
-      if (editing) {
-        await updateOrgTrade(editing.id, payload)
+      if (payload.mode === 'update') {
+        await updateOrgTrade(payload.tradeId, body)
         message.success('Trade updated')
       } else {
-        await createOrgTrade(payload)
+        await createOrgTrade(body)
         message.success('Trade created')
       }
       setModalOpen(false)
+      setEditing(null)
       await loadAll()
     } catch (error) {
-      if (error?.errorFields) return
       message.error((await readPlatformErrorDetail(error)) || 'Could not save trade')
     } finally {
       setSaving(false)
@@ -398,6 +312,91 @@ export default function TradesPage() {
     }
   }
 
+  const openBulkGenerate = () => {
+    setBulkOpen(true)
+    setBulkSuggestions(null)
+    setBulkSelected([])
+    setBulkSummary(null)
+    setBulkIndustryId(industries[0]?.id)
+  }
+
+  const runBulkSuggest = async () => {
+    if (bulkIndustryId == null) {
+      message.warning('Select an industry')
+      return
+    }
+    setBulkSuggesting(true)
+    setBulkSummary(null)
+    try {
+      const result = await suggestIndustryTrades({
+        industry_id: bulkIndustryId,
+        count: bulkCount,
+      })
+      setBulkSuggestions(result)
+      setBulkSelected(
+        (result.suggestions || [])
+          .filter((s) => !s.already_exists)
+          .map((s) => s.name)
+      )
+    } catch (error) {
+      message.error(
+        (await readPlatformErrorDetail(error)) || 'Could not suggest trades'
+      )
+    } finally {
+      setBulkSuggesting(false)
+    }
+  }
+
+  const runBulkGenerate = async () => {
+    if (bulkIndustryId == null || !bulkSelected.length) {
+      message.warning('Select at least one new trade name to generate')
+      return
+    }
+    setBulkGenerating(true)
+    try {
+      const result = await generateIndustryTradeBatch({
+        industry_id: bulkIndustryId,
+        trade_names: bulkSelected,
+        max_trades: bulkMaxPerRun,
+      })
+      setBulkSummary(result)
+      if (result.created > 0) {
+        message.success(
+          result.remaining_names?.length
+            ? `Created ${result.created} trades (${result.remaining_names.length} remaining — run again to continue)`
+            : `Created ${result.created} trade${result.created === 1 ? '' : 's'}`
+        )
+        await loadAll()
+        // Drop created names from selection; keep remaining for continue
+        if (result.remaining_names?.length) {
+          setBulkSelected(result.remaining_names)
+          setBulkSuggestions((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  suggestions: (prev.suggestions || []).map((s) =>
+                    result.remaining_names.includes(s.name)
+                      ? s
+                      : { ...s, already_exists: true }
+                  ),
+                }
+              : prev
+          )
+        } else {
+          setBulkSelected([])
+        }
+      } else {
+        message.warning('No trades were created')
+      }
+    } catch (error) {
+      message.error(
+        (await readPlatformErrorDetail(error)) || 'Could not generate industry trades'
+      )
+    } finally {
+      setBulkGenerating(false)
+    }
+  }
+
   const header = useMemo(
     () => (
       <>
@@ -500,6 +499,9 @@ export default function TradesPage() {
           <Button icon={<PlusOutlined />} onClick={openCreateIndustry}>
             Add industry
           </Button>
+          <Button onClick={openBulkGenerate} disabled={!industries.length}>
+            Generate all trades for industry
+          </Button>
           <Popconfirm
             title="Seed from legacy trade bank?"
             description="Copies industries, occupations, and duties. Existing names are skipped."
@@ -535,8 +537,12 @@ export default function TradesPage() {
       ) : null}
 
       <AsyncBusyBar
-        active={generatingSynonyms}
-        label="Generating synonyms with AI… stay on this page until it finishes."
+        active={generatingSynonyms || bulkGenerating}
+        label={
+          bulkGenerating
+            ? 'Generating industry trades with AI… stay on this page.'
+            : 'Generating synonyms with AI… stay on this page until it finishes.'
+        }
       />
 
       {synonymSummary ? (
@@ -549,28 +555,14 @@ export default function TradesPage() {
           message="Synonym generation finished"
           description={
             <div>
-              <div>
-                Checked {synonymSummary.total_checked}, updated{' '}
-                {synonymSummary.updated}, skipped (already had){' '}
-                {synonymSummary.skipped_already_had}, failed{' '}
-                {synonymSummary.failed?.length || 0}
-                {synonymSummary.remaining_without_synonyms
-                  ? `, remaining empty ${synonymSummary.remaining_without_synonyms}`
-                  : ''}
-                .
-              </div>
-              {synonymSummary.failed?.length ? (
-                <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
-                  {synonymSummary.failed.slice(0, 8).map((row) => (
-                    <li key={row.trade_id}>
-                      {row.name}: {row.reason}
-                    </li>
-                  ))}
-                  {synonymSummary.failed.length > 8 ? (
-                    <li>…and {synonymSummary.failed.length - 8} more</li>
-                  ) : null}
-                </ul>
-              ) : null}
+              Checked {synonymSummary.total_checked}, updated{' '}
+              {synonymSummary.updated}, skipped (already had){' '}
+              {synonymSummary.skipped_already_had}, failed{' '}
+              {synonymSummary.failed?.length || 0}
+              {synonymSummary.remaining_without_synonyms
+                ? `, remaining empty ${synonymSummary.remaining_without_synonyms}`
+                : ''}
+              .
             </div>
           }
         />
@@ -644,158 +636,141 @@ export default function TradesPage() {
       <Modal
         title={editing ? 'Edit trade' : 'Add trade'}
         open={modalOpen}
-        onCancel={() => setModalOpen(false)}
+        onCancel={() => {
+          setModalOpen(false)
+          setEditing(null)
+        }}
         onOk={saveTrade}
         confirmLoading={saving}
         okText="Save"
-        okButtonProps={{
-          disabled: Boolean(!editing && nameCheck?.exact_match) || aiGenerating,
-        }}
         destroyOnHidden
-        width={560}
+        width={isMobile ? '100%' : 980}
       >
-        <Form form={form} layout="vertical" requiredMark={false}>
-          <Form.Item
-            name="industry_id"
-            label="Industry"
-            rules={
-              editing
-                ? []
-                : [{ required: true, message: 'Select an industry first' }]
-            }
+        <Paragraph type="secondary" style={{ marginTop: 0 }}>
+          Industry → Trade → Synonyms → Duties. For a new trade, Generate with AI
+          fills synonyms and duties for review before Save.
+        </Paragraph>
+        <TradeCascadeForm
+          key={editing ? `edit-${editing.id}` : 'create'}
+          ref={cascadeRef}
+          industries={industries}
+          trades={trades}
+          initialTrade={editing}
+          onIndustriesChanged={loadAll}
+          disabled={saving}
+        />
+      </Modal>
+
+      <Modal
+        title="Generate all trades for an industry"
+        open={bulkOpen}
+        onCancel={() => setBulkOpen(false)}
+        footer={null}
+        destroyOnHidden
+        width={640}
+      >
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="AI best-effort list"
+          description="Suggestions are a common-title shortlist — not an authoritative worldwide registry. Review and deselect before generating."
+        />
+        <Space wrap style={{ marginBottom: 12 }}>
+          <Select
+            style={{ minWidth: 200 }}
+            placeholder="Industry"
+            options={industryOptions}
+            value={bulkIndustryId}
+            onChange={(v) => {
+              setBulkIndustryId(v)
+              setBulkSuggestions(null)
+              setBulkSelected([])
+              setBulkSummary(null)
+            }}
+            disabled={bulkSuggesting || bulkGenerating}
+          />
+          <InputNumber
+            min={5}
+            max={50}
+            value={bulkCount}
+            onChange={setBulkCount}
+            disabled={bulkSuggesting || bulkGenerating}
+          />
+          <Button
+            type="primary"
+            loading={bulkSuggesting}
+            disabled={bulkGenerating || bulkIndustryId == null}
+            onClick={runBulkSuggest}
           >
-            <Select
-              allowClear={Boolean(editing)}
-              placeholder="Select industry"
-              options={industryOptions}
-              disabled={aiGenerating}
+            Suggest trades
+          </Button>
+        </Space>
+
+        {bulkSuggestions ? (
+          <div>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+              {bulkSuggestions.disclaimer ||
+                'AI best-effort common list — not an authoritative registry.'}
+            </Text>
+            <Checkbox.Group
+              style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+              value={bulkSelected}
+              onChange={setBulkSelected}
+              disabled={bulkGenerating}
+              options={(bulkSuggestions.suggestions || []).map((s) => ({
+                value: s.name,
+                label: s.already_exists
+                  ? `${s.name} (already have this)`
+                  : s.name,
+                disabled: s.already_exists,
+              }))}
             />
-          </Form.Item>
-          <Form.Item
-            name="name"
-            label="Trade name"
-            rules={[{ required: true, message: 'Name is required' }]}
-            extra={
-              !editing && nameCheckLoading ? (
-                <Text type="secondary">Checking for existing trades…</Text>
+            <Space wrap style={{ marginTop: 16 }} align="center">
+              <Text type="secondary">Max per run</Text>
+              <InputNumber
+                min={1}
+                max={30}
+                value={bulkMaxPerRun}
+                onChange={setBulkMaxPerRun}
+                disabled={bulkGenerating}
+                style={{ width: 72 }}
+              />
+              <Button
+                type="primary"
+                loading={bulkGenerating}
+                disabled={!bulkSelected.length || bulkGenerating}
+                onClick={runBulkGenerate}
+              >
+                Generate selected ({bulkSelected.length})
+              </Button>
+            </Space>
+          </div>
+        ) : null}
+
+        {bulkSummary ? (
+          <Alert
+            style={{ marginTop: 16 }}
+            type={bulkSummary.failed?.length ? 'warning' : 'success'}
+            showIcon
+            message={`Created ${bulkSummary.created}${
+              bulkSummary.remaining_names?.length
+                ? `, ${bulkSummary.remaining_names.length} remaining`
+                : ''
+            }, failed ${bulkSummary.failed?.length || 0}`}
+            description={
+              bulkSummary.failed?.length ? (
+                <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                  {bulkSummary.failed.slice(0, 8).map((row) => (
+                    <li key={row.name}>
+                      {row.name}: {row.reason}
+                    </li>
+                  ))}
+                </ul>
               ) : null
             }
-          >
-            <Input
-              placeholder="Building Inspector / Certifier"
-              disabled={aiGenerating}
-            />
-          </Form.Item>
-
-          {!editing && nameCheck?.exact_match ? (
-            <Alert
-              type="warning"
-              showIcon
-              style={{ marginBottom: 16 }}
-              message={`This trade already exists in ${
-                nameCheck.exact_match.industry_name || 'this industry'
-              }: ${nameCheck.exact_match.name}`}
-              action={
-                <Button
-                  size="small"
-                  type="primary"
-                  onClick={() => openEdit(nameCheck.exact_match)}
-                >
-                  Open existing
-                </Button>
-              }
-            />
-          ) : null}
-
-          {!editing &&
-          !nameCheck?.exact_match &&
-          nameCheck?.similar_matches?.length ? (
-            <Alert
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-              message="Did you mean one of these?"
-              description={
-                <div>
-                  <ul style={{ margin: '8px 0', paddingLeft: 18 }}>
-                    {nameCheck.similar_matches.slice(0, 5).map((row) => (
-                      <li key={row.trade.id}>
-                        <Button
-                          type="link"
-                          size="small"
-                          style={{ padding: 0, height: 'auto' }}
-                          onClick={() => openEdit(row.trade)}
-                        >
-                          {row.trade.name}
-                        </Button>
-                        <Text type="secondary">
-                          {' '}
-                          (matched on {row.matched_on})
-                        </Text>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    size="small"
-                    type={confirmDifferent ? 'primary' : 'default'}
-                    onClick={() => setConfirmDifferent(true)}
-                  >
-                    {confirmDifferent
-                      ? 'Confirmed — different trade'
-                      : 'This is a different trade'}
-                  </Button>
-                </div>
-              }
-            />
-          ) : null}
-
-          {!editing &&
-          !nameCheck?.exact_match &&
-          String(watchedName || '').trim() &&
-          watchedIndustryId != null &&
-          !nameCheckLoading ? (
-            <Space style={{ marginBottom: 16 }} wrap>
-              <Button
-                onClick={generateTradeWithAi}
-                loading={aiGenerating}
-                disabled={
-                  aiGenerating ||
-                  (nameCheck?.similar_matches?.length && !confirmDifferent)
-                }
-              >
-                Generate this trade with AI
-              </Button>
-              {aiDraftReady ? (
-                <Text type="success">Draft ready — review below, then Save</Text>
-              ) : (
-                <Text type="secondary">
-                  Or fill duties and synonyms yourself
-                </Text>
-              )}
-            </Space>
-          ) : null}
-
-          {aiGenerating ? (
-            <div style={{ marginBottom: 16, textAlign: 'center' }}>
-              <Spin tip="Generating duties and synonyms…" />
-            </div>
-          ) : null}
-
-          <Form.Item
-            name="synonyms_text"
-            label="Synonyms"
-            extra="Comma-separated alternate names (matched in Generate search)."
-          >
-            <Input placeholder="Builder, Site inspector" disabled={aiGenerating} />
-          </Form.Item>
-          <Form.Item name="duties_text" label="Duties / job responsibilities">
-            <TextArea
-              rows={8}
-              placeholder="One duty per line"
-              disabled={aiGenerating}
-            />
-          </Form.Item>
-        </Form>
+          />
+        ) : null}
       </Modal>
 
       <Modal
