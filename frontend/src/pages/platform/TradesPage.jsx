@@ -5,6 +5,7 @@ import {
   Card,
   Checkbox,
   Collapse,
+  Divider,
   Empty,
   Form,
   Input,
@@ -22,6 +23,7 @@ import {
   EditOutlined,
   PlusOutlined,
   ImportOutlined,
+  UpOutlined,
 } from '@ant-design/icons'
 import {
   createOrgTrade,
@@ -63,7 +65,8 @@ export default function TradesPage() {
   const [trades, setTrades] = useState([])
   const [industries, setIndustries] = useState([])
   const [loadError, setLoadError] = useState(null)
-  const [modalOpen, setModalOpen] = useState(false)
+  const [cascadeOpen, setCascadeOpen] = useState(false)
+  const [cascadeKey, setCascadeKey] = useState(0)
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const [seeding, setSeeding] = useState(false)
@@ -148,12 +151,19 @@ export default function TradesPage() {
 
   const openCreate = () => {
     setEditing(null)
-    setModalOpen(true)
+    setCascadeKey((k) => k + 1)
+    setCascadeOpen(true)
   }
 
   const openEdit = (row) => {
     setEditing(row)
-    setModalOpen(true)
+    setCascadeKey((k) => k + 1)
+    setCascadeOpen(true)
+  }
+
+  const closeCascade = () => {
+    setCascadeOpen(false)
+    setEditing(null)
   }
 
   const saveTrade = async () => {
@@ -181,12 +191,14 @@ export default function TradesPage() {
       if (payload.mode === 'update') {
         await updateOrgTrade(payload.tradeId, body)
         message.success('Trade updated')
+        closeCascade()
       } else {
         await createOrgTrade(body)
         message.success('Trade created')
+        // Stay open for another add — reset form
+        setEditing(null)
+        setCascadeKey((k) => k + 1)
       }
-      setModalOpen(false)
-      setEditing(null)
       await loadAll()
     } catch (error) {
       message.error((await readPlatformErrorDetail(error)) || 'Could not save trade')
@@ -486,54 +498,171 @@ export default function TradesPage() {
   }
 
   return (
-    <div>
+    <div
+      style={{
+        width: '100%',
+        maxWidth: 1280,
+        margin: '0 auto',
+        padding: isMobile ? '0 4px 24px' : '0 8px 32px',
+        boxSizing: 'border-box',
+      }}
+    >
       {loadError && (
         <Alert type="error" showIcon message={loadError} style={{ marginBottom: 16 }} />
       )}
 
       {isAdmin ? (
-        <Space wrap style={{ marginBottom: 16 }}>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            Add trade
-          </Button>
-          <Button icon={<PlusOutlined />} onClick={openCreateIndustry}>
-            Add industry
-          </Button>
-          <Button onClick={openBulkGenerate} disabled={!industries.length}>
-            Generate all trades for industry
-          </Button>
-          <Popconfirm
-            title="Seed from legacy trade bank?"
-            description="Copies industries, occupations, and duties. Existing names are skipped."
-            okText="Seed"
-            onConfirm={seedFromLegacy}
+        <Card
+          size="small"
+          style={{ borderRadius: 12, marginBottom: 16 }}
+          styles={{ body: { padding: isMobile ? 12 : 16 } }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'flex-start',
+              gap: isMobile ? 12 : 8,
+              rowGap: 12,
+            }}
           >
-            <Button icon={<ImportOutlined />} loading={seeding}>
-              Seed from legacy trade bank
-            </Button>
-          </Popconfirm>
-          <Space wrap align="center">
-            <Text type="secondary">Max trades / run</Text>
-            <InputNumber
-              min={1}
-              max={500}
-              value={synonymMaxTrades}
-              onChange={setSynonymMaxTrades}
-              disabled={generatingSynonyms}
-              style={{ width: 88 }}
+            <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+              <Text
+                type="secondary"
+                style={{
+                  display: 'block',
+                  fontSize: 11,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  marginBottom: 6,
+                }}
+              >
+                Create
+              </Text>
+              <Space wrap size={8}>
+                <Button
+                  type="primary"
+                  icon={cascadeOpen && !editing ? <UpOutlined /> : <PlusOutlined />}
+                  onClick={() => {
+                    if (cascadeOpen && !editing) {
+                      closeCascade()
+                    } else {
+                      openCreate()
+                    }
+                  }}
+                >
+                  {cascadeOpen && !editing ? 'Hide add trade' : 'Add trade'}
+                </Button>
+                <Button icon={<PlusOutlined />} onClick={openCreateIndustry}>
+                  Add industry
+                </Button>
+              </Space>
+            </div>
+
+            <Divider
+              type={isMobile ? 'horizontal' : 'vertical'}
+              style={{
+                height: isMobile ? 1 : 48,
+                margin: isMobile ? '0' : '0 4px',
+                alignSelf: isMobile ? 'stretch' : 'center',
+              }}
             />
-            <Popconfirm
-              title="Generate synonyms with AI?"
-              description="Fills empty synonyms via Groq (chunked by Max trades / run). Already-filled trades are skipped."
-              okText="Generate"
-              onConfirm={generateSynonyms}
-            >
-              <Button loading={generatingSynonyms} disabled={generatingSynonyms}>
-                Generate synonyms with AI
+
+            <div style={{ flex: '2 1 360px', minWidth: 0 }}>
+              <Text
+                type="secondary"
+                style={{
+                  display: 'block',
+                  fontSize: 11,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  marginBottom: 6,
+                }}
+              >
+                Bulk / AI tools
+              </Text>
+              <Space wrap size={8} align="center">
+                <Button onClick={openBulkGenerate} disabled={!industries.length}>
+                  Generate all trades for industry
+                </Button>
+                <Popconfirm
+                  title="Seed from legacy trade bank?"
+                  description="Copies industries, occupations, and duties. Existing names are skipped."
+                  okText="Seed"
+                  onConfirm={seedFromLegacy}
+                >
+                  <Button icon={<ImportOutlined />} loading={seeding}>
+                    Seed from legacy trade bank
+                  </Button>
+                </Popconfirm>
+                <Space size={6} align="center" wrap>
+                  <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+                    Max / run
+                  </Text>
+                  <InputNumber
+                    min={1}
+                    max={500}
+                    value={synonymMaxTrades}
+                    onChange={setSynonymMaxTrades}
+                    disabled={generatingSynonyms}
+                    style={{ width: 72 }}
+                  />
+                  <Popconfirm
+                    title="Generate synonyms with AI?"
+                    description="Fills empty synonyms via Groq (chunked by Max / run). Already-filled trades are skipped."
+                    okText="Generate"
+                    onConfirm={generateSynonyms}
+                  >
+                    <Button loading={generatingSynonyms} disabled={generatingSynonyms}>
+                      Generate synonyms with AI
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              </Space>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {isAdmin && cascadeOpen ? (
+        <Card
+          style={{ borderRadius: 12, marginBottom: 20 }}
+          styles={{ body: { padding: isMobile ? 12 : 20 } }}
+          title={
+            <Space wrap>
+              <span>{editing ? 'Edit trade' : 'Add trade'}</span>
+              {editing ? (
+                <Text type="secondary" style={{ fontWeight: 400, fontSize: 13 }}>
+                  {editing.name}
+                </Text>
+              ) : null}
+            </Space>
+          }
+          extra={
+            <Space wrap>
+              <Button onClick={closeCascade} disabled={saving}>
+                Cancel
               </Button>
-            </Popconfirm>
-          </Space>
-        </Space>
+              <Button type="primary" loading={saving} onClick={saveTrade}>
+                Save
+              </Button>
+            </Space>
+          }
+        >
+          <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12 }}>
+            Industry → Trade → Synonyms → Duties. For a new trade, Generate with AI
+            fills synonyms and duties for review before Save.
+          </Paragraph>
+          <TradeCascadeForm
+            key={cascadeKey}
+            ref={cascadeRef}
+            industries={industries}
+            trades={trades}
+            initialTrade={editing}
+            onIndustriesChanged={loadAll}
+            disabled={saving}
+          />
+        </Card>
       ) : null}
 
       <AsyncBusyBar
@@ -572,9 +701,10 @@ export default function TradesPage() {
         <Card
           size="small"
           title="Industries"
-          style={{ borderRadius: 16, marginBottom: 16 }}
+          style={{ borderRadius: 12, marginBottom: 16 }}
+          styles={{ body: { padding: isMobile ? 12 : 16 } }}
         >
-          <Space wrap>
+          <Space wrap size={[12, 8]}>
             {industries.map((ind) => (
               <Space key={ind.id} size={4}>
                 <Text>{ind.name}</Text>
@@ -606,12 +736,17 @@ export default function TradesPage() {
         </Card>
       ) : null}
 
-      <Card style={{ borderRadius: 16 }}>
+      <Card
+        style={{ borderRadius: 12 }}
+        styles={{ body: { padding: isMobile ? 12 : 20 } }}
+        title="Trades by industry"
+      >
         {!trades.length ? (
-          <Empty description="No trades yet. Seed from legacy or add one." />
+          <Empty description="No trades yet. Use Add trade above, or seed from legacy." />
         ) : (
           <Collapse
             defaultActiveKey={groupedSections.map((g) => g.key)}
+            style={{ background: 'transparent' }}
             items={groupedSections.map((group) => ({
               key: group.key,
               label: `${group.title} (${group.trades.length})`,
@@ -620,6 +755,7 @@ export default function TradesPage() {
                   rowKey="id"
                   columns={tradeColumns}
                   dataSource={group.trades}
+                  scroll={{ x: isMobile ? 640 : undefined }}
                   pagination={
                     group.trades.length > 20
                       ? { pageSize: 20, showSizeChanger: true }
@@ -632,34 +768,6 @@ export default function TradesPage() {
           />
         )}
       </Card>
-
-      <Modal
-        title={editing ? 'Edit trade' : 'Add trade'}
-        open={modalOpen}
-        onCancel={() => {
-          setModalOpen(false)
-          setEditing(null)
-        }}
-        onOk={saveTrade}
-        confirmLoading={saving}
-        okText="Save"
-        destroyOnHidden
-        width={isMobile ? '100%' : 980}
-      >
-        <Paragraph type="secondary" style={{ marginTop: 0 }}>
-          Industry → Trade → Synonyms → Duties. For a new trade, Generate with AI
-          fills synonyms and duties for review before Save.
-        </Paragraph>
-        <TradeCascadeForm
-          key={editing ? `edit-${editing.id}` : 'create'}
-          ref={cascadeRef}
-          industries={industries}
-          trades={trades}
-          initialTrade={editing}
-          onIndustriesChanged={loadAll}
-          disabled={saving}
-        />
-      </Modal>
 
       <Modal
         title="Generate all trades for an industry"
