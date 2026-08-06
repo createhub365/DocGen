@@ -42,7 +42,14 @@ const colStyle = {
 }
 
 const TradeCascadeForm = forwardRef(function TradeCascadeForm(
-  { industries, trades, initialTrade, onIndustriesChanged, disabled },
+  {
+    industries,
+    trades,
+    initialTrade,
+    onIndustriesChanged,
+    onGenerateAllTrades,
+    disabled,
+  },
   ref
 ) {
   const message = useAppMessage()
@@ -421,6 +428,16 @@ const TradeCascadeForm = forwardRef(function TradeCascadeForm(
             ) : null}
           </>
         )}
+        {typeof onGenerateAllTrades === 'function' ? (
+          <Button
+            size="small"
+            style={{ marginTop: 12 }}
+            disabled={disabled || industryId == null || aiGenerating}
+            onClick={() => onGenerateAllTrades(industryId)}
+          >
+            Generate all trades for industry
+          </Button>
+        ) : null}
       </Col>
 
       <Col flex="0 0 24%" style={colStyle}>

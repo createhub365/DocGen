@@ -7,8 +7,6 @@ import {
   Collapse,
   Divider,
   Empty,
-  Form,
-  Input,
   InputNumber,
   Modal,
   Popconfirm,
@@ -27,10 +25,8 @@ import {
 } from '@ant-design/icons'
 import {
   createOrgTrade,
-  createOrgTradeIndustry,
   deleteOrgTrade,
   generateIndustryTradeBatch,
-  generateOrgTradeSynonyms,
   listOrgTradeIndustries,
   listOrgTrades,
   readPlatformErrorDetail,
@@ -40,7 +36,6 @@ import {
 } from '../../api/platformClient'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
-import { useAsyncAction } from '../../hooks/useAsyncAction'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import AsyncBusyBar from '../../components/ui/AsyncBusyBar'
@@ -68,14 +63,7 @@ export default function TradesPage() {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving] = useState(false)
   const [seeding, setSeeding] = useState(false)
-  const [industryModalOpen, setIndustryModalOpen] = useState(false)
-  const [savingIndustry, setSavingIndustry] = useState(false)
-  const [synonymSummary, setSynonymSummary] = useState(null)
-  const [synonymMaxTrades, setSynonymMaxTrades] = useState(20)
-  const [industryForm] = Form.useForm()
   const cascadeRef = useRef(null)
-  const { runNamed, isLoading } = useAsyncAction()
-  const generatingSynonyms = isLoading('generateSynonyms')
 
   // Bulk industry generate
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -214,31 +202,6 @@ export default function TradesPage() {
     }
   }
 
-  const openCreateIndustry = () => {
-    industryForm.setFieldsValue({ name: '' })
-    setIndustryModalOpen(true)
-  }
-
-  const saveIndustry = async () => {
-    try {
-      const values = await industryForm.validateFields()
-      setSavingIndustry(true)
-      await createOrgTradeIndustry({
-        name: String(values.name || '').trim(),
-      })
-      message.success('Industry created')
-      setIndustryModalOpen(false)
-      await loadAll()
-    } catch (error) {
-      if (error?.errorFields) return
-      message.error(
-        (await readPlatformErrorDetail(error)) || 'Could not save industry'
-      )
-    } finally {
-      setSavingIndustry(false)
-    }
-  }
-
   const seedFromLegacy = async () => {
     setSeeding(true)
     try {
@@ -262,48 +225,14 @@ export default function TradesPage() {
     }
   }
 
-  const generateSynonyms = async () => {
-    setSynonymSummary(null)
-    try {
-      const max =
-        synonymMaxTrades != null && synonymMaxTrades !== ''
-          ? Number(synonymMaxTrades)
-          : null
-      const result = await runNamed('generateSynonyms', () =>
-        generateOrgTradeSynonyms({ max_trades: max })
-      )
-      setSynonymSummary(result)
-      if (result.updated > 0) {
-        const rem = result.remaining_without_synonyms || 0
-        message.success(
-          rem > 0
-            ? `Generated synonyms for ${result.updated} trade${
-                result.updated === 1 ? '' : 's'
-              } (${rem} still empty — run again to continue)`
-            : `Generated synonyms for ${result.updated} trade${
-                result.updated === 1 ? '' : 's'
-              }`
-        )
-        await loadAll()
-      } else if (result.skipped_already_had === result.total_checked) {
-        message.info('All trades already have synonyms')
-      } else {
-        message.warning('No synonyms were generated')
-      }
-    } catch (error) {
-      const detail =
-        (await readPlatformErrorDetail(error)) ||
-        'Could not generate synonyms with AI'
-      message.error(detail)
-    }
-  }
-
-  const openBulkGenerate = () => {
+  const openBulkGenerate = (industryId) => {
     setBulkOpen(true)
     setBulkSuggestions(null)
     setBulkSelected([])
     setBulkSummary(null)
-    setBulkIndustryId(industries[0]?.id)
+    setBulkIndustryId(
+      industryId != null ? industryId : industries[0]?.id
+    )
   }
 
   const runBulkSuggest = async () => {
@@ -487,189 +416,95 @@ export default function TradesPage() {
 
       {isAdmin ? (
         <Card
-          size="small"
-          style={{ borderRadius: 12, marginBottom: 16 }}
+          style={{ borderRadius: 12, marginBottom: 20 }}
           styles={{ body: { padding: isMobile ? 12 : 16 } }}
+          title={
+            cascadeOpen ? (
+              <Space wrap>
+                <span>{editing ? 'Edit trade' : 'Add trade'}</span>
+                {editing ? (
+                  <Text type="secondary" style={{ fontWeight: 400, fontSize: 13 }}>
+                    {editing.name}
+                  </Text>
+                ) : null}
+              </Space>
+            ) : (
+              'Trade Bank tools'
+            )
+          }
+          extra={
+            cascadeOpen ? (
+              <Space wrap>
+                <Button onClick={closeCascade} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button type="primary" loading={saving} onClick={saveTrade}>
+                  Save
+                </Button>
+              </Space>
+            ) : null
+          }
         >
           <div
             style={{
               display: 'flex',
               flexWrap: 'wrap',
-              alignItems: 'flex-start',
-              gap: isMobile ? 12 : 8,
-              rowGap: 12,
+              alignItems: 'center',
+              gap: 8,
             }}
           >
-            <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-              <Text
-                type="secondary"
-                style={{
-                  display: 'block',
-                  fontSize: 11,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  marginBottom: 6,
-                }}
-              >
-                Create
-              </Text>
-              <Space wrap size={8}>
-                <Button
-                  type="primary"
-                  icon={cascadeOpen && !editing ? <UpOutlined /> : <PlusOutlined />}
-                  onClick={() => {
-                    if (cascadeOpen && !editing) {
-                      closeCascade()
-                    } else {
-                      openCreate()
-                    }
-                  }}
-                >
-                  {cascadeOpen && !editing ? 'Hide add trade' : 'Add trade'}
-                </Button>
-                <Button icon={<PlusOutlined />} onClick={openCreateIndustry}>
-                  Add industry
-                </Button>
-              </Space>
-            </div>
-
-            <Divider
-              type={isMobile ? 'horizontal' : 'vertical'}
-              style={{
-                height: isMobile ? 1 : 48,
-                margin: isMobile ? '0' : '0 4px',
-                alignSelf: isMobile ? 'stretch' : 'center',
+            <Button
+              type="primary"
+              icon={cascadeOpen && !editing ? <UpOutlined /> : <PlusOutlined />}
+              onClick={() => {
+                if (cascadeOpen && !editing) {
+                  closeCascade()
+                } else {
+                  openCreate()
+                }
               }}
-            />
-
-            <div style={{ flex: '2 1 360px', minWidth: 0 }}>
-              <Text
-                type="secondary"
-                style={{
-                  display: 'block',
-                  fontSize: 11,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  marginBottom: 6,
-                }}
-              >
-                Bulk / AI tools
-              </Text>
-              <Space wrap size={8} align="center">
-                <Button onClick={openBulkGenerate} disabled={!industries.length}>
-                  Generate all trades for industry
-                </Button>
-                <Popconfirm
-                  title="Seed from legacy trade bank?"
-                  description="Copies industries, occupations, and duties. Existing names are skipped."
-                  okText="Seed"
-                  onConfirm={seedFromLegacy}
-                >
-                  <Button icon={<ImportOutlined />} loading={seeding}>
-                    Seed from legacy trade bank
-                  </Button>
-                </Popconfirm>
-                <Space size={6} align="center" wrap>
-                  <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-                    Max / run
-                  </Text>
-                  <InputNumber
-                    min={1}
-                    max={500}
-                    value={synonymMaxTrades}
-                    onChange={setSynonymMaxTrades}
-                    disabled={generatingSynonyms}
-                    style={{ width: 72 }}
-                  />
-                  <Popconfirm
-                    title="Generate synonyms with AI?"
-                    description="Fills empty synonyms via Groq (chunked by Max / run). Already-filled trades are skipped."
-                    okText="Generate"
-                    onConfirm={generateSynonyms}
-                  >
-                    <Button loading={generatingSynonyms} disabled={generatingSynonyms}>
-                      Generate synonyms with AI
-                    </Button>
-                  </Popconfirm>
-                </Space>
-              </Space>
-            </div>
+            >
+              {cascadeOpen && !editing ? 'Hide add trade' : 'Add trade'}
+            </Button>
+            <Popconfirm
+              title="Seed from legacy trade bank?"
+              description="Copies industries, occupations, and duties. Existing names are skipped."
+              okText="Seed"
+              onConfirm={seedFromLegacy}
+            >
+              <Button icon={<ImportOutlined />} loading={seeding}>
+                Seed from legacy trade bank
+              </Button>
+            </Popconfirm>
           </div>
-        </Card>
-      ) : null}
 
-      {isAdmin && cascadeOpen ? (
-        <Card
-          style={{ borderRadius: 12, marginBottom: 20 }}
-          styles={{ body: { padding: isMobile ? 12 : 20 } }}
-          title={
-            <Space wrap>
-              <span>{editing ? 'Edit trade' : 'Add trade'}</span>
-              {editing ? (
-                <Text type="secondary" style={{ fontWeight: 400, fontSize: 13 }}>
-                  {editing.name}
-                </Text>
-              ) : null}
-            </Space>
-          }
-          extra={
-            <Space wrap>
-              <Button onClick={closeCascade} disabled={saving}>
-                Cancel
-              </Button>
-              <Button type="primary" loading={saving} onClick={saveTrade}>
-                Save
-              </Button>
-            </Space>
-          }
-        >
-          <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12 }}>
-            Industry → Trade → Synonyms → Duties. For a new trade, Generate with AI
-            fills synonyms and duties for review before Save.
-          </Paragraph>
-          <TradeCascadeForm
-            key={cascadeKey}
-            ref={cascadeRef}
-            industries={industries}
-            trades={trades}
-            initialTrade={editing}
-            onIndustriesChanged={loadAll}
-            disabled={saving}
-          />
+          {cascadeOpen ? (
+            <>
+              <Divider style={{ margin: '16px 0' }} />
+              <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12 }}>
+                Industry → Trade → Synonyms → Duties. Add industry from the Industry
+                column; generate all trades from the Trade column. For a new trade,
+                Generate with AI fills synonyms and duties for review before Save.
+              </Paragraph>
+              <TradeCascadeForm
+                key={cascadeKey}
+                ref={cascadeRef}
+                industries={industries}
+                trades={trades}
+                initialTrade={editing}
+                onIndustriesChanged={loadAll}
+                onGenerateAllTrades={openBulkGenerate}
+                disabled={saving}
+              />
+            </>
+          ) : null}
         </Card>
       ) : null}
 
       <AsyncBusyBar
-        active={generatingSynonyms || bulkGenerating}
-        label={
-          bulkGenerating
-            ? 'Generating industry trades with AI… stay on this page.'
-            : 'Generating synonyms with AI… stay on this page until it finishes.'
-        }
+        active={bulkGenerating}
+        label="Generating industry trades with AI… stay on this page."
       />
-
-      {synonymSummary ? (
-        <Alert
-          type={synonymSummary.failed?.length ? 'warning' : 'success'}
-          showIcon
-          closable
-          onClose={() => setSynonymSummary(null)}
-          style={{ marginBottom: 16 }}
-          message="Synonym generation finished"
-          description={
-            <div>
-              Checked {synonymSummary.total_checked}, updated{' '}
-              {synonymSummary.updated}, skipped (already had){' '}
-              {synonymSummary.skipped_already_had}, failed{' '}
-              {synonymSummary.failed?.length || 0}
-              {synonymSummary.remaining_without_synonyms
-                ? `, remaining empty ${synonymSummary.remaining_without_synonyms}`
-                : ''}
-              .
-            </div>
-          }
-        />
-      ) : null}
 
       <Card
         style={{ borderRadius: 12 }}
@@ -814,26 +649,6 @@ export default function TradesPage() {
             }
           />
         ) : null}
-      </Modal>
-
-      <Modal
-        title="Add industry"
-        open={industryModalOpen}
-        onCancel={() => setIndustryModalOpen(false)}
-        onOk={saveIndustry}
-        confirmLoading={savingIndustry}
-        okText="Save"
-        destroyOnHidden
-      >
-        <Form form={industryForm} layout="vertical" requiredMark={false}>
-          <Form.Item
-            name="name"
-            label="Industry name"
-            rules={[{ required: true, message: 'Name is required' }]}
-          >
-            <Input placeholder="Construction" />
-          </Form.Item>
-        </Form>
       </Modal>
     </div>
   )

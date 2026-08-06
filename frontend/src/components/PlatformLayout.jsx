@@ -363,7 +363,8 @@ export default function PlatformLayout() {
         color: 'white',
       }}
     >
-      <SidebarBrand />
+      {/* Desktop + chrome header: brand is in the merged top band */}
+      {isMobile || !showHeader ? <SidebarBrand /> : null}
       <SidebarNavBody onNavigate={() => setDrawerOpen(false)} />
     </div>
   )
@@ -427,6 +428,74 @@ export default function PlatformLayout() {
           </div>
         )}
 
+        {/* Desktop: org brand + page title share one top band */}
+        {!isMobile && showHeader ? (
+          <div
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'stretch',
+              minHeight: 72,
+              borderBottom: '1px solid #f0e4e4',
+              boxShadow: '0 1px 0 rgba(107, 15, 15, 0.04)',
+              zIndex: 2,
+            }}
+          >
+            <div
+              style={{
+                width: SIDEBAR_WIDTH,
+                flexShrink: 0,
+                background:
+                  'linear-gradient(180deg, var(--sidebar-from) 0%, var(--sidebar-to) 100%)',
+                color: 'white',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              <SidebarBrand />
+            </div>
+            <header
+              className="platform-shell-header"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                minHeight: 72,
+                padding: `14px ${edgePad}px`,
+                paddingRight: edgePad + railPad,
+                background: 'rgba(253, 247, 247, 0.98)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                gap: 4,
+                overflow: 'hidden',
+              }}
+            >
+              {chrome.header}
+            </header>
+          </div>
+        ) : null}
+
+        {isMobile && showHeader ? (
+          <header
+            className="platform-shell-header"
+            style={{
+              flexShrink: 0,
+              minHeight: 56,
+              padding: `10px ${edgePad}px`,
+              borderBottom: '1px solid #f0e4e4',
+              background: 'rgba(253, 247, 247, 0.98)',
+              boxShadow: '0 1px 0 rgba(107, 15, 15, 0.04)',
+              zIndex: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              gap: 4,
+              overflow: 'hidden',
+            }}
+          >
+            {chrome.header}
+          </header>
+        ) : null}
+
         <div
           style={{
             flex: 1,
@@ -474,29 +543,6 @@ export default function PlatformLayout() {
               overflow: 'hidden',
             }}
           >
-            {showHeader && (
-              <header
-                className="platform-shell-header"
-                style={{
-                  flexShrink: 0,
-                  minHeight: isMobile ? 56 : 72,
-                  padding: `${isMobile ? 10 : 14}px ${edgePad}px`,
-                  paddingRight: edgePad + railPad,
-                  borderBottom: '1px solid #f0e4e4',
-                  background: 'rgba(253, 247, 247, 0.98)',
-                  boxShadow: '0 1px 0 rgba(107, 15, 15, 0.04)',
-                  zIndex: 2,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  gap: 4,
-                  overflow: 'hidden',
-                }}
-              >
-                {chrome.header}
-              </header>
-            )}
-
             <div
               style={{
                 flex: 1,
