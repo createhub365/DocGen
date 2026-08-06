@@ -1,0 +1,52 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review this pull request for the DocGen Pro platform. This 
+            project has established conventions — check the diff against 
+            these specifically:
+            
+            1. Legacy files (backend/routers/documents.py, admin.py, 
+               filters.py, trade_bank.py; frontend legacy pages under 
+               src/pages/ that aren't under /platform) must NEVER be 
+               touched unless the task explicitly required it. Flag any 
+               unexpected legacy file changes as a blocker.
+            2. Every org-scoped database query must filter by org_id in 
+               the SAME query as any id lookup (never fetch-then-check). 
+               Flag any endpoint that fetches a row by id without an 
+               org_id filter in the same query.
+            3. Cross-org access must return 404, never 403 (403 leaks 
+               that the resource exists in another org).
+            4. Any new Alembic migration must be additive where possible 
+               (nullable columns, new tables) — flag destructive schema 
+               changes (dropping columns, NOT NULL without a default) as 
+               needing extra scrutiny.
+            5. No secrets, API keys, connection strings, or passwords 
+               should appear anywhere in the diff, including test files 
+               or comments.
+            6. New backend logic should have corresponding tests. Flag 
+               PRs that add non-trivial logic with zero test coverage.
+            7. Check for scope creep — does the diff touch files 
+               unrelated to what the PR description says it's doing?
+            
+            Post specific, actionable findings as PR review comments. If 
+            everything looks clean, say so briefly rather than inventing 
+            issues.
