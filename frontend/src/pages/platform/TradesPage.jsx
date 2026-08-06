@@ -29,7 +29,6 @@ import {
   createOrgTrade,
   createOrgTradeIndustry,
   deleteOrgTrade,
-  deleteOrgTradeIndustry,
   generateIndustryTradeBatch,
   generateOrgTradeSynonyms,
   listOrgTradeIndustries,
@@ -38,7 +37,6 @@ import {
   seedOrgTradesFromLegacy,
   suggestIndustryTrades,
   updateOrgTrade,
-  updateOrgTradeIndustry,
 } from '../../api/platformClient'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
@@ -71,7 +69,6 @@ export default function TradesPage() {
   const [saving, setSaving] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [industryModalOpen, setIndustryModalOpen] = useState(false)
-  const [editingIndustry, setEditingIndustry] = useState(null)
   const [savingIndustry, setSavingIndustry] = useState(false)
   const [synonymSummary, setSynonymSummary] = useState(null)
   const [synonymMaxTrades, setSynonymMaxTrades] = useState(20)
@@ -218,14 +215,7 @@ export default function TradesPage() {
   }
 
   const openCreateIndustry = () => {
-    setEditingIndustry(null)
     industryForm.setFieldsValue({ name: '' })
-    setIndustryModalOpen(true)
-  }
-
-  const openEditIndustry = (row) => {
-    setEditingIndustry(row)
-    industryForm.setFieldsValue({ name: row.name })
     setIndustryModalOpen(true)
   }
 
@@ -233,14 +223,10 @@ export default function TradesPage() {
     try {
       const values = await industryForm.validateFields()
       setSavingIndustry(true)
-      const payload = { name: String(values.name || '').trim() }
-      if (editingIndustry) {
-        await updateOrgTradeIndustry(editingIndustry.id, payload)
-        message.success('Industry updated')
-      } else {
-        await createOrgTradeIndustry(payload)
-        message.success('Industry created')
-      }
+      await createOrgTradeIndustry({
+        name: String(values.name || '').trim(),
+      })
+      message.success('Industry created')
       setIndustryModalOpen(false)
       await loadAll()
     } catch (error) {
@@ -250,18 +236,6 @@ export default function TradesPage() {
       )
     } finally {
       setSavingIndustry(false)
-    }
-  }
-
-  const removeIndustry = async (row) => {
-    try {
-      await deleteOrgTradeIndustry(row.id)
-      message.success(`Deleted industry “${row.name}” (trades kept, ungrouped)`)
-      await loadAll()
-    } catch (error) {
-      message.error(
-        (await readPlatformErrorDetail(error)) || 'Could not delete industry'
-      )
     }
   }
 
@@ -697,45 +671,6 @@ export default function TradesPage() {
         />
       ) : null}
 
-      {isAdmin && industries.length ? (
-        <Card
-          size="small"
-          title="Industries"
-          style={{ borderRadius: 12, marginBottom: 16 }}
-          styles={{ body: { padding: isMobile ? 12 : 16 } }}
-        >
-          <Space wrap size={[12, 8]}>
-            {industries.map((ind) => (
-              <Space key={ind.id} size={4}>
-                <Text>{ind.name}</Text>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<EditOutlined />}
-                  aria-label={`Rename ${ind.name}`}
-                  onClick={() => openEditIndustry(ind)}
-                />
-                <Popconfirm
-                  title="Delete this industry?"
-                  description="Trades stay; they become ungrouped."
-                  okText="Delete"
-                  okType="danger"
-                  onConfirm={() => removeIndustry(ind)}
-                >
-                  <Button
-                    type="text"
-                    size="small"
-                    danger
-                    icon={<DeleteOutlined />}
-                    aria-label={`Delete ${ind.name}`}
-                  />
-                </Popconfirm>
-              </Space>
-            ))}
-          </Space>
-        </Card>
-      ) : null}
-
       <Card
         style={{ borderRadius: 12 }}
         styles={{ body: { padding: isMobile ? 12 : 20 } }}
@@ -745,7 +680,7 @@ export default function TradesPage() {
           <Empty description="No trades yet. Use Add trade above, or seed from legacy." />
         ) : (
           <Collapse
-            defaultActiveKey={groupedSections.map((g) => g.key)}
+            defaultActiveKey={[]}
             style={{ background: 'transparent' }}
             items={groupedSections.map((group) => ({
               key: group.key,
@@ -882,7 +817,7 @@ export default function TradesPage() {
       </Modal>
 
       <Modal
-        title={editingIndustry ? 'Rename industry' : 'Add industry'}
+        title="Add industry"
         open={industryModalOpen}
         onCancel={() => setIndustryModalOpen(false)}
         onOk={saveIndustry}
