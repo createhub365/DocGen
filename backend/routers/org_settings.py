@@ -46,6 +46,7 @@ ALLOWED_ORG_THEME_KEYS = frozenset(
         "forest",
         "slate",
         "terracotta",
+        "ledger-mist",
     }
 )
 
