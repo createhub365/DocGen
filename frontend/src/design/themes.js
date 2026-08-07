@@ -1,13 +1,18 @@
 /**
- * Org-level UI theme presets.
+ * Org-level UI theme presets + per-user light/dark color mode.
  *
  * Color keys match design/tokens.js `colors` (camelCase). Applying a theme
  * writes the same CSS custom properties already used in global.css
  * (--primary, --sidebar-from, …) plus Ant Design token overrides.
  *
- * theme_key null / "classic" → current maroon/gold (visually identical to today).
+ * theme_key null / unset → Ledger Mist (platform default).
+ * Explicit preset keys (classic, navy, …) are unchanged for orgs that selected them.
+ *
+ * Light/dark is a separate dimension (see ColorModeContext) — each preset
+ * keeps its primary/accent hue in dark mode; surfaces/text/borders invert.
  */
 
+import { theme as antdTheme } from 'antd'
 import {
   antTheme as baseAntTheme,
   colors as classicColors,
@@ -16,6 +21,9 @@ import {
   spacing,
   typography,
 } from './tokens'
+
+/** Fallback when org theme_key is null/blank/unknown. */
+export const DEFAULT_THEME_KEY = 'ledger-mist'
 
 function hexToRgb(hex) {
   const h = String(hex || '').replace('#', '')
@@ -49,10 +57,51 @@ function withCssExtras(colors, extras) {
   }
 }
 
+/**
+ * Dark variant: keep primary/accent/(status) hues; invert canvas + ink.
+ * Optional overrides tune undertone per preset (warm classic, cool navy, …).
+ */
+function makeDarkColors(light, overrides = {}) {
+  const {
+    sidebarMid: sidebarMidOverride,
+    borderLight: borderLightOverride,
+    ...colorOverrides
+  } = overrides
+  const merged = {
+    ...light,
+    surface: '#0F172A',
+    surface2: '#111827',
+    surface3: '#1E293B',
+    border: '#334155',
+    textPrimary: '#F8FAFC',
+    textSecondary: '#CBD5E1',
+    textMuted: '#94A3B8',
+    previewBg: '#020617',
+    ...colorOverrides,
+  }
+  return withCssExtras(merged, {
+    sidebarMid: sidebarMidOverride || light.sidebarMid || '#0B1220',
+    borderLight: borderLightOverride || '#1F2937',
+  })
+}
+
 const classic = withCssExtras(
   { ...classicColors },
   { sidebarMid: '#4A0A0A', borderLight: '#F0E5E5' }
 )
+
+const classicDark = makeDarkColors(classic, {
+  surface: '#140808',
+  surface2: '#1A0A0A',
+  surface3: '#2A1010',
+  border: '#5C2A2A',
+  textPrimary: '#FDF8F8',
+  textSecondary: '#E8D0D0',
+  textMuted: '#B89898',
+  previewBg: '#0A0404',
+  sidebarMid: '#3A0808',
+  borderLight: '#241010',
+})
 
 const navyColors = withCssExtras(
   {
@@ -83,6 +132,16 @@ const navyColors = withCssExtras(
   { sidebarMid: '#102038', borderLight: '#E6EDF5' }
 )
 
+const navyDark = makeDarkColors(navyColors, {
+  surface: '#0A1220',
+  surface2: '#0F1A2C',
+  surface3: '#162438',
+  border: '#2A3F5C',
+  primaryLight: '#4A7AB5',
+  sidebarMid: '#0C1829',
+  borderLight: '#121C2C',
+})
+
 const forestColors = withCssExtras(
   {
     primary: '#1B4332',
@@ -111,6 +170,16 @@ const forestColors = withCssExtras(
   },
   { sidebarMid: '#0E241A', borderLight: '#E6F0EA' }
 )
+
+const forestDark = makeDarkColors(forestColors, {
+  surface: '#071510',
+  surface2: '#0A1A12',
+  surface3: '#143528',
+  border: '#2A4A3A',
+  primaryLight: '#40916C',
+  sidebarMid: '#0A1A12',
+  borderLight: '#0C1C14',
+})
 
 const slateColors = withCssExtras(
   {
@@ -141,6 +210,17 @@ const slateColors = withCssExtras(
   { sidebarMid: '#162032', borderLight: '#EEF2F6' }
 )
 
+const slateDark = makeDarkColors(slateColors, {
+  surface: '#0B1220',
+  surface2: '#0F172A',
+  surface3: '#1E293B',
+  border: '#334155',
+  primaryLight: '#64748B',
+  accent: '#CBD5E1',
+  sidebarMid: '#111827',
+  borderLight: '#111827',
+})
+
 const terracottaColors = withCssExtras(
   {
     primary: '#9A3412',
@@ -169,6 +249,19 @@ const terracottaColors = withCssExtras(
   },
   { sidebarMid: '#5C220E', borderLight: '#F8EBE4' }
 )
+
+const terracottaDark = makeDarkColors(terracottaColors, {
+  surface: '#1A0C06',
+  surface2: '#221008',
+  surface3: '#3A1A0C',
+  border: '#6B3A22',
+  textPrimary: '#FFF7F3',
+  textSecondary: '#F0D5C8',
+  textMuted: '#C4A090',
+  primaryLight: '#EA580C',
+  sidebarMid: '#2A1008',
+  borderLight: '#1A0C06',
+})
 
 /** Ledger Mist — docs/design/STITCH_DESIGN.md (authoritative brand palette). */
 const ledgerMistColors = withCssExtras(
@@ -200,6 +293,16 @@ const ledgerMistColors = withCssExtras(
   { sidebarMid: '#162032', borderLight: '#EEF2F6' }
 )
 
+const ledgerMistDark = makeDarkColors(ledgerMistColors, {
+  surface: '#0B1220',
+  surface2: '#0F172A',
+  surface3: '#1E293B',
+  border: '#334155',
+  primaryLight: '#2DD4BF',
+  sidebarMid: '#111827',
+  borderLight: '#111827',
+})
+
 const ledgerMistTypography = {
   fontDisplay: "'Manrope', system-ui, sans-serif",
   fontBody: "'IBM Plex Sans', system-ui, sans-serif",
@@ -222,6 +325,7 @@ const ledgerMistRadius = {
  *   description: string,
  *   swatch: string[],
  *   colors: Record<string, string>,
+ *   darkColors: Record<string, string>,
  *   typography?: { fontDisplay: string, fontBody: string, fontMono: string },
  *   radius?: Record<string, number>,
  * }} ThemePreset
@@ -230,11 +334,27 @@ const ledgerMistRadius = {
 /** @type {ThemePreset[]} */
 export const THEME_PRESETS = [
   {
+    key: 'ledger-mist',
+    name: 'Ledger Mist',
+    description: 'Default — teal and slate',
+    swatch: [
+      ledgerMistColors.primary,
+      ledgerMistColors.accent,
+      ledgerMistColors.sidebarFrom,
+      ledgerMistColors.surface2,
+    ],
+    colors: ledgerMistColors,
+    darkColors: ledgerMistDark,
+    typography: ledgerMistTypography,
+    radius: ledgerMistRadius,
+  },
+  {
     key: 'classic',
     name: 'Classic Maroon',
-    description: 'Default maroon and gold',
+    description: 'Maroon and gold',
     swatch: [classic.primary, classic.accent, classic.sidebarFrom, classic.surface2],
     colors: classic,
+    darkColors: classicDark,
   },
   {
     key: 'navy',
@@ -242,6 +362,7 @@ export const THEME_PRESETS = [
     description: 'Navy blue with soft gold',
     swatch: [navyColors.primary, navyColors.accent, navyColors.sidebarFrom, navyColors.surface2],
     colors: navyColors,
+    darkColors: navyDark,
   },
   {
     key: 'forest',
@@ -254,6 +375,7 @@ export const THEME_PRESETS = [
       forestColors.surface2,
     ],
     colors: forestColors,
+    darkColors: forestDark,
   },
   {
     key: 'slate',
@@ -261,6 +383,7 @@ export const THEME_PRESETS = [
     description: 'Neutral charcoal and silver',
     swatch: [slateColors.primary, slateColors.accent, slateColors.sidebarFrom, slateColors.surface2],
     colors: slateColors,
+    darkColors: slateDark,
   },
   {
     key: 'terracotta',
@@ -273,34 +396,28 @@ export const THEME_PRESETS = [
       terracottaColors.surface2,
     ],
     colors: terracottaColors,
-  },
-  {
-    key: 'ledger-mist',
-    name: 'Ledger Mist',
-    description: 'Teal and slate — Stitch B2B exploration',
-    swatch: [
-      ledgerMistColors.primary,
-      ledgerMistColors.accent,
-      ledgerMistColors.sidebarFrom,
-      ledgerMistColors.surface2,
-    ],
-    colors: ledgerMistColors,
-    typography: ledgerMistTypography,
-    radius: ledgerMistRadius,
+    darkColors: terracottaDark,
   },
 ]
 
 const PRESET_BY_KEY = Object.fromEntries(THEME_PRESETS.map((p) => [p.key, p]))
 
-/** Resolve org theme_key (null → classic). */
+/** Resolve org theme_key (null → Ledger Mist default). */
 export function resolveThemeKey(themeKey) {
-  if (themeKey == null || String(themeKey).trim() === '') return 'classic'
+  if (themeKey == null || String(themeKey).trim() === '') return DEFAULT_THEME_KEY
   const key = String(themeKey).trim().toLowerCase()
-  return PRESET_BY_KEY[key] ? key : 'classic'
+  return PRESET_BY_KEY[key] ? key : DEFAULT_THEME_KEY
 }
 
 export function getThemePreset(themeKey) {
   return PRESET_BY_KEY[resolveThemeKey(themeKey)]
+}
+
+/** @param {'light' | 'dark'} [colorMode] */
+export function getThemeColors(themeKey, colorMode = 'light') {
+  const preset = getThemePreset(themeKey)
+  if (colorMode === 'dark') return preset.darkColors || preset.colors
+  return preset.colors
 }
 
 function camelToCssVar(key) {
@@ -309,15 +426,16 @@ function camelToCssVar(key) {
 
 /**
  * Apply theme CSS variables to document root (same names as injectCssVariables / :root).
+ * @param {string | null | undefined} themeKey
+ * @param {'light' | 'dark'} [colorMode]
  */
-export function applyThemeCssVariables(themeKey) {
+export function applyThemeCssVariables(themeKey, colorMode = 'light') {
   const preset = getThemePreset(themeKey)
   const root = document.documentElement
-  const colors = preset.colors
+  const colors = getThemeColors(themeKey, colorMode)
   Object.entries(colors).forEach(([key, value]) => {
     root.style.setProperty(camelToCssVar(key), value)
   })
-  // Aliases used by global.css
   if (colors.sidebarMid) root.style.setProperty('--sidebar-mid', colors.sidebarMid)
   if (colors.borderLight) root.style.setProperty('--border-light', colors.borderLight)
 
@@ -337,20 +455,27 @@ export function applyThemeCssVariables(themeKey) {
   root.style.setProperty('--font-display', fonts.fontDisplay)
   root.style.setProperty('--font-body', fonts.fontBody)
   root.style.setProperty('--font-mono', fonts.fontMono || typography.fontMono)
+
+  root.setAttribute('data-color-mode', colorMode === 'dark' ? 'dark' : 'light')
+  root.style.colorScheme = colorMode === 'dark' ? 'dark' : 'light'
 }
 
 /**
- * Ant Design ConfigProvider theme derived from a preset (keeps structure of tokens.antTheme).
+ * Ant Design ConfigProvider theme derived from a preset + color mode.
+ * @param {string | null | undefined} themeKey
+ * @param {'light' | 'dark'} [colorMode]
  */
-export function buildAntTheme(themeKey) {
+export function buildAntTheme(themeKey, colorMode = 'light') {
   const preset = getThemePreset(themeKey)
-  const { colors } = preset
+  const colors = getThemeColors(themeKey, colorMode)
   const shadows = shadowsForPrimary(colors.primary, colors.accent)
   const p = hexToRgb(colors.primary)
   const fonts = preset.typography || typography
   const radiusTokens = preset.radius || radius
+  const isDark = colorMode === 'dark'
   return {
     ...baseAntTheme,
+    algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
     token: {
       ...baseAntTheme.token,
       colorPrimary: colors.primary,
@@ -362,6 +487,7 @@ export function buildAntTheme(themeKey) {
       colorBorder: colors.border,
       colorBgContainer: colors.surface,
       colorBgLayout: colors.surface2,
+      colorBgElevated: colors.surface,
       borderRadius: radiusTokens.md,
       borderRadiusLG: radiusTokens.lg,
       fontFamily: fonts.fontBody,
@@ -377,11 +503,11 @@ export function buildAntTheme(themeKey) {
         hoverBorderColor: colors.primaryLight,
       },
       Select: {
-        optionSelectedBg: `rgba(${p.r}, ${p.g}, ${p.b}, 0.08)`,
+        optionSelectedBg: `rgba(${p.r}, ${p.g}, ${p.b}, ${isDark ? 0.22 : 0.08})`,
       },
       Table: {
         headerBg: colors.surface2,
-        rowHoverBg: colors.surface2,
+        rowHoverBg: colors.surface3,
       },
       Drawer: {
         ...baseAntTheme.components?.Drawer,
@@ -393,7 +519,7 @@ export function buildAntTheme(themeKey) {
 /** Reset inline theme overrides so :root stylesheet defaults apply again. */
 export function clearThemeCssVariables() {
   const root = document.documentElement
-  const sample = getThemePreset('classic').colors
+  const sample = getThemePreset(DEFAULT_THEME_KEY).colors
   Object.keys(sample).forEach((key) => {
     root.style.removeProperty(camelToCssVar(key))
   })
@@ -402,9 +528,11 @@ export function clearThemeCssVariables() {
   Object.keys(classicShadows).forEach((key) => {
     root.style.removeProperty(`--shadow-${key}`)
   })
+  root.removeAttribute('data-color-mode')
+  root.style.removeProperty('color-scheme')
 }
 
-const DEFAULT_META_THEME_COLOR = '#8B1A1A'
+const DEFAULT_META_THEME_COLOR = '#0F766E'
 
 /**
  * Update <meta name="theme-color"> for the current browser session
@@ -423,6 +551,6 @@ export function setDocumentThemeColor(hex) {
   meta.setAttribute('content', value)
 }
 
-export function getThemePrimary(themeKey) {
-  return getThemePreset(themeKey).colors.primary
+export function getThemePrimary(themeKey, colorMode = 'light') {
+  return getThemeColors(themeKey, colorMode).primary
 }
