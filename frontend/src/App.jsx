@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import FullPageSpinner from './components/ui/FullPageSpinner'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ColorModeProvider } from './context/ColorModeContext'
 import { PlatformAuthProvider, usePlatformAuth } from './context/PlatformAuthContext'
 import PlatformLayout, { ProtectedPlatformRoute } from './components/PlatformLayout'
 import PlatformThemeProvider from './components/PlatformThemeProvider'
@@ -191,9 +192,11 @@ export default function App() {
   return (
     <AuthProvider>
       <PlatformAuthProvider>
-        <PlatformThemeProvider>
-          <AppRoutes />
-        </PlatformThemeProvider>
+        <ColorModeProvider>
+          <PlatformThemeProvider>
+            <AppRoutes />
+          </PlatformThemeProvider>
+        </ColorModeProvider>
       </PlatformAuthProvider>
     </AuthProvider>
   )

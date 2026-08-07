@@ -23,6 +23,7 @@ import { Button, Drawer } from 'antd'
 import { fetchOrgLogoUrl } from '../api/platformClient'
 import { usePlatformAuth } from '../context/PlatformAuthContext'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import ColorModeToggle from './ColorModeToggle'
 import FullPageSpinner from './ui/FullPageSpinner'
 
 const NAV_ITEMS = [
@@ -303,6 +304,7 @@ function SidebarNavBody({ onNavigate }) {
             {role ? String(role).replace('_', ' ') : ''}
           </div>
         </div>
+        <ColorModeToggle variant="sidebar" onNavigate={onNavigate} />
         <button
           type="button"
           className="docflow-nav-item"
