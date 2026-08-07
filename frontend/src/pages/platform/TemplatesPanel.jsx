@@ -110,12 +110,12 @@ function DocumentThumbFallback({ onClick }) {
         width: '100%',
         aspectRatio: `${THUMB_W} / ${THUMB_H}`,
         borderRadius: 10,
-        background: '#f5eded',
-        border: '1px solid #f0e4e4',
+        background: 'var(--surface-3)',
+        border: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: '#8B1A1A',
+        color: 'var(--primary)',
         cursor: 'pointer',
         padding: 0,
       }}
@@ -185,9 +185,9 @@ function DocumentThumbPreview({
         aspectRatio: `${THUMB_W} / ${THUMB_H}`,
         borderRadius: 10,
         overflow: 'hidden',
-        border: '1px solid #f0e4e4',
-        background: '#fff',
-        boxShadow: '0 1px 3px rgba(107, 15, 15, 0.08)',
+        border: '1px solid var(--border)',
+        background: 'var(--surface)',
+        boxShadow: 'var(--shadow-sm)',
         padding: 0,
         cursor: 'zoom-in',
         // Avoid <button> UA compositing quirks that soften nested bitmaps.
@@ -723,7 +723,7 @@ export default function TemplatesPanel({
               borderRadius: 14,
               width: '100%',
               maxWidth: isMobile ? undefined : DOC_CARD_MAX_PX,
-              outline: selected ? '2px solid #8B1A1A' : undefined,
+              outline: selected ? '2px solid var(--primary)' : undefined,
               outlineOffset: 1,
             }}
           >
@@ -751,7 +751,7 @@ export default function TemplatesPanel({
                     top: 8,
                     right: 8,
                     zIndex: 2,
-                    background: 'rgba(255,255,255,0.92)',
+                    background: 'color-mix(in srgb, var(--surface) 92%, transparent)',
                     borderRadius: 6,
                     padding: 2,
                     lineHeight: 1,
@@ -936,8 +936,8 @@ export default function TemplatesPanel({
           style={{
             borderRadius: 12,
             marginBottom: 16,
-            background: '#faf7f7',
-            borderColor: '#e8d4d4',
+            background: 'var(--surface-2)',
+            borderColor: 'var(--border)',
           }}
         >
           <Space wrap align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
@@ -1085,7 +1085,7 @@ export default function TemplatesPanel({
                   >
                     <Space direction="vertical" size={8} style={{ width: '100%' }}>
                       <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                        <FolderOutlined style={{ fontSize: 28, color: '#8B1A1A' }} />
+                        <FolderOutlined style={{ fontSize: 28, color: 'var(--primary)' }} />
                         {canManage ? (
                           <Dropdown
                             menu={{
@@ -1247,7 +1247,7 @@ export default function TemplatesPanel({
                     percent={100}
                     status="active"
                     showInfo={false}
-                    strokeColor={{ from: '#1677ff', to: '#69b1ff' }}
+                    strokeColor={{ from: 'var(--primary)', to: 'var(--primary-light)' }}
                   />
                 </>
               ) : (

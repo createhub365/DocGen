@@ -80,8 +80,8 @@ function StatCard({ title, value, icon, onClick }) {
         cursor: 'pointer',
         border: `1px solid ${BRAND.border}`,
         borderRadius: 12,
-        background: '#fff',
-        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+        background: 'var(--surface)',
+        boxShadow: 'var(--shadow-sm)',
         font: 'inherit',
         color: 'inherit',
         transition: 'border-color 160ms ease, box-shadow 160ms ease',
@@ -111,12 +111,12 @@ function StatCard({ title, value, icon, onClick }) {
               fontWeight: 700,
               lineHeight: 1.2,
               letterSpacing: '-0.02em',
-              color: '#1f1f1f',
+              color: 'var(--text-primary)',
             }}
           >
             {value}
           </div>
-          <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)', marginTop: 2 }}>{title}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{title}</div>
         </div>
       </div>
     </button>

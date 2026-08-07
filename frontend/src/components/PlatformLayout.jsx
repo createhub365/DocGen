@@ -129,15 +129,15 @@ function OrgAvatar({ name, logoUrl, size = 44 }) {
         width: size,
         height: size,
         borderRadius: '50%',
-        background: 'rgba(212,160,23,0.22)',
-        border: '1px solid rgba(212,160,23,0.35)',
+        background: 'color-mix(in srgb, var(--accent) 22%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
         fontSize: Math.round(size * 0.42),
         fontWeight: 800,
-        color: '#F0D078',
+        color: 'var(--accent-light)',
         letterSpacing: '-0.02em',
       }}
     >
@@ -225,7 +225,7 @@ function PoweredByDocFlow() {
         opacity: 0.55,
       }}
     >
-      <FileTextOutlined style={{ fontSize: 11, color: 'rgba(212,160,23,0.55)' }} />
+      <FileTextOutlined style={{ fontSize: 11, color: 'color-mix(in srgb, var(--accent) 55%, transparent)' }} />
       <span
         style={{
           fontSize: 10,
@@ -380,7 +380,7 @@ export default function PlatformLayout() {
           flexDirection: 'column',
           height: '100vh',
           overflow: 'hidden',
-          background: 'var(--surface-2, #FDF7F7)',
+          background: 'var(--surface-2)',
         }}
       >
         {isMobile && (
@@ -438,8 +438,8 @@ export default function PlatformLayout() {
               display: 'flex',
               alignItems: 'stretch',
               minHeight: 72,
-              borderBottom: '1px solid #f0e4e4',
-              boxShadow: '0 1px 0 rgba(107, 15, 15, 0.04)',
+              borderBottom: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
               zIndex: 2,
             }}
           >
@@ -463,7 +463,7 @@ export default function PlatformLayout() {
                 minHeight: 72,
                 padding: `14px ${edgePad}px`,
                 paddingRight: edgePad + railPad,
-                background: 'rgba(253, 247, 247, 0.98)',
+                background: 'var(--surface)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
@@ -483,9 +483,9 @@ export default function PlatformLayout() {
               flexShrink: 0,
               minHeight: 56,
               padding: `10px ${edgePad}px`,
-              borderBottom: '1px solid #f0e4e4',
-              background: 'rgba(253, 247, 247, 0.98)',
-              boxShadow: '0 1px 0 rgba(107, 15, 15, 0.04)',
+              borderBottom: '1px solid var(--border)',
+              background: 'var(--surface)',
+              boxShadow: 'var(--shadow-sm)',
               zIndex: 2,
               display: 'flex',
               flexDirection: 'column',
@@ -577,8 +577,8 @@ export default function PlatformLayout() {
                     width: RIGHT_RAIL_WIDTH,
                     flexShrink: 0,
                     height: '100%',
-                    borderLeft: '1px solid #f0e4e4',
-                    background: 'rgba(253, 247, 247, 0.7)',
+                    borderLeft: '1px solid var(--border)',
+                    background: 'var(--surface-2)',
                   }}
                 />
               )}
@@ -592,9 +592,9 @@ export default function PlatformLayout() {
                   padding: `${isMobile ? 12 : 14}px ${edgePad}px`,
                   paddingRight: edgePad + railPad,
                   paddingBottom: `max(${isMobile ? 12 : 14}px, env(safe-area-inset-bottom))`,
-                  borderTop: '1px solid #f0e4e4',
-                  background: 'rgba(253, 247, 247, 0.98)',
-                  boxShadow: '0 -1px 0 rgba(107, 15, 15, 0.04)',
+                  borderTop: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  boxShadow: 'var(--shadow-sm)',
                   zIndex: 2,
                   display: 'flex',
                   justifyContent: isMobile ? 'stretch' : 'flex-end',

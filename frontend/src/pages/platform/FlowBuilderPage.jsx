@@ -482,7 +482,7 @@ function CustomFieldsPanel({ step, editable, documentTypeId, onChanged }) {
   )
 
   return (
-    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #f0e4e4' }}>
+    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
         <Text strong>Fields</Text>
         {editable && (
@@ -501,7 +501,7 @@ function CustomFieldsPanel({ step, editable, documentTypeId, onChanged }) {
                 alignItems: 'center',
                 gap: 8,
                 padding: '9px 10px',
-                background: '#faf7f7',
+                background: 'var(--surface-2)',
                 borderRadius: 8,
               }}
             >
@@ -602,7 +602,7 @@ function StepCard({
       style={{
         borderRadius: 12,
         opacity: step.is_enabled ? 1 : 0.67,
-        borderColor: editable ? '#e8d8d8' : '#e5e5e5',
+        borderColor: editable ? 'var(--border)' : 'var(--border)',
       }}
     >
       <div
@@ -684,7 +684,7 @@ function StepCard({
       </div>
 
       {step.step_type === 'dropdown' && (
-        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #f0e4e4' }}>
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
           <Text strong>Dropdown options</Text>
           <Space.Compact style={{ width: '100%', marginTop: 8 }}>
             <Input
@@ -718,7 +718,7 @@ function StepCard({
       )}
 
       {step.step_type === 'country_selector' && (
-        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #f0e4e4' }}>
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
           <Text strong>Country selector</Text>
           <Paragraph type="secondary" style={{ margin: '4px 0 10px', fontSize: 12 }}>
             Off = free-text name/code. On = world list with flags.
@@ -1151,7 +1151,7 @@ export default function FlowBuilderPage({
             Previously generated documents remain available for download.
           </p>
           {summaryBits.length ? (
-            <p style={{ marginBottom: 0, color: 'rgba(0,0,0,0.55)' }}>
+            <p style={{ marginBottom: 0, color: 'var(--text-muted)' }}>
               {summaryBits.join(', ')} will remain in history.
             </p>
           ) : null}
@@ -1518,8 +1518,8 @@ function FlowBuilderChrome({
                 gap: 8,
                 padding: '4px 10px',
                 borderRadius: 999,
-                background: '#faf3f3',
-                border: '1px solid #f0e4e4',
+                background: 'var(--surface-3)',
+                border: '1px solid var(--border)',
               }}
             >
               <span
@@ -1532,7 +1532,7 @@ function FlowBuilderChrome({
                   flexShrink: 0,
                 }}
               />
-              <Text style={{ fontSize: 13, fontWeight: 600, color: '#434343' }}>
+              <Text style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
                 Flow: {status.text}
               </Text>
             </span>

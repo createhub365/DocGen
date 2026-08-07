@@ -73,7 +73,7 @@ export default function InAppPdfViewerModal({ open, onClose, title, loadPdf }) {
       styles={{
         content: {
           border: `1px solid ${colors.border}`,
-          boxShadow: '0 4px 16px rgba(107, 15, 15, 0.08)',
+          boxShadow: 'var(--shadow-md)',
           paddingBottom: 0,
         },
         header: {
@@ -84,7 +84,7 @@ export default function InAppPdfViewerModal({ open, onClose, title, loadPdf }) {
           maxHeight: '80vh',
           overflowY: 'auto',
           padding: loading || errorDetail ? 24 : 0,
-          background: loading || errorDetail ? '#f5f5f5' : '#fff',
+          background: 'var(--surface-2)',
         },
       }}
     >
@@ -95,7 +95,7 @@ export default function InAppPdfViewerModal({ open, onClose, title, loadPdf }) {
       )}
       {!loading && errorDetail && (
         <div style={{ textAlign: 'center', padding: '32px 0' }}>
-          <FileWordOutlined style={{ fontSize: 48, color: '#ccc', marginBottom: 16 }} />
+          <FileWordOutlined style={{ fontSize: 48, color: 'var(--text-muted)', marginBottom: 16 }} />
           <Text type="secondary" style={{ display: 'block' }}>
             {errorDetail}
           </Text>
@@ -110,7 +110,7 @@ export default function InAppPdfViewerModal({ open, onClose, title, loadPdf }) {
               textAlign: 'center',
               padding: '6px 8px',
               fontSize: 12,
-              background: '#fafafa',
+              background: 'var(--surface-2)',
               borderBottom: `1px solid ${colors.border}`,
             }}
           >

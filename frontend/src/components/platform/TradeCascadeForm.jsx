@@ -35,7 +35,7 @@ const { Text, Paragraph } = Typography
 const { TextArea } = Input
 
 const colStyle = {
-  borderRight: '1px solid rgba(0,0,0,0.06)',
+  borderRight: '1px solid var(--border)',
   paddingRight: 12,
   paddingLeft: 4,
   minHeight: 280,

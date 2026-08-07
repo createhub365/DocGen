@@ -57,8 +57,8 @@ function ThemeSwatch({ colors }) {
             height: 18,
             borderRadius: '50%',
             background: c,
-            border: '1px solid rgba(0,0,0,0.08)',
-            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.25)',
+            border: '1px solid var(--border)',
+            boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--surface) 40%, transparent)',
           }}
         />
       ))}

@@ -12,7 +12,7 @@ const { Text } = Typography
 
 const PREVIEW_PAGE_WIDTH = 794
 
-/** Subtle 1px hairline — matches platform `colors.border` (#E8D8D8). */
+/** Subtle 1px hairline — uses theme border token. */
 const PAGE_FRAME = {
   border: `1px solid ${colors.border}`,
   boxShadow: 'none',
@@ -130,7 +130,7 @@ export default function OrgDocumentPreviewModal({
       styles={{
         content: {
           border: `1px solid ${colors.border}`,
-          boxShadow: '0 4px 16px rgba(107, 15, 15, 0.08)',
+          boxShadow: 'var(--shadow-md)',
           paddingBottom: 0,
         },
         header: {
@@ -141,7 +141,7 @@ export default function OrgDocumentPreviewModal({
           maxHeight: '80vh',
           overflowY: 'auto',
           padding: loading || mode === 'error' ? 24 : 0,
-          background: loading || mode === 'error' ? '#f5f5f5' : '#fff',
+          background: 'var(--surface-2)',
         },
       }}
     >
@@ -152,7 +152,7 @@ export default function OrgDocumentPreviewModal({
       )}
       {!loading && mode === 'error' && (
         <div style={{ textAlign: 'center', padding: '32px 0' }}>
-          <FileWordOutlined style={{ fontSize: 48, color: '#ccc', marginBottom: 16 }} />
+          <FileWordOutlined style={{ fontSize: 48, color: 'var(--text-muted)', marginBottom: 16 }} />
           <Text type="secondary" style={{ display: 'block' }}>
             {errorDetail || 'Preview could not be loaded.'}
           </Text>
@@ -182,7 +182,7 @@ export default function OrgDocumentPreviewModal({
               textAlign: 'center',
               padding: '6px 8px',
               fontSize: 12,
-              background: '#fafafa',
+              background: 'var(--surface-2)',
               borderBottom: `1px solid ${colors.border}`,
             }}
           >

@@ -958,7 +958,7 @@ export default function GenerateDocumentPage() {
         <Card style={{ borderRadius: 16, marginBottom: 16 }}>
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Space>
-              <CheckCircleOutlined style={{ color: '#389e0a', fontSize: 22 }} />
+              <CheckCircleOutlined style={{ color: 'var(--success)', fontSize: 22 }} />
               <Text strong>Document generated successfully</Text>
             </Space>
             <Text type="secondary">id {result.document_id}</Text>
@@ -969,7 +969,7 @@ export default function GenerateDocumentPage() {
                   border: `1px solid ${colors.border}`,
                   borderRadius: 12,
                   overflow: 'hidden',
-                  background: '#fafafa',
+                  background: 'var(--surface-2)',
                   maxHeight: 420,
                   overflowY: 'auto',
                 }}
@@ -1178,7 +1178,7 @@ function WizardStepsProgress({ steps, pageIndex, isReview, totalSteps }) {
           style={{
             height: 6,
             borderRadius: 4,
-            background: '#f0e4e4',
+            background: 'var(--border)',
             overflow: 'hidden',
           }}
         >
@@ -1186,7 +1186,7 @@ function WizardStepsProgress({ steps, pageIndex, isReview, totalSteps }) {
             style={{
               width: `${Math.min(100, Math.max(8, ((current + 1) / Math.max(totalSteps, 1)) * 100))}%`,
               height: '100%',
-              background: '#8B1A1A',
+              background: 'var(--primary)',
               borderRadius: 4,
               transition: 'width 200ms ease',
             }}

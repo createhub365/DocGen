@@ -154,8 +154,8 @@ export default function TemplateWorkspacePage() {
                 gap: 8,
                 padding: '4px 10px',
                 borderRadius: 999,
-                background: '#faf3f3',
-                border: '1px solid #f0e4e4',
+                background: 'var(--surface-3)',
+                border: '1px solid var(--border)',
               }}
             >
               <span
@@ -168,7 +168,7 @@ export default function TemplateWorkspacePage() {
                   flexShrink: 0,
                 }}
               />
-              <Text style={{ fontSize: 13, fontWeight: 600, color: '#434343' }}>
+              <Text style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
                 Flow: {flowChrome.status.text}
               </Text>
             </span>

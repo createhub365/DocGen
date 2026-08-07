@@ -22,7 +22,7 @@ export default function AsyncBusyBar({
         <div
           style={{
             fontSize: 12,
-            color: 'rgba(0,0,0,0.45)',
+            color: 'var(--text-muted)',
             marginBottom: 6,
           }}
         >
@@ -33,7 +33,7 @@ export default function AsyncBusyBar({
         percent={100}
         showInfo={false}
         status="active"
-        strokeColor={{ from: '#8B1A1A', to: '#D4A017' }}
+        strokeColor={{ from: 'var(--primary)', to: 'var(--accent)' }}
         size="small"
       />
     </div>
