@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Alert, Button, Form, Input, Typography } from 'antd'
 import { FileTextOutlined, LockOutlined, UserOutlined } from '@ant-design/icons'
 import { readPlatformErrorDetail } from '../../api/platformClient'
+import ColorModeToggle from '../../components/ColorModeToggle'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
 
@@ -59,20 +60,17 @@ export default function PlatformLoginPage() {
         overflow: 'hidden',
       }}
     >
-      <div className="login-orb login-orb--gold" />
-      <div className="login-orb login-orb--maroon" />
+      <ColorModeToggle variant="floating" />
+      <div className="login-orb login-orb--accent" />
+      <div className="login-orb login-orb--primary" />
 
       <div className="animate-scale-in w-full" style={{ maxWidth: 420, position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div className="login-brand-mark" aria-hidden>
             <FileTextOutlined />
           </div>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>
-            DocFlow Platform
-          </h1>
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
-            Organization sign in
-          </Text>
+          <h1 className="login-brand-title">DocFlow Platform</h1>
+          <Text className="login-brand-sub">Organization sign in</Text>
         </div>
 
         <div className="login-card" style={{ padding: '36px 32px 28px' }}>

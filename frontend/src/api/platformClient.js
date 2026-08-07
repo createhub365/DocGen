@@ -413,7 +413,7 @@ export async function uploadOrgLogo(file) {
   return data
 }
 
-/** Set org UI theme preset key (org_admin). Pass null to reset to classic. */
+/** Set org UI theme preset key (org_admin). Pass null to reset to platform default (Ledger Mist). */
 export async function updateOrgTheme(themeKey) {
   const { data } = await platformClient.patch('/organization/theme', {
     theme_key: themeKey,

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Alert, Button, Form, Input, Typography } from 'antd'
 import { FileTextOutlined, LockOutlined, MailOutlined, BankOutlined } from '@ant-design/icons'
 import { readPlatformErrorDetail, slugifyOrgName } from '../../api/platformClient'
+import ColorModeToggle from '../../components/ColorModeToggle'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { useAppMessage } from '../../hooks/useAppMessage'
 
@@ -31,7 +32,6 @@ export default function PlatformSignupPage() {
         setFormError('Organization name must include letters or numbers to form a URL slug.')
         return
       }
-      // Backend signup sets the org JWT cookie and returns access_token — session is live immediately.
       await signup({
         name: values.name.trim(),
         slug,
@@ -66,20 +66,17 @@ export default function PlatformSignupPage() {
         overflow: 'hidden',
       }}
     >
-      <div className="login-orb login-orb--gold" />
-      <div className="login-orb login-orb--maroon" />
+      <ColorModeToggle variant="floating" />
+      <div className="login-orb login-orb--accent" />
+      <div className="login-orb login-orb--primary" />
 
       <div className="animate-scale-in w-full" style={{ maxWidth: 440, position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div className="login-brand-mark" aria-hidden>
             <FileTextOutlined />
           </div>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>
-            DocFlow Platform
-          </h1>
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
-            Create your organization
-          </Text>
+          <h1 className="login-brand-title">DocFlow Platform</h1>
+          <Text className="login-brand-sub">Create your organization</Text>
         </div>
 
         <div className="login-card" style={{ padding: '32px 28px 24px' }}>

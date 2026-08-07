@@ -36,6 +36,7 @@ import {
 } from '../../design/themes'
 import { useAppMessage } from '../../hooks/useAppMessage'
 import { useAsyncAction } from '../../hooks/useAsyncAction'
+import { useColorMode } from '../../context/ColorModeContext'
 import { usePlatformAuth } from '../../context/PlatformAuthContext'
 import { usePlatformPageChrome } from '../../components/PlatformLayout'
 import AsyncBusyBar from '../../components/ui/AsyncBusyBar'
@@ -68,6 +69,7 @@ function ThemeSwatch({ colors }) {
 export default function SettingsPage() {
   const message = useAppMessage()
   const { currentOrg, refreshMe } = usePlatformAuth()
+  const { colorMode } = useColorMode()
   const { runNamed, isLoading } = useAsyncAction()
 
   const [summary, setSummary] = useState(null)
@@ -232,7 +234,7 @@ export default function SettingsPage() {
     const previous = resolveThemeKey(currentOrg?.theme_key)
     setThemeError(null)
     setPendingTheme(key)
-    applyThemeCssVariables(key)
+    applyThemeCssVariables(key, colorMode)
     runNamed('theme', async () => {
       try {
         await updateOrgTheme(key)
@@ -240,7 +242,7 @@ export default function SettingsPage() {
         setPendingTheme(null)
         message.success(`Theme updated to ${THEME_PRESETS.find((p) => p.key === key)?.name || key}`)
       } catch (err) {
-        applyThemeCssVariables(previous)
+        applyThemeCssVariables(previous, colorMode)
         setPendingTheme(null)
         const detail =
           (await readPlatformErrorDetail(err)) || 'Could not update theme'
@@ -263,7 +265,8 @@ export default function SettingsPage() {
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
           Choose a color theme for your organization. Everyone in your org sees
-          the same theme on every device.
+          the same theme on every device. Light/dark mode is a personal
+          preference (sidebar toggle) and is not part of this org setting.
         </Text>
 
         <div
