@@ -563,6 +563,7 @@ export default function PlatformLayout() {
                   overflowY: 'auto',
                   overflowX: 'hidden',
                   padding: edgePad,
+                  background: 'var(--surface-2)',
                 }}
               >
                 <div key={location.pathname} className="platform-page-enter">

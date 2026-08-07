@@ -111,7 +111,11 @@ export const antTheme = {
 export function injectCssVariables() {
   const root = document.documentElement
   Object.entries(colors).forEach(([key, value]) => {
-    const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase()
+    // Match themes.js camelToCssVar: surface2 → --surface-2 (not --surface2)
+    const cssKey = key
+      .replace(/([A-Z])/g, '-$1')
+      .replace(/([a-z])(\d)/g, '$1-$2')
+      .toLowerCase()
     root.style.setProperty(`--${cssKey}`, value)
   })
   Object.entries(spacing).forEach(([key, value]) => {

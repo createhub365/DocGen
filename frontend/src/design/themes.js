@@ -420,8 +420,17 @@ export function getThemeColors(themeKey, colorMode = 'light') {
   return preset.colors
 }
 
+/**
+ * camelCase / alphanumeric token key → CSS custom property.
+ * Must insert a hyphen before digits: surface2 → --surface-2 (matches :root / UI).
+ * Plain camelCase alone misses that (surface2 → --surface2), so dark mode never
+ * overwrote the page canvas tokens used by PlatformLayout.
+ */
 function camelToCssVar(key) {
-  return `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`
+  return `--${String(key)
+    .replace(/([A-Z])/g, '-$1')
+    .replace(/([a-z])(\d)/g, '$1-$2')
+    .toLowerCase()}`
 }
 
 /**
@@ -436,6 +445,9 @@ export function applyThemeCssVariables(themeKey, colorMode = 'light') {
   Object.entries(colors).forEach(([key, value]) => {
     root.style.setProperty(camelToCssVar(key), value)
   })
+  // Drop misnamed vars from older camelToCssVar (surface2 → --surface2)
+  root.style.removeProperty('--surface2')
+  root.style.removeProperty('--surface3')
   if (colors.sidebarMid) root.style.setProperty('--sidebar-mid', colors.sidebarMid)
   if (colors.borderLight) root.style.setProperty('--border-light', colors.borderLight)
 
@@ -523,6 +535,8 @@ export function clearThemeCssVariables() {
   Object.keys(sample).forEach((key) => {
     root.style.removeProperty(camelToCssVar(key))
   })
+  root.style.removeProperty('--surface2')
+  root.style.removeProperty('--surface3')
   root.style.removeProperty('--sidebar-mid')
   root.style.removeProperty('--border-light')
   Object.keys(classicShadows).forEach((key) => {
