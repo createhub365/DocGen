@@ -1,6 +1,6 @@
 ﻿# Ledger Mist — DocGen Pro design exploration (Stitch)
 
-> Status: **design review only** — not applied to application code.  
+> Status: **approved for implementation** — available as org theme preset `ledger-mist` (Settings → Theme). Classic default unchanged.  
 > Source: Google Stitch project `DocGen Pro — Audit Log test` (`7621577980415612266`)  
 > Design system asset: `assets/5993942569783878613`  
 > Preview screen: `Audit Log - Ledger Mist Redesign` (`787c360116ae43308c2845452a319c2e`)  
@@ -72,4 +72,4 @@ These expand from the teal seed; surfaces may read slightly cool/lavender-tinted
 
 ## Out of scope (for now)
 
-Do **not** wire this into `frontend/` CSS variables, Ant Design theme, or PlatformLayout until explicit approval.
+Component-level Stitch HTML markup is not ported 1:1; platform styling uses the existing token/theme system with the Ledger Mist preset.
