@@ -170,6 +170,51 @@ const terracottaColors = withCssExtras(
   { sidebarMid: '#5C220E', borderLight: '#F8EBE4' }
 )
 
+/** Ledger Mist — docs/design/STITCH_DESIGN.md (authoritative brand palette). */
+const ledgerMistColors = withCssExtras(
+  {
+    primary: '#0F766E',
+    primaryLight: '#14B8A6',
+    primaryDark: '#005C55',
+    accent: '#C2410C',
+    accentLight: '#EA580C',
+    surface: '#FFFFFF',
+    surface2: '#F8FAFC',
+    surface3: '#F1F5F9',
+    border: '#E2E8F0',
+    textPrimary: '#0F172A',
+    textSecondary: '#1E293B',
+    textMuted: '#64748B',
+    success: '#0D7C4A',
+    warning: '#D97706',
+    error: '#BA1A1A',
+    maroon: '#0F766E',
+    maroonLight: '#14B8A6',
+    maroonDark: '#005C55',
+    purple: '#1E293B',
+    green: '#0F766E',
+    sidebarFrom: '#1E293B',
+    sidebarTo: '#0F172A',
+    previewBg: '#0F172A',
+  },
+  { sidebarMid: '#162032', borderLight: '#EEF2F6' }
+)
+
+const ledgerMistTypography = {
+  fontDisplay: "'Manrope', system-ui, sans-serif",
+  fontBody: "'IBM Plex Sans', system-ui, sans-serif",
+  fontMono: typography.fontMono,
+}
+
+/** 8px base radius for Ledger Mist (Stitch design system). */
+const ledgerMistRadius = {
+  sm: 4,
+  md: 8,
+  lg: 12,
+  xl: 16,
+  full: 9999,
+}
+
 /**
  * @typedef {{
  *   key: string,
@@ -177,6 +222,8 @@ const terracottaColors = withCssExtras(
  *   description: string,
  *   swatch: string[],
  *   colors: Record<string, string>,
+ *   typography?: { fontDisplay: string, fontBody: string, fontMono: string },
+ *   radius?: Record<string, number>,
  * }} ThemePreset
  */
 
@@ -227,6 +274,20 @@ export const THEME_PRESETS = [
     ],
     colors: terracottaColors,
   },
+  {
+    key: 'ledger-mist',
+    name: 'Ledger Mist',
+    description: 'Teal and slate — Stitch B2B exploration',
+    swatch: [
+      ledgerMistColors.primary,
+      ledgerMistColors.accent,
+      ledgerMistColors.sidebarFrom,
+      ledgerMistColors.surface2,
+    ],
+    colors: ledgerMistColors,
+    typography: ledgerMistTypography,
+    radius: ledgerMistRadius,
+  },
 ]
 
 const PRESET_BY_KEY = Object.fromEntries(THEME_PRESETS.map((p) => [p.key, p]))
@@ -268,21 +329,26 @@ export function applyThemeCssVariables(themeKey) {
   Object.entries(spacing).forEach(([key, value]) => {
     root.style.setProperty(`--space-${key}`, `${value}px`)
   })
-  Object.entries(radius).forEach(([key, value]) => {
+  const radiusTokens = preset.radius || radius
+  Object.entries(radiusTokens).forEach(([key, value]) => {
     root.style.setProperty(`--radius-${key}`, `${value}px`)
   })
-  root.style.setProperty('--font-display', typography.fontDisplay)
-  root.style.setProperty('--font-body', typography.fontBody)
-  root.style.setProperty('--font-mono', typography.fontMono)
+  const fonts = preset.typography || typography
+  root.style.setProperty('--font-display', fonts.fontDisplay)
+  root.style.setProperty('--font-body', fonts.fontBody)
+  root.style.setProperty('--font-mono', fonts.fontMono || typography.fontMono)
 }
 
 /**
  * Ant Design ConfigProvider theme derived from a preset (keeps structure of tokens.antTheme).
  */
 export function buildAntTheme(themeKey) {
-  const { colors } = getThemePreset(themeKey)
+  const preset = getThemePreset(themeKey)
+  const { colors } = preset
   const shadows = shadowsForPrimary(colors.primary, colors.accent)
   const p = hexToRgb(colors.primary)
+  const fonts = preset.typography || typography
+  const radiusTokens = preset.radius || radius
   return {
     ...baseAntTheme,
     token: {
@@ -296,6 +362,9 @@ export function buildAntTheme(themeKey) {
       colorBorder: colors.border,
       colorBgContainer: colors.surface,
       colorBgLayout: colors.surface2,
+      borderRadius: radiusTokens.md,
+      borderRadiusLG: radiusTokens.lg,
+      fontFamily: fonts.fontBody,
     },
     components: {
       ...baseAntTheme.components,
