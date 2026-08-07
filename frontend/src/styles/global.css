@@ -1537,7 +1537,8 @@ body {
   animation: orbFloat 8s var(--ease-in-out) infinite;
 }
 
-.login-orb--gold {
+.login-orb--gold,
+.login-orb--accent {
   top: -120px;
   right: -120px;
   width: 400px;
@@ -1545,7 +1546,8 @@ body {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
-.login-orb--maroon {
+.login-orb--maroon,
+.login-orb--primary {
   bottom: -80px;
   left: -80px;
   width: 280px;
@@ -1561,6 +1563,23 @@ body {
     var(--sidebar-mid) 42%,
     var(--sidebar-to) 100%
   );
+}
+
+.login-page .login-brand-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.login-page .login-brand-sub {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.65);
+  font-family: var(--font-body);
+  font-size: 13px;
 }
 
 .login-page .login-brand-mark {
@@ -1583,9 +1602,38 @@ body {
 
 .login-page .login-card {
   background: var(--surface);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-xl, 16px);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
   border: 1px solid color-mix(in srgb, var(--primary) 10%, transparent);
+  font-family: var(--font-body);
+}
+
+.color-mode-toggle--floating {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.color-mode-toggle--floating:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.color-mode-toggle--floating:active {
+  transform: scale(0.96);
 }
 
 /* ??? Full-page loader ????????????????????????????????????? */
@@ -2172,7 +2220,8 @@ body.mobile-app {
     padding: 24px 20px 20px !important;
   }
 
-  .login-page h1 {
+  .login-page h1,
+  .login-page .login-brand-title {
     font-size: 24px !important;
   }
 
