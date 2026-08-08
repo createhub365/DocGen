@@ -29,6 +29,17 @@ export function dutiesFieldKeyForPosition(field) {
   return key || DUTIES_BLOCK_KEY
 }
 
+/**
+ * Duties textarea content for the Generate wizard.
+ * Only show text when a trade is actively selected this session;
+ * otherwise return '' so the "Not available" placeholder shows
+ * (never leftover / default / previous-mapping content).
+ */
+export function dutiesDisplayForSelection(selectedTradeId, dutiesText) {
+  if (selectedTradeId == null || selectedTradeId === '') return ''
+  return dutiesText == null ? '' : String(dutiesText)
+}
+
 /** Build Ant Select options: flat (avoids OptGroup filter hiding children). */
 export function tradeSelectOptions(trades) {
   return (trades || [])

@@ -49,6 +49,7 @@ import { renderPdfPagesToImages } from '../../utils/pdfPageRenderer'
 import {
   TRADE_LINKED_DUTIES_KIND,
   TRADE_LINKED_POSITION_KIND,
+  dutiesDisplayForSelection,
   dutiesFieldKeyForPosition,
   hiddenDutiesCompanionKeys,
   isTradeLinkedPositionField,
@@ -230,6 +231,10 @@ function TradeLinkedDutiesInput({ value, onChange, disabled }) {
 /**
  * Trade-linked position: one Select fills position (name) + duties companion.
  * Duties renders under Position — not as a separate wizard column.
+ *
+ * Duties text is shown only when a trade is actively selected (selectedTradeId).
+ * Leftover Form values (preserve / prior fill / autofill) must never appear on
+ * initial load with an empty Position.
  */
 function TradeLinkedPositionGroup({ positionField, disabled, missingFields }) {
   const form = Form.useFormInstance()
@@ -271,15 +276,30 @@ function TradeLinkedPositionGroup({ positionField, disabled, missingFields }) {
 
   const options = useMemo(() => tradeSelectOptions(trades), [trades])
   const positionValue = Form.useWatch(positionKey, form)
+  const dutiesValue = Form.useWatch(dutiesKey, form)
 
+  // Sync Select from preserved position name (wizard page back/next), and
+  // scrub leftover duties whenever Position is empty.
   useEffect(() => {
-    if (!positionValue || !trades.length) return
+    const pos = positionValue == null ? '' : String(positionValue).trim()
+    if (!pos) {
+      setSelectedTradeId(undefined)
+      const leftover = form.getFieldValue(dutiesKey)
+      if (leftover !== undefined && leftover !== null && String(leftover) !== '') {
+        form.setFieldsValue({ [dutiesKey]: undefined })
+      }
+      return
+    }
+    if (!trades.length) return
     const match = trades.find(
-      (t) =>
-        String(t.name || '').toLowerCase() === String(positionValue).toLowerCase()
+      (t) => String(t.name || '').toLowerCase() === pos.toLowerCase()
     )
-    if (match) setSelectedTradeId(match.id)
-  }, [positionValue, trades])
+    if (match) {
+      setSelectedTradeId(match.id)
+    } else {
+      setSelectedTradeId(undefined)
+    }
+  }, [positionValue, trades, dutiesKey, form])
 
   const onTradeChange = (tradeId) => {
     setSelectedTradeId(tradeId)
@@ -297,6 +317,8 @@ function TradeLinkedPositionGroup({ positionField, disabled, missingFields }) {
       [dutiesKey]: match.duties_text || '',
     })
   }
+
+  const dutiesShown = dutiesDisplayForSelection(selectedTradeId, dutiesValue)
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -338,11 +360,20 @@ function TradeLinkedPositionGroup({ positionField, disabled, missingFields }) {
       >
         <Input />
       </Form.Item>
-      <Form.Item name={dutiesKey} label="Duties" style={{ marginBottom: 0 }}>
+      {/* Hidden store for submit payload; visible box is selection-gated. */}
+      <Form.Item name={dutiesKey} hidden>
+        <Input.TextArea />
+      </Form.Item>
+      <Form.Item label="Duties" style={{ marginBottom: 0 }}>
         <Input.TextArea
           rows={6}
-          disabled={disabled}
+          disabled={disabled || selectedTradeId == null}
+          value={dutiesShown}
           placeholder="Not available"
+          onChange={(e) => {
+            if (selectedTradeId == null) return
+            form.setFieldsValue({ [dutiesKey]: e.target.value })
+          }}
         />
       </Form.Item>
     </div>
@@ -545,6 +576,9 @@ export default function GenerateDocumentPage() {
 
       setSteps(hydrated)
       setTemplateId(resolvedId)
+      // Fresh wizard load must not keep leftover field values (esp. duties_block
+      // from a prior fill while Position Select starts empty).
+      form.resetFields()
     } catch (error) {
       setLoadError(
         (await readPlatformErrorDetail(error)) || 'Could not load generation wizard'
@@ -552,7 +586,7 @@ export default function GenerateDocumentPage() {
     } finally {
       setLoading(false)
     }
-  }, [documentTypeId, routeTemplateId, navigate]) // message toast is fire-and-forget
+  }, [documentTypeId, routeTemplateId, navigate, form]) // message toast is fire-and-forget
 
   useEffect(() => {
     load()
