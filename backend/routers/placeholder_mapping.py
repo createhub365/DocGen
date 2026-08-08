@@ -383,6 +383,18 @@ def upsert_placeholder_mappings(
             },
         )
 
+    from services.trade_linked_position import (
+        DUTIES_BLOCK_KEY,
+        assert_duties_block_mapping_allowed,
+    )
+
+    for item in body.mappings:
+        ph = (item.placeholder_key or "").strip().lower()
+        fk = (item.field_key or "").strip().lower()
+        if ph == DUTIES_BLOCK_KEY or fk == DUTIES_BLOCK_KEY:
+            assert_duties_block_mapping_allowed(db, flow.id)
+            break
+
     # All-or-nothing upsert after validation
     for item in body.mappings:
         existing = (

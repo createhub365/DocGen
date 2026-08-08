@@ -46,6 +46,16 @@ import {
 import InAppPdfViewerModal from './InAppPdfViewerModal'
 import ShareGeneratedDocumentModal from './ShareGeneratedDocumentModal'
 import { renderPdfPagesToImages } from '../../utils/pdfPageRenderer'
+import {
+  TRADE_LINKED_DUTIES_KIND,
+  TRADE_LINKED_POSITION_KIND,
+  dutiesFieldKeyForPosition,
+  hiddenDutiesCompanionKeys,
+  isTradeLinkedPositionField,
+  tradeLinkedKind,
+  tradeOptionFilter,
+  tradeSelectOptions,
+} from '../../utils/tradeLinkedPosition'
 import { colors } from '../../design/tokens'
 /** flag-icons CSS sprite — works on Windows (emoji flags do not). */
 function WorldCountryFlag({ code, size = 18 }) {
@@ -136,11 +146,15 @@ function FieldInput({ field, disabled, value, onChange, ...rest }) {
   )
 }
 
-/** Trade Bank linked duties — separate from FieldInput / other field types. */
+/** @deprecated use isTradeLinkedPositionField — kept for tests/imports */
 export function isTradeLinkedDutiesField(field) {
-  return field?.auto_config_json?.kind === 'trade_linked_duties'
+  return isTradeLinkedPositionField(field)
 }
 
+/**
+ * Legacy: trade selector bound to a duties field (old trade_linked_duties kind).
+ * Kept for any pre-pairing flows until migrated.
+ */
 function TradeLinkedDutiesInput({ value, onChange, disabled }) {
   const [trades, setTrades] = useState([])
   const [loadError, setLoadError] = useState(null)
@@ -175,40 +189,7 @@ function TradeLinkedDutiesInput({ value, onChange, disabled }) {
     return map
   }, [trades])
 
-  // AntD Select nested options = OptGroup; search matches name OR synonyms.
-  const groupedOptions = useMemo(() => {
-    const groups = new Map()
-    const ungrouped = []
-    for (const t of trades || []) {
-      const synonyms = Array.isArray(t.synonyms) ? t.synonyms : []
-      const searchText = [t.name, ...synonyms].filter(Boolean).join(' ')
-      const option = {
-        value: t.id,
-        label: t.name,
-        searchText,
-      }
-      const industryName = (t.industry_name || '').trim()
-      if (!industryName) {
-        ungrouped.push(option)
-        continue
-      }
-      if (!groups.has(industryName)) groups.set(industryName, [])
-      groups.get(industryName).push(option)
-    }
-    const ordered = [...groups.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([label, options]) => ({
-        label,
-        options: options.sort((a, b) => a.label.localeCompare(b.label)),
-      }))
-    if (ungrouped.length) {
-      ordered.push({
-        label: 'Ungrouped',
-        options: ungrouped.sort((a, b) => a.label.localeCompare(b.label)),
-      })
-    }
-    return ordered
-  }, [trades])
+  const options = useMemo(() => tradeSelectOptions(trades), [trades])
 
   return (
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -221,15 +202,13 @@ function TradeLinkedDutiesInput({ value, onChange, disabled }) {
         disabled={disabled}
         placeholder="Select a trade to auto-fill duties"
         optionFilterProp="searchText"
-        filterOption={(input, option) => {
-          const hay = String(
-            option?.searchText || option?.label || ''
-          ).toLowerCase()
-          return hay.includes(String(input || '').toLowerCase())
-        }}
-        options={groupedOptions}
+        filterOption={tradeOptionFilter}
+        options={options}
         onChange={(tradeId) => {
-          if (tradeId == null) return
+          if (tradeId == null) {
+            if (typeof onChange === 'function') onChange('')
+            return
+          }
           const match = tradeById.get(tradeId)
           if (match && typeof onChange === 'function') {
             onChange(match.duties_text || '')
@@ -248,6 +227,128 @@ function TradeLinkedDutiesInput({ value, onChange, disabled }) {
   )
 }
 
+/**
+ * Trade-linked position: one Select fills position (name) + duties companion.
+ * Duties renders under Position — not as a separate wizard column.
+ */
+function TradeLinkedPositionGroup({ positionField, disabled, missingFields }) {
+  const form = Form.useFormInstance()
+  const dutiesKey = dutiesFieldKeyForPosition(positionField)
+  const positionKey = positionField.field_key
+  const [trades, setTrades] = useState([])
+  const [loadError, setLoadError] = useState(null)
+  const [selectedTradeId, setSelectedTradeId] = useState(undefined)
+
+  useEffect(() => {
+    let cancelled = false
+    listOrgTrades()
+      .then((rows) => {
+        if (!cancelled) {
+          setTrades(rows || [])
+          setLoadError(null)
+        }
+      })
+      .catch(async (error) => {
+        if (!cancelled) {
+          setTrades([])
+          setLoadError(
+            (await readPlatformErrorDetail(error)) || 'Could not load trades'
+          )
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const tradeById = useMemo(() => {
+    const map = new Map()
+    for (const t of trades || []) {
+      map.set(t.id, t)
+    }
+    return map
+  }, [trades])
+
+  const options = useMemo(() => tradeSelectOptions(trades), [trades])
+  const positionValue = Form.useWatch(positionKey, form)
+
+  useEffect(() => {
+    if (!positionValue || !trades.length) return
+    const match = trades.find(
+      (t) =>
+        String(t.name || '').toLowerCase() === String(positionValue).toLowerCase()
+    )
+    if (match) setSelectedTradeId(match.id)
+  }, [positionValue, trades])
+
+  const onTradeChange = (tradeId) => {
+    setSelectedTradeId(tradeId)
+    if (tradeId == null) {
+      form.setFieldsValue({
+        [positionKey]: undefined,
+        [dutiesKey]: undefined,
+      })
+      return
+    }
+    const match = tradeById.get(tradeId)
+    if (!match) return
+    form.setFieldsValue({
+      [positionKey]: match.name || '',
+      [dutiesKey]: match.duties_text || '',
+    })
+  }
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      {loadError ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={loadError}
+          style={{ marginBottom: 8 }}
+        />
+      ) : null}
+      <Form.Item
+        label={positionField.field_label || 'Position'}
+        required={!!positionField.is_required}
+        validateStatus={missingFields?.includes(positionKey) ? 'error' : undefined}
+        style={{ marginBottom: 8 }}
+      >
+        <Select
+          showSearch
+          allowClear
+          disabled={disabled}
+          placeholder="Search trade name or synonym"
+          optionFilterProp="searchText"
+          filterOption={tradeOptionFilter}
+          options={options}
+          value={selectedTradeId}
+          onChange={onTradeChange}
+          style={{ width: '100%' }}
+        />
+      </Form.Item>
+      <Form.Item
+        name={positionKey}
+        hidden
+        rules={
+          positionField.is_required
+            ? [{ required: true, message: 'Required' }]
+            : undefined
+        }
+      >
+        <Input />
+      </Form.Item>
+      <Form.Item name={dutiesKey} label="Duties" style={{ marginBottom: 0 }}>
+        <Input.TextArea
+          rows={6}
+          disabled={disabled}
+          placeholder="Not available"
+        />
+      </Form.Item>
+    </div>
+  )
+}
+
 export function collectFieldsPayload(values) {
   const out = {}
   Object.entries(values || {}).forEach(([key, value]) => {
@@ -262,13 +363,16 @@ export function collectFieldsPayload(values) {
   return out
 }
 
-/** Fields shown as wizard inputs (hides auto-ref + inject-only barcode keys). */
+/** Fields shown as wizard inputs (hides auto-ref, barcode, duties companions). */
 export function wizardVisibleFields(fields) {
-  return (fields || []).filter(
-    (f) =>
-      !f?.is_auto_generated &&
-      String(f?.field_key || '').toLowerCase() !== 'ref_number_barcode'
-  )
+  const hiddenDuties = hiddenDutiesCompanionKeys(fields)
+  return (fields || []).filter((f) => {
+    if (f?.is_auto_generated) return false
+    const key = String(f?.field_key || '').toLowerCase()
+    if (key === 'ref_number_barcode') return false
+    if (hiddenDuties.has(key)) return false
+    return true
+  })
 }
 
 /** Field keys owned by a step (for per-page validation). */
@@ -725,30 +829,44 @@ export default function GenerateDocumentPage() {
     if (step.step_type === 'custom_fields') {
       return (
         <Card key={step.id} title={step.label || 'Fields'} style={{ borderRadius: 12 }}>
-          {wizardVisibleFields(step.fields).map((field) => (
-            <Form.Item
-              key={field.id}
-              name={field.field_key}
-              label={field.field_label || field.field_key}
-              rules={
-                field.is_required
-                  ? [
-                      {
-                        required: true,
-                        message: `${field.field_label || field.field_key} is required`,
-                      },
-                    ]
-                  : undefined
-              }
-              validateStatus={missingFields.includes(field.field_key) ? 'error' : undefined}
-            >
-              {isTradeLinkedDutiesField(field) ? (
-                <TradeLinkedDutiesInput />
-              ) : (
-                <FieldInput field={field} />
-              )}
-            </Form.Item>
-          ))}
+          {wizardVisibleFields(step.fields).map((field) => {
+            const kind = tradeLinkedKind(field)
+            if (kind === TRADE_LINKED_POSITION_KIND) {
+              return (
+                <TradeLinkedPositionGroup
+                  key={field.id}
+                  positionField={field}
+                  missingFields={missingFields}
+                />
+              )
+            }
+            return (
+              <Form.Item
+                key={field.id}
+                name={field.field_key}
+                label={field.field_label || field.field_key}
+                rules={
+                  field.is_required
+                    ? [
+                        {
+                          required: true,
+                          message: `${field.field_label || field.field_key} is required`,
+                        },
+                      ]
+                    : undefined
+                }
+                validateStatus={
+                  missingFields.includes(field.field_key) ? 'error' : undefined
+                }
+              >
+                {kind === TRADE_LINKED_DUTIES_KIND ? (
+                  <TradeLinkedDutiesInput />
+                ) : (
+                  <FieldInput field={field} />
+                )}
+              </Form.Item>
+            )
+          })}
           {!wizardVisibleFields(step.fields).length && (
             <Text type="secondary">No field definitions on this step.</Text>
           )}
@@ -760,27 +878,41 @@ export default function GenerateDocumentPage() {
     if (fields.length) {
       return (
         <Card key={step.id} title={step.label || step.step_type} style={{ borderRadius: 12 }}>
-          {fields.map((field) => (
-            <Form.Item
-              key={field.id}
-              name={field.field_key}
-              label={field.field_label || field.field_key}
-              rules={
-                field.is_required
-                  ? [{ required: true, message: 'Required' }]
-                  : undefined
-              }
-              validateStatus={missingFields.includes(field.field_key) ? 'error' : undefined}
-            >
-              {isTradeLinkedDutiesField(field) ? (
-                <TradeLinkedDutiesInput />
-              ) : step.step_type === 'rich_text' && field.field_type === 'text' ? (
-                <TextArea rows={4} />
-              ) : (
-                <FieldInput field={field} />
-              )}
-            </Form.Item>
-          ))}
+          {fields.map((field) => {
+            const kind = tradeLinkedKind(field)
+            if (kind === TRADE_LINKED_POSITION_KIND) {
+              return (
+                <TradeLinkedPositionGroup
+                  key={field.id}
+                  positionField={field}
+                  missingFields={missingFields}
+                />
+              )
+            }
+            return (
+              <Form.Item
+                key={field.id}
+                name={field.field_key}
+                label={field.field_label || field.field_key}
+                rules={
+                  field.is_required
+                    ? [{ required: true, message: 'Required' }]
+                    : undefined
+                }
+                validateStatus={
+                  missingFields.includes(field.field_key) ? 'error' : undefined
+                }
+              >
+                {kind === TRADE_LINKED_DUTIES_KIND ? (
+                  <TradeLinkedDutiesInput />
+                ) : step.step_type === 'rich_text' && field.field_type === 'text' ? (
+                  <TextArea rows={4} />
+                ) : (
+                  <FieldInput field={field} />
+                )}
+              </Form.Item>
+            )
+          })}
         </Card>
       )
     }

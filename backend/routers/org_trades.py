@@ -283,9 +283,18 @@ def delete_org_trade_industry(
 
 @router.get("/trades", response_model=List[OrgTradeRead])
 def list_org_trades(
+    q: Optional[str] = None,
     current: OrgUserContext = Depends(get_current_org_user),
     db: Session = Depends(get_db),
 ):
+    """
+    List org trades. Optional `q` filters by trade name or synonym.
+
+    Matching reuses services.trade_name_match (name and synonyms treated
+    equally) plus case-insensitive substring containment for typeahead.
+    """
+    from services.trade_name_match import match_trade_against_query
+
     names = _industry_name_map(db, current.org_id)
     rows = (
         db.query(models.OrgTrade)
@@ -293,6 +302,19 @@ def list_org_trades(
         .order_by(models.OrgTrade.name.asc())
         .all()
     )
+    query = (q or "").strip()
+    if query:
+        q_lower = query.lower()
+        filtered: list[models.OrgTrade] = []
+        for row in rows:
+            syns = _normalize_synonyms(row.synonyms)
+            haystacks = [row.name or "", *syns]
+            if any(q_lower in str(h).lower() for h in haystacks):
+                filtered.append(row)
+                continue
+            if match_trade_against_query(query, row) is not None:
+                filtered.append(row)
+        rows = filtered
     return [_trade_to_read(row, names) for row in rows]
 
 

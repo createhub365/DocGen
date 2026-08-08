@@ -269,7 +269,7 @@ def test_trade_linked_field_does_not_break_other_field_types(dual_org_clients):
             "field_type": "text",
             "is_required": True,
             "is_auto_generated": False,
-            "auto_config_json": {"kind": "trade_linked_duties"},
+            "auto_config_json": {"kind": "trade_linked_position", "duties_field_key": "duties_block"},
         },
     )
     assert trade_field.status_code == 201, trade_field.text
@@ -298,6 +298,9 @@ def test_trade_linked_field_does_not_break_other_field_types(dual_org_clients):
     assert rows["plain_notes"].field_type == "text"
     assert rows["years_exp"].field_type == "number"
     assert rows["years_exp"].auto_config_json is None
-    assert rows["job_duties"].auto_config_json == {"kind": "trade_linked_duties"}
+    assert rows["job_duties"].auto_config_json == {
+        "kind": "trade_linked_position",
+        "duties_field_key": "duties_block",
+    }
     assert rows["job_duties"].is_auto_generated is False
     assert rows["job_duties"].field_type == "text"

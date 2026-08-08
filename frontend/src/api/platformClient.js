@@ -630,8 +630,8 @@ export async function deleteOptionListItem(itemId) {
   await platformClient.delete(`/option-list-items/${itemId}`)
 }
 
-export async function listOrgTrades() {
-  const { data } = await platformClient.get('/trades')
+export async function listOrgTrades(params = {}) {
+  const { data } = await platformClient.get('/trades', { params })
   return data
 }
 

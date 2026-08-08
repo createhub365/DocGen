@@ -178,6 +178,10 @@ def publish_flow_config(
 ):
     flow = get_org_flow_config(db, flow_config_id, current.org_id)
 
+    from services.trade_linked_position import assert_flow_trade_position_pairing
+
+    assert_flow_trade_position_pairing(db, flow.id)
+
     # PlaceholderMapping stores portable field_key strings (not FlowStep /
     # FieldDefinition FKs), so republishing a new version does not invalidate
     # existing template mappings that still resolve by key on the new flow.
@@ -597,8 +601,16 @@ def add_field_definition(
                 detail="auto_config_json.prefix is required for auto-generated fields",
             )
         auto_config = {"kind": "ref_number", "prefix": prefix}
-    elif isinstance(auto_config, dict) and auto_config.get("kind") == "trade_linked_duties":
-        auto_config = {"kind": "trade_linked_duties"}
+    elif isinstance(auto_config, dict) and auto_config.get("kind") in (
+        "trade_linked_position",
+        "trade_linked_duties",  # legacy kind still accepted
+    ):
+        from services.trade_linked_position import normalize_trade_linked_position_config
+
+        # New canonical kind; legacy trade_linked_duties coerced to position
+        # when duties_field_key is supplied, otherwise kept for read compat
+        # on older rows — create path always stores trade_linked_position.
+        auto_config = normalize_trade_linked_position_config(auto_config)
     else:
         auto_config = None
 
@@ -673,8 +685,13 @@ def update_field_definition(
         data["is_auto_generated"] = True
     elif "auto_config_json" in data:
         cfg = data.get("auto_config_json")
-        if isinstance(cfg, dict) and cfg.get("kind") == "trade_linked_duties":
-            data["auto_config_json"] = {"kind": "trade_linked_duties"}
+        if isinstance(cfg, dict) and cfg.get("kind") in (
+            "trade_linked_position",
+            "trade_linked_duties",
+        ):
+            from services.trade_linked_position import normalize_trade_linked_position_config
+
+            data["auto_config_json"] = normalize_trade_linked_position_config(cfg)
             data["is_auto_generated"] = False
         else:
             data["auto_config_json"] = None
@@ -683,7 +700,9 @@ def update_field_definition(
         # on the row (handled when auto_config_json is explicitly patched).
         existing = row.auto_config_json
         if not (
-            isinstance(existing, dict) and existing.get("kind") == "trade_linked_duties"
+            isinstance(existing, dict)
+            and existing.get("kind")
+            in ("trade_linked_position", "trade_linked_duties")
         ):
             data["auto_config_json"] = None
 
